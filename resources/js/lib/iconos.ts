@@ -1,0 +1,112 @@
+import type { LucideIcon } from 'lucide-react'
+import {
+    Check, CheckCircle, BadgeCheck, ShieldCheck, ThumbsUp, Star, Zap, Target,
+    Flame, Rocket, Award, Trophy, Medal, Crown,
+    Package, Package2, Box, Gift, Tag, ShoppingCart, ShoppingBag,
+    CreditCard, Banknote, Truck, Percent, Gem,
+    Leaf, Droplets, Sun, Moon, Apple, Coffee, Utensils, Pill, Stethoscope, Heart,
+    Smartphone, Cpu, Wifi, Battery, BatteryCharging, Headphones, Camera, Monitor, Tv, Fingerprint,
+    Users, User, UserCheck, Smile, Layers, Briefcase,
+    Shield, Lock, Key, Eye, Bell, AlertCircle,
+    Palette, Paintbrush, Pencil, Scissors, Compass, Ruler,
+    Book, BookOpen, GraduationCap, Microscope, FlaskConical, TestTube, Activity, TrendingUp,
+    Home, MapPin, Globe, Mail, Phone, Clock, Calendar, Music,
+} from 'lucide-react'
+
+export interface IconoEntry { key: string; Icon: LucideIcon }
+
+export const ICONOS: IconoEntry[] = [
+    // Acciones / Estado
+    { key: 'check',           Icon: Check           },
+    { key: 'check-circle',    Icon: CheckCircle     },
+    { key: 'badge-check',     Icon: BadgeCheck      },
+    { key: 'shield-check',    Icon: ShieldCheck     },
+    { key: 'thumbs-up',       Icon: ThumbsUp        },
+    { key: 'star',            Icon: Star            },
+    { key: 'zap',             Icon: Zap             },
+    { key: 'target',          Icon: Target          },
+    { key: 'flame',           Icon: Flame           },
+    { key: 'rocket',          Icon: Rocket          },
+    { key: 'award',           Icon: Award           },
+    { key: 'trophy',          Icon: Trophy          },
+    { key: 'medal',           Icon: Medal           },
+    { key: 'crown',           Icon: Crown           },
+    // Productos / Comercio
+    { key: 'package',         Icon: Package         },
+    { key: 'package-2',       Icon: Package2        },
+    { key: 'box',             Icon: Box             },
+    { key: 'gift',            Icon: Gift            },
+    { key: 'tag',             Icon: Tag             },
+    { key: 'shopping-cart',   Icon: ShoppingCart    },
+    { key: 'shopping-bag',    Icon: ShoppingBag     },
+    { key: 'credit-card',     Icon: CreditCard      },
+    { key: 'banknote',        Icon: Banknote        },
+    { key: 'truck',           Icon: Truck           },
+    { key: 'percent',         Icon: Percent         },
+    { key: 'gem',             Icon: Gem             },
+    // Naturaleza / Salud
+    { key: 'leaf',            Icon: Leaf            },
+    { key: 'droplets',        Icon: Droplets        },
+    { key: 'sun',             Icon: Sun             },
+    { key: 'moon',            Icon: Moon            },
+    { key: 'apple',           Icon: Apple           },
+    { key: 'coffee',          Icon: Coffee          },
+    { key: 'utensils',        Icon: Utensils        },
+    { key: 'pill',            Icon: Pill            },
+    { key: 'stethoscope',     Icon: Stethoscope     },
+    { key: 'heart',           Icon: Heart           },
+    // Tecnología
+    { key: 'smartphone',      Icon: Smartphone      },
+    { key: 'cpu',             Icon: Cpu             },
+    { key: 'wifi',            Icon: Wifi            },
+    { key: 'battery',         Icon: Battery         },
+    { key: 'battery-charging',Icon: BatteryCharging },
+    { key: 'headphones',      Icon: Headphones      },
+    { key: 'camera',          Icon: Camera          },
+    { key: 'monitor',         Icon: Monitor         },
+    { key: 'tv',              Icon: Tv              },
+    { key: 'fingerprint',     Icon: Fingerprint     },
+    // Social / Personas
+    { key: 'users',           Icon: Users           },
+    { key: 'user',            Icon: User            },
+    { key: 'user-check',      Icon: UserCheck       },
+    { key: 'smile',           Icon: Smile           },
+    { key: 'layers',          Icon: Layers          },
+    { key: 'briefcase',       Icon: Briefcase       },
+    // Seguridad
+    { key: 'shield',          Icon: Shield          },
+    { key: 'lock',            Icon: Lock            },
+    { key: 'key',             Icon: Key             },
+    { key: 'eye',             Icon: Eye             },
+    { key: 'bell',            Icon: Bell            },
+    { key: 'alert-circle',    Icon: AlertCircle     },
+    // Arte / Creatividad
+    { key: 'palette',         Icon: Palette         },
+    { key: 'paintbrush',      Icon: Paintbrush      },
+    { key: 'pencil',          Icon: Pencil          },
+    { key: 'scissors',        Icon: Scissors        },
+    { key: 'compass',         Icon: Compass         },
+    { key: 'ruler',           Icon: Ruler           },
+    // Educación / Ciencia
+    { key: 'book',            Icon: Book            },
+    { key: 'book-open',       Icon: BookOpen        },
+    { key: 'graduation-cap',  Icon: GraduationCap   },
+    { key: 'microscope',      Icon: Microscope      },
+    { key: 'flask-conical',   Icon: FlaskConical    },
+    { key: 'test-tube',       Icon: TestTube        },
+    { key: 'activity',        Icon: Activity        },
+    { key: 'trending-up',     Icon: TrendingUp      },
+    // Lugar / Comunicación
+    { key: 'home',            Icon: Home            },
+    { key: 'map-pin',         Icon: MapPin          },
+    { key: 'globe',           Icon: Globe           },
+    { key: 'mail',            Icon: Mail            },
+    { key: 'phone',           Icon: Phone           },
+    { key: 'clock',           Icon: Clock           },
+    { key: 'calendar',        Icon: Calendar        },
+    { key: 'music',           Icon: Music           },
+]
+
+export function getIcono(key: string): LucideIcon {
+    return ICONOS.find(i => i.key === key)?.Icon ?? Check
+}

@@ -1,0 +1,99 @@
+<?php
+
+/**
+ * Definición de permisos por módulo.
+ *
+ * Regla: todo módulo nuevo debe registrarse aquí con sus acciones antes de salir a producción.
+ * Después de agregar un módulo, correr: php artisan db:seed --class=PermissionsSeeder
+ */
+return [
+
+    'categorias' => [
+        'label'   => 'Categorías',
+        'actions' => [
+            'ver'      => 'Ver',
+            'crear'    => 'Crear',
+            'editar'   => 'Editar',
+            'eliminar' => 'Eliminar',
+        ],
+    ],
+
+    'productos' => [
+        'label'   => 'Productos',
+        'actions' => [
+            'ver'      => 'Ver',
+            'crear'    => 'Crear',
+            'editar'   => 'Editar',
+            'eliminar' => 'Eliminar',
+        ],
+    ],
+
+    'usuarios' => [
+        'label'   => 'Usuarios',
+        'actions' => [
+            'ver'      => 'Ver',
+            'crear'    => 'Crear',
+            'eliminar' => 'Eliminar',
+        ],
+    ],
+
+    'roles' => [
+        'label'   => 'Roles y permisos',
+        'actions' => [
+            'ver'      => 'Ver',
+            'crear'    => 'Crear',
+            'editar'   => 'Editar',
+            'eliminar' => 'Eliminar',
+        ],
+    ],
+
+    'metodos-pago' => [
+        'label'   => 'Métodos de pago',
+        'actions' => [
+            'ver'    => 'Ver',
+            'editar' => 'Editar',
+        ],
+    ],
+
+    'integraciones' => [
+        'label'   => 'Integraciones',
+        'actions' => [
+            'ver'    => 'Ver',
+            'editar' => 'Editar',
+        ],
+    ],
+
+    'envio' => [
+        'label'   => 'Métodos de envío',
+        'actions' => [
+            'ver'    => 'Ver',
+            'editar' => 'Editar',
+        ],
+    ],
+
+    'ordenes' => [
+        'label'   => 'Órdenes',
+        'actions' => [
+            'ver'    => 'Ver',
+            'editar' => 'Editar',
+        ],
+    ],
+
+    'clientes' => [
+        'label'   => 'Clientes',
+        'actions' => [
+            'ver'    => 'Ver',
+            'editar' => 'Editar',
+        ],
+    ],
+
+    'perfil' => [
+        'label'   => 'Perfil',
+        'actions' => [
+            'ver'          => 'Ver',
+            'editar'       => 'Editar datos personales',
+            'editar-tienda' => 'Editar datos de la tienda',
+        ],
+    ],
+
+];

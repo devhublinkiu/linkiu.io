@@ -1,0 +1,156 @@
+import { useEffect, useRef, useState } from 'react'
+import axios from 'axios'
+import { router } from '@inertiajs/react'
+import { toast } from 'sonner'
+import { ImageIcon, Trash2 } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
+import { Button } from '@/Components/ui/Button'
+import { Input } from '@/Components/ui/Input'
+import { Label } from '@/Components/ui/Label'
+
+interface ImagenItem { url: string; ruta: string }
+
+interface Props {
+    open:       boolean
+    onClose:    () => void
+    productoId: number
+    config:     Record<string, unknown> | null
+}
+
+const MAX = 10
+
+export default function ModalGaleriaResultados({ open, onClose, productoId, config }: Props) {
+    const [titulo,    setTitulo]    = useState((config?.titulo as string) ?? '')
+    const [imagenes,  setImagenes]  = useState<ImagenItem[]>((config?.imagenes as ImagenItem[]) ?? [])
+    const [subiendo,  setSubiendo]  = useState(false)
+    const [guardando, setGuardando] = useState(false)
+    const inputRef = useRef<HTMLInputElement>(null)
+
+    useEffect(() => {
+        if (!open) return
+        setTitulo((config?.titulo as string) ?? '')
+        setImagenes((config?.imagenes as ImagenItem[]) ?? [])
+    }, [open])
+
+    function handleOpen(v: boolean) {
+        if (!v) onClose()
+    }
+
+    async function subirArchivo(file: File) {
+        if (imagenes.length >= MAX) return
+        setSubiendo(true)
+        try {
+            const form = new FormData()
+            form.append('imagen', file)
+            const res = await axios.post<ImagenItem>(
+                route('admin.productos.hooks.imagenes.store', { producto: productoId, hook: 'galeria_resultados' }),
+                form,
+            )
+            setImagenes(prev => [...prev, res.data])
+        } catch {
+            toast.error('Error al subir la imagen')
+        } finally {
+            setSubiendo(false)
+        }
+    }
+
+    async function eliminar(item: ImagenItem) {
+        setImagenes(prev => prev.filter(i => i.ruta !== item.ruta))
+        await axios.delete(
+            route('admin.productos.hooks.imagenes.destroy', { producto: productoId, hook: 'galeria_resultados' }),
+            { data: { ruta: item.ruta } },
+        ).catch(() => toast.error('Error al eliminar la imagen'))
+    }
+
+    function onChangeInput(e: React.ChangeEvent<HTMLInputElement>) {
+        const file = e.target.files?.[0]
+        if (file) subirArchivo(file)
+        e.target.value = ''
+    }
+
+    function guardar() {
+        setGuardando(true)
+        router.post(
+            route('admin.productos.hooks.config', { producto: productoId, hook: 'galeria_resultados' }),
+            { config: { titulo: titulo.trim() || undefined, imagenes } } as any,
+            {
+                preserveScroll: true,
+                onSuccess: () => { toast.success('Hook guardado'); onClose() },
+                onError:   () => toast.error('Error al guardar'),
+                onFinish:  () => setGuardando(false),
+            },
+        )
+    }
+
+    return (
+        <Sheet open={open} onOpenChange={handleOpen}>
+            <SheetContent className="sm:max-w-md flex flex-col">
+                <SheetHeader>
+                    <SheetTitle>Galería de resultados</SheetTitle>
+                    <SheetDescription>Slider 9:16 — fotos de resultados reales (máx. {MAX}).</SheetDescription>
+                </SheetHeader>
+
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                    <div className="space-y-1.5">
+                        <Label>Título <span className="text-slate-400">(opcional)</span></Label>
+                        <Input
+                            placeholder="Resultados reales"
+                            value={titulo}
+                            onChange={e => setTitulo(e.target.value)}
+                        />
+                    </div>
+
+                    {imagenes.length > 0 && (
+                        <div className="grid grid-cols-3 gap-2">
+                            {imagenes.map((img, i) => (
+                                <div key={i} className="group relative aspect-[9/16] rounded-lg border border-slate-200 overflow-hidden">
+                                    <img src={img.url} alt="" className="size-full object-cover" />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <button
+                                            type="button"
+                                            onClick={() => eliminar(img)}
+                                            className="rounded-full bg-white/90 p-1.5 text-slate-700 hover:bg-red-500 hover:text-white transition-colors duration-200"
+                                        >
+                                            <Trash2 className="size-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {imagenes.length < MAX && (
+                        <button
+                            type="button"
+                            disabled={subiendo}
+                            onClick={() => !subiendo && inputRef.current?.click()}
+                            className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-400 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {subiendo
+                                ? <div className="size-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                                : <ImageIcon className="size-5" />
+                            }
+                            <span className="text-sm">{subiendo ? 'Subiendo…' : 'Agregar imagen'}</span>
+                            <span className="text-xs text-slate-300">{imagenes.length}/{MAX}</span>
+                        </button>
+                    )}
+
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        className="hidden"
+                        onChange={onChangeInput}
+                    />
+                </div>
+
+                <SheetFooter>
+                    <Button onClick={guardar} disabled={guardando || imagenes.length === 0}>
+                        {guardando ? 'Guardando…' : 'Guardar'}
+                    </Button>
+                    <Button variant="outline" onClick={onClose}>Cancelar</Button>
+                </SheetFooter>
+            </SheetContent>
+        </Sheet>
+    )
+}
