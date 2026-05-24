@@ -4,9 +4,12 @@ namespace App\Actions\Productos;
 
 use App\Models\Producto;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class SaveProductoInfo
 {
+    private const SKU_MAX_INTENTOS = 10;
+
     public function execute(array $datos, ?Producto $producto = null): Producto
     {
         $datos['sku'] = $datos['sku'] ?: $this->generarSku();
@@ -21,10 +24,15 @@ class SaveProductoInfo
 
     private function generarSku(): string
     {
-        do {
+        for ($i = 0; $i < self::SKU_MAX_INTENTOS; $i++) {
             $sku = 'PRD-' . strtoupper(Str::random(8));
-        } while (Producto::where('sku', $sku)->exists());
+            if (! Producto::where('sku', $sku)->exists()) {
+                return $sku;
+            }
+        }
 
-        return $sku;
+        throw new RuntimeException(
+            'No se pudo generar un SKU único tras ' . self::SKU_MAX_INTENTOS . ' intentos.'
+        );
     }
 }

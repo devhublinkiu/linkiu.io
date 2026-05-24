@@ -2,18 +2,18 @@ import { Head, Link } from '@inertiajs/react'
 import { ChevronLeft, Info, CircleDollarSign, Images, Layers, Zap } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/Components/ui/Tabs'
-import TabInformacion  from './parts/TabInformacion'
-import TabPrecio       from './parts/TabPrecio'
-import TabImagenes     from './parts/TabImagenes'
-import TabVariables    from './parts/TabVariables'
-import TabLinkiuHooks  from './parts/TabLinkiuHooks'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
+import TabInformacion from './parts/TabInformacion'
 
+// Orden: información → imágenes → precio. El precio va DESPUÉS de imágenes
+// porque las ofertas por cantidad necesitan asignar una imagen por oferta,
+// así que es natural subirlas primero.
 const TABS = [
-    { id: 'informacion', label: 'Información',  icon: Info              },
-    { id: 'precio',      label: 'Precio',        icon: CircleDollarSign  },
-    { id: 'imagenes',    label: 'Imágenes',      icon: Images            },
-    { id: 'variables',   label: 'Variables',     icon: Layers            },
-    { id: 'linkiuhooks', label: 'LinkiuHooks',   icon: Zap               },
+    { id: 'informacion', label: 'Información',  icon: Info,             requiereProducto: false },
+    { id: 'imagenes',    label: 'Imágenes',      icon: Images,           requiereProducto: true  },
+    { id: 'precio',      label: 'Precio',        icon: CircleDollarSign, requiereProducto: true  },
+    { id: 'variables',   label: 'Variables',     icon: Layers,           requiereProducto: true  },
+    { id: 'linkiuhooks', label: 'LinkiuHooks',   icon: Zap,              requiereProducto: true  },
 ]
 
 interface Categoria {
@@ -45,32 +45,41 @@ export default function ProductoCreate({ categorias }: Props) {
                 </Link>
                 <div>
                     <h2 className="text-lg font-semibold text-slate-900">Nuevo producto</h2>
-                    <p className="mt-0.5 text-sm text-slate-500">Completa cada sección y guarda por separado.</p>
+                    <p className="mt-0.5 text-sm text-slate-500">Guarda la información básica para habilitar el resto de secciones.</p>
                 </div>
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-white">
-                <Tabs defaultValue="informacion">
-                    <div className="p-2">
-                        <TabsList className="w-full">
-                            {TABS.map(({ id, label, icon: Icon }) => (
-                                <TabsTrigger key={id} value={id}>
-                                    <Icon />
-                                    {label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </div>
+                <TooltipProvider delayDuration={200}>
+                    <Tabs defaultValue="informacion">
+                        <div className="p-2">
+                            <TabsList className="w-full">
+                                {TABS.map(({ id, label, icon: Icon, requiereProducto }) => requiereProducto ? (
+                                    <Tooltip key={id}>
+                                        <TooltipTrigger asChild>
+                                            <span>
+                                                <TabsTrigger value={id} disabled>
+                                                    <Icon />
+                                                    {label}
+                                                </TabsTrigger>
+                                            </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Disponible después de guardar la información del producto</TooltipContent>
+                                    </Tooltip>
+                                ) : (
+                                    <TabsTrigger key={id} value={id}>
+                                        <Icon />
+                                        {label}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
 
-                    <div className="p-6">
-                        <TabsContent value="informacion"><TabInformacion categorias={categorias} /></TabsContent>
-                        <TabsContent value="precio"><TabPrecio /></TabsContent>
-                        <TabsContent value="imagenes"><TabImagenes /></TabsContent>
-                        <TabsContent value="variables"><TabVariables /></TabsContent>
-                        <TabsContent value="linkiuhooks"><TabLinkiuHooks /></TabsContent>
-
-                    </div>
-                </Tabs>
+                        <div className="p-6">
+                            <TabsContent value="informacion"><TabInformacion categorias={categorias} /></TabsContent>
+                        </div>
+                    </Tabs>
+                </TooltipProvider>
             </div>
 
         </AdminLayout>

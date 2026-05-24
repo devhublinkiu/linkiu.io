@@ -2,31 +2,26 @@
 
 namespace App\Actions\Productos;
 
+use App\Actions\Build\SubirImagenWebp;
 use App\Models\Producto;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
-use Intervention\Image\Drivers\Gd\Driver;
-use Intervention\Image\Encoders\WebpEncoder;
-use Intervention\Image\ImageManager;
 
 class SubirProductoHookImagen
 {
+    public function __construct(private SubirImagenWebp $subir)
+    {
+    }
+
     public function execute(UploadedFile $archivo, Producto $producto, string $hook): array
     {
-        $manager = new ImageManager(new Driver());
-
-        $webp = $manager->decode($archivo)
-            ->scaleDown(width: 1600)
-            ->encode(new WebpEncoder(quality: 85));
-
-        $ruta = "productos/{$producto->id}/hooks/{$hook}/" . Str::uuid() . '.webp';
-
-        Storage::disk('s3')->put($ruta, (string) $webp);
-
-        return [
-            'url'  => Storage::disk('s3')->url($ruta),
-            'ruta' => $ruta,
-        ];
+        // track: true → registra en build_image_uploads. El cron diario
+        // LimpiarHuerfanasBuild borra imágenes que llevan >24h tracked
+        // pero sin asociación a un hook activo (subidas y descartadas).
+        return $this->subir->execute(
+            archivo:  $archivo,
+            carpeta:  "productos/{$producto->id}/hooks/{$hook}",
+            anchoMax: 1600,
+            track:    true,
+        );
     }
 }

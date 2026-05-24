@@ -3,6 +3,7 @@
 namespace App\Actions\Productos;
 
 use App\Models\ProductoImagen;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class EliminarProductoImagen
@@ -11,15 +12,20 @@ class EliminarProductoImagen
     {
         $eraPrincipal = $imagen->principal;
         $productoId   = $imagen->producto_id;
+        $ruta         = $imagen->ruta;
 
-        Storage::disk('s3')->delete($imagen->ruta);
-        $imagen->delete();
+        // BD primero: si falla la promoción, todo rollback y S3 queda intacto.
+        DB::transaction(function () use ($imagen, $eraPrincipal, $productoId) {
+            $imagen->delete();
 
-        // Si era la principal, promover la siguiente imagen disponible
-        if ($eraPrincipal) {
-            ProductoImagen::where('producto_id', $productoId)
-                ->orderBy('orden')
-                ->first()?->update(['principal' => true]);
-        }
+            if ($eraPrincipal) {
+                ProductoImagen::where('producto_id', $productoId)
+                    ->orderBy('orden')
+                    ->first()?->update(['principal' => true]);
+            }
+        });
+
+        // Tras commit exitoso, eliminar el archivo en S3.
+        Storage::disk('s3')->delete($ruta);
     }
 }
