@@ -4,11 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\Usuarios\CreateAdminUser;
 use App\Actions\Usuarios\DeleteAdminUser;
+use App\Actions\Usuarios\ReenviarInvitacionUsuario;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Usuarios\StoreAdminUserRequest;
-use App\Mail\InvitacionUsuarioMail;
 use App\Models\User;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -17,6 +16,8 @@ class AdminUsersController extends Controller
 {
     public function index()
     {
+        abort_if(! auth()->user()->can('usuarios.ver'), 403);
+
         $usuarios = User::with('roles')
             ->where('role', 'admin')
             ->orderByRaw("CASE WHEN email_verified_at IS NULL THEN 1 ELSE 0 END")
@@ -49,37 +50,34 @@ class AdminUsersController extends Controller
 
     public function store(StoreAdminUserRequest $request, CreateAdminUser $action)
     {
+        abort_if(! auth()->user()->can('usuarios.crear'), 403);
+
         $resultado = $action->execute($request->validated());
 
         if (isset($resultado['error'])) {
             return back()->withErrors(['general' => 'No se pudo crear el usuario.']);
         }
 
-        return back()->with('status', 'Usuario creado. Se enviÃ³ la invitaciÃ³n por correo.');
+        return back()->with('status', 'Usuario creado. Se envió la invitación por correo.');
     }
 
-    public function reenviar(User $user)
+    public function reenviar(User $user, ReenviarInvitacionUsuario $action)
     {
-        if (! is_null($user->email_verified_at)) {
-            return back()->withErrors(['general' => 'El usuario ya verificÃ³ su correo.']);
+        abort_if(! auth()->user()->can('usuarios.crear'), 403);
+
+        $resultado = $action->execute($user);
+
+        if (isset($resultado['error']) && $resultado['error'] === 'ya_verificado') {
+            return back()->withErrors(['general' => 'El usuario ya verificó su correo.']);
         }
 
-        $token = Str::uuid()->toString();
-
-        cache()->put("invitation_{$token}", [
-            'user_id' => $user->id,
-            'email'   => $user->email,
-        ], now()->addHours(48));
-
-        Mail::mailer('resend_accounts')
-            ->to($user->email)
-            ->send(new InvitacionUsuarioMail($user, $token));
-
-        return back()->with('status', 'InvitaciÃ³n reenviada correctamente.');
+        return back()->with('status', 'Invitación reenviada correctamente.');
     }
 
     public function destroy(User $user, DeleteAdminUser $action)
     {
+        abort_if(! auth()->user()->can('usuarios.eliminar'), 403);
+
         $resultado = $action->execute($user);
 
         if (isset($resultado['error'])) {

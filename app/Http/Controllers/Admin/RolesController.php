@@ -19,9 +19,12 @@ class RolesController extends Controller
 {
     public function index(): Response
     {
+        abort_if(! auth()->user()->can('roles.ver'), 403);
+
         $modulos        = config('permissions');
         $todosPermisos  = Permission::pluck('name')->toArray();
-        $rolesOrdenados = Role::all()->sortBy(fn ($r) => match ($r->name) {
+        // withCount('users') evita N+1 (antes: 1 query por cada $role->users()->count())
+        $rolesOrdenados = Role::withCount('users')->get()->sortBy(fn ($r) => match ($r->name) {
             'super-admin' => 0,
             'admin'       => 1,
             default       => 2,
@@ -33,7 +36,7 @@ class RolesController extends Controller
             'display_name' => Str::title(str_replace('-', ' ', $role->name)),
             'is_super'     => $role->name === 'super-admin',
             'is_system'    => in_array($role->name, ['super-admin', 'admin']),
-            'users_count'  => $role->users()->count(),
+            'users_count'  => $role->users_count,
             'permissions'  => $role->name === 'super-admin'
                 ? $todosPermisos
                 : $role->getPermissionNames()->toArray(),
@@ -49,6 +52,8 @@ class RolesController extends Controller
 
     public function store(Request $request, CreateRole $action): RedirectResponse
     {
+        abort_if(! auth()->user()->can('roles.crear'), 403);
+
         $request->validate([
             'nombre' => 'required|string|max:50',
         ]);
@@ -57,7 +62,7 @@ class RolesController extends Controller
 
         if (isset($resultado['error'])) {
             $mensaje = match ($resultado['error']) {
-                'limite_alcanzado' => 'Se alcanzÃ³ el lÃ­mite de roles personalizados.',
+                'limite_alcanzado' => 'Se alcanzó el límite de roles personalizados.',
                 'nombre_duplicado' => 'Ya existe un rol con ese nombre.',
                 default            => 'No se pudo crear el rol.',
             };
@@ -69,6 +74,8 @@ class RolesController extends Controller
 
     public function togglePermission(Request $request, Role $role, TogglePermission $action): JsonResponse
     {
+        abort_if(! auth()->user()->can('roles.editar'), 403);
+
         $request->validate([
             'permiso' => 'required|string|exists:permissions,name',
         ]);
@@ -76,7 +83,12 @@ class RolesController extends Controller
         $resultado = $action->execute($role, $request->permiso);
 
         if (isset($resultado['error'])) {
-            return response()->json(['error' => $resultado['error']], 403);
+            $mensaje = match ($resultado['error']) {
+                'rol_no_editable'   => 'No se puede editar el rol super-admin.',
+                'permiso_protegido' => 'Solo el super-admin puede modificar permisos del módulo Roles o Usuarios.',
+                default             => $resultado['error'],
+            };
+            return response()->json(['error' => $mensaje], 403);
         }
 
         return response()->json(['ok' => true, 'activo' => $resultado['activo']]);
@@ -84,6 +96,8 @@ class RolesController extends Controller
 
     public function destroy(Role $role, DeleteRole $action): RedirectResponse
     {
+        abort_if(! auth()->user()->can('roles.eliminar'), 403);
+
         $resultado = $action->execute($role);
 
         if (isset($resultado['error'])) {

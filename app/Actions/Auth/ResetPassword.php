@@ -2,42 +2,50 @@
 
 namespace App\Actions\Auth;
 
-use App\Mail\ContrasenaActualizadaMail;
-use App\Models\User;
+use App\Support\Auth\GuardConfig;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class ResetPassword
 {
-    public function execute(string $email, string $tokenReset, string $nuevaPassword): array
+    public function execute(string $email, string $tokenReset, string $nuevaPassword, string $guard = 'web'): array
     {
-        $tokenGuardado = cache()->get("reset_token_{$email}");
+        $tokenGuardado = cache()->get("reset_token_{$guard}_{$email}");
 
         if (! $tokenGuardado || $tokenGuardado !== $tokenReset) {
             return ['error' => 'token_invalido'];
         }
 
-        $usuario = User::where('email', $email)->where('role', 'admin')->first();
+        $config  = GuardConfig::for($guard);
+        $usuario = $config->findByEmail($email);
 
         if (! $usuario) {
             return ['error' => 'usuario_no_encontrado'];
         }
 
-        $usuario->update([
-            'password'       => $nuevaPassword, // cast 'hashed' lo encripta automáticamente
-            'login_attempts' => 0,
-            'blocked_until'  => null,
-        ]);
+        $cambios = ['password' => $nuevaPassword]; // cast 'hashed' encripta
 
-        cache()->forget("reset_token_{$email}");
+        // Solo guard 'web' (User) tiene login_attempts/blocked_until
+        if ($guard === 'web') {
+            $cambios['login_attempts'] = 0;
+            $cambios['blocked_until']  = null;
+        }
+
+        $usuario->update($cambios);
+
+        cache()->forget("reset_token_{$guard}_{$email}");
+        cache()->forget("client_blocked_{$email}");
 
         try {
-            Mail::mailer('resend_accounts')
+            $mailable = new ($config->contrasenaActualizadaMailClass)($usuario);
+            Mail::mailer($config->mailer)
                 ->to($usuario->email)
-                ->send(new ContrasenaActualizadaMail($usuario));
+                ->send($mailable);
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::warning('ResetPassword: no se pudo enviar email de confirmación', [
-                'email'  => $email,
-                'error'  => $e->getMessage(),
+            Log::warning('ResetPassword: no se pudo enviar email de confirmación', [
+                'email' => $email,
+                'guard' => $guard,
+                'error' => $e->getMessage(),
             ]);
         }
 

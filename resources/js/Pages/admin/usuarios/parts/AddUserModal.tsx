@@ -5,6 +5,7 @@ import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
 import { Label } from '@/Components/ui/Label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/Select'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/Components/ui/InputGroup'
 
 interface Role {
     id: number
@@ -82,19 +83,16 @@ export default function AddUserModal({ open, onClose, roles }: Props) {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5">
                             <Label htmlFor="phone">Celular <span className="text-red-500">*</span></Label>
-                            <div className="flex h-9 overflow-hidden rounded-md border border-slate-200 focus-within:border-slate-400 focus-within:ring-3 focus-within:ring-slate-300/50">
-                                <span className="flex items-center border-r border-slate-200 bg-slate-50 px-3 text-sm text-slate-500 select-none">
-                                    +57
-                                </span>
-                                <input
+                            <InputGroup>
+                                <InputGroupAddon>+57</InputGroupAddon>
+                                <InputGroupInput
                                     id="phone"
                                     type="tel"
                                     value={data.phone}
                                     onChange={e => setData('phone', e.target.value)}
                                     placeholder="300 000 0000"
-                                    className="flex-1 bg-transparent px-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none"
                                 />
-                            </div>
+                            </InputGroup>
                             {errors.phone && <p className="text-xs text-red-500">{errors.phone}</p>}
                         </div>
 
@@ -123,8 +121,11 @@ export default function AddUserModal({ open, onClose, roles }: Props) {
                                 value={data.username}
                                 onChange={e => setData('username', e.target.value)}
                                 placeholder="juanperez"
+                                pattern="[a-zA-Z0-9_\.]+"
+                                title="Solo letras, números, puntos y guiones bajos"
                                 className="h-9"
                             />
+                            <p className="text-xs text-slate-500">Letras, números, puntos y guiones bajos.</p>
                             {errors.username && <p className="text-xs text-red-500">{errors.username}</p>}
                         </div>
 
@@ -148,7 +149,7 @@ export default function AddUserModal({ open, onClose, roles }: Props) {
 
                     {/* Información adicional */}
                     <div className="border-t border-slate-100 pt-3">
-                        <p className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-400">Información adicional</p>
+                        <p className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-500">Información adicional</p>
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">

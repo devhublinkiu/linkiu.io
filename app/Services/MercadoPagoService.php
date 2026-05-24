@@ -12,6 +12,30 @@ class MercadoPagoService
 {
     public function __construct()
     {
+        // Configuración lazy: NO leer credenciales en construct. Si se hace
+        // aquí y no hay token, todo el controller que inyecta el service
+        // explota antes de llegar a su try/catch. Lazy permite que el
+        // controller chequee con `tieneCredenciales()` y responda 422
+        // user-friendly antes de intentar cobrar.
+    }
+
+    /**
+     * True si las credenciales del modo activo (sandbox/prod) están
+     * configuradas. Llamar antes de `crearPago()` para evitar el
+     * RuntimeException de configurarToken.
+     */
+    public function tieneCredenciales(): bool
+    {
+        $sandbox = Integracion::get('mp_sandbox', '1') === '1';
+        $token   = $sandbox
+            ? Integracion::get('mp_access_token_sandbox')
+            : Integracion::get('mp_access_token_prod');
+
+        return ! empty($token);
+    }
+
+    private function configurarToken(): void
+    {
         $sandbox = Integracion::get('mp_sandbox', '1') === '1';
         $token   = $sandbox
             ? Integracion::get('mp_access_token_sandbox')
@@ -31,6 +55,8 @@ class MercadoPagoService
      */
     public function crearPago(array $formData, string $descripcion, string $notificationUrl, ?string $idempotencyKey = null): array
     {
+        $this->configurarToken();
+
         $client  = new PaymentClient();
         $options = new RequestOptions();
         $options->setCustomHeaders([
@@ -92,6 +118,8 @@ class MercadoPagoService
     /** Consulta el estado actual de un pago por su ID */
     public function consultarPago(int|string $paymentId): array
     {
+        $this->configurarToken();
+
         $client  = new PaymentClient();
         $payment = $client->get((int) $paymentId);
 

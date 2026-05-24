@@ -2,9 +2,10 @@
 
 namespace App\Actions\Usuarios;
 
-use App\Mail\InvitacionUsuarioMail;
+use App\Jobs\EnviarInvitacionUsuarioJob;
 use App\Models\User;
-use Illuminate\Support\Facades\Mail;
+use App\Models\UserInvitation;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -18,32 +19,43 @@ class CreateAdminUser
             return ['error' => 'rol_no_encontrado'];
         }
 
-        $usuario = User::create([
-            'name'       => $datos['name'],
-            'username'   => $datos['username'],
-            'email'      => $datos['email'],
-            'phone'      => $this->normalizarTelefono($datos['phone']),
-            'gender'     => $datos['gender'],
-            'birthdate'  => $datos['birthdate'] ?? null,
-            'country'    => $datos['country'] ?? null,
-            'department' => $datos['department'] ?? null,
-            'city'       => $datos['city'] ?? null,
-            'role'       => 'admin',
-            'password'   => Str::random(32),
-        ]);
+        // Defense in depth: el FormRequest ya filtra super-admin pero
+        // validamos también aquí por si la Action se invoca desde otro
+        // lugar sin pasar por el FormRequest.
+        if ($rol->name === 'super-admin') {
+            return ['error' => 'rol_no_asignable'];
+        }
 
-        $usuario->assignRole($rol);
+        $token = Str::random(64);
 
-        $token = Str::uuid()->toString();
+        $usuario = DB::transaction(function () use ($datos, $rol, $token) {
+            $usuario = User::create([
+                'name'       => $datos['name'],
+                'username'   => $datos['username'],
+                'email'      => $datos['email'],
+                'phone'      => $this->normalizarTelefono($datos['phone']),
+                'gender'     => $datos['gender'],
+                'birthdate'  => $datos['birthdate']  ?? null,
+                'country'    => $datos['country']    ?? null,
+                'department' => $datos['department'] ?? null,
+                'city'       => $datos['city']       ?? null,
+                'role'       => 'admin',
+                'password'   => Str::random(32),
+            ]);
 
-        cache()->put("invitation_{$token}", [
-            'user_id' => $usuario->id,
-            'email'   => $usuario->email,
-        ], now()->addHours(48));
+            $usuario->assignRole($rol);
 
-        Mail::mailer('resend_accounts')
-            ->to($usuario->email)
-            ->send(new InvitacionUsuarioMail($usuario, $token));
+            UserInvitation::create([
+                'token'      => $token,
+                'user_id'    => $usuario->id,
+                'email'      => $usuario->email,
+                'expires_at' => now()->addHours(48),
+            ]);
+
+            return $usuario;
+        });
+
+        EnviarInvitacionUsuarioJob::dispatch($usuario, $token);
 
         return ['ok' => true, 'usuario' => $usuario];
     }
@@ -52,12 +64,10 @@ class CreateAdminUser
     {
         $digitos = preg_replace('/\D/', '', $telefono);
 
-        // Ya viene con código de país 57 (ej: 573001234567)
         if (strlen($digitos) === 12 && str_starts_with($digitos, '57')) {
             return '+' . $digitos;
         }
 
-        // Número colombiano de 10 dígitos (ej: 3001234567)
         return '+57' . $digitos;
     }
 }

@@ -2,29 +2,35 @@
 
 namespace App\Actions\Auth;
 
-use App\Mail\CodigoOTPMail;
-use App\Models\User;
 use App\Services\WhatsappService;
+use App\Support\Auth\GuardConfig;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Mail;
 
 class SendOTP
 {
     public function __construct(private WhatsappService $whatsapp) {}
 
-    public function execute(User $usuario, string $metodo, string $codigo): bool
+    public function execute(Model $usuario, string $metodo, string $codigo, string $guard = 'web'): bool
     {
+        $config = GuardConfig::for($guard);
+
         if ($metodo === 'whatsapp') {
-            if (! $usuario->phone) {
+            $telefono = $usuario->{$config->phoneField};
+
+            if (! $telefono) {
                 return false;
             }
 
-            return $this->whatsapp->enviarOTP($usuario->phone, $codigo);
+            return $this->whatsapp->enviarOTP($telefono, $codigo);
         }
 
         // Por correo
-        Mail::mailer('resend_accounts')
+        $mailable = new ($config->codigoOtpMailClass)($usuario, $codigo);
+
+        Mail::mailer($config->mailer)
             ->to($usuario->email)
-            ->send(new CodigoOTPMail($usuario, $codigo));
+            ->send($mailable);
 
         return true;
     }

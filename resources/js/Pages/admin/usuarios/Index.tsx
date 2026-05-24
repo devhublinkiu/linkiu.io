@@ -5,6 +5,7 @@ import { Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Button } from '@/Components/ui/Button'
+import { InitialsAvatar } from '@/Components/ui/InitialsAvatar'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -32,18 +33,6 @@ interface Role {
 interface Props {
     usuarios: Usuario[]
     roles: Role[]
-}
-
-function Iniciales({ name }: { name: string }) {
-    const partes = name.trim().split(' ')
-    const letras = partes.length >= 2
-        ? partes[0][0] + partes[1][0]
-        : partes[0].slice(0, 2)
-    return (
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold uppercase text-slate-600">
-            {letras}
-        </div>
-    )
 }
 
 export default function UsuariosIndex({ usuarios, roles }: Props) {
@@ -131,7 +120,7 @@ export default function UsuariosIndex({ usuarios, roles }: Props) {
                         <tbody>
                             {usuarios.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-400">
+                                    <td colSpan={6} className="px-4 py-10 text-center text-sm text-slate-500">
                                         No hay usuarios registrados aún.
                                     </td>
                                 </tr>
@@ -140,11 +129,11 @@ export default function UsuariosIndex({ usuarios, roles }: Props) {
                                 <tr key={usuario.id} className="border-b border-slate-100 bg-white transition-colors duration-200 last:border-0 hover:bg-slate-50">
                                     <td className="px-4 py-3">
                                         <div className="flex items-center gap-3">
-                                            <Iniciales name={usuario.name} />
+                                            <InitialsAvatar name={usuario.name} />
                                             <div>
                                                 <p className="font-medium text-slate-900">{usuario.name}</p>
                                                 {usuario.username && (
-                                                    <p className="text-xs text-slate-400">@{usuario.username}</p>
+                                                    <p className="text-xs text-slate-500">@{usuario.username}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -163,7 +152,8 @@ export default function UsuariosIndex({ usuarios, roles }: Props) {
                                                             <button
                                                                 onClick={() => handleReenviar(usuario)}
                                                                 disabled={reenviando === usuario.id}
-                                                                className="rounded p-1 text-slate-400 transition-colors duration-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 outline-none"
+                                                                aria-label={`Reenviar invitación a ${usuario.name}`}
+                                                                className="rounded p-1 text-slate-500 transition-colors duration-200 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 outline-none"
                                                             >
                                                                 <RefreshCw className={`size-3.5 ${reenviando === usuario.id ? 'animate-spin' : ''}`} />
                                                             </button>

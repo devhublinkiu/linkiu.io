@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { router } from '@inertiajs/react'
+import { Fragment, useState } from 'react'
+import { router, usePage } from '@inertiajs/react'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Switch } from '@/Components/ui/Switch'
@@ -31,7 +31,21 @@ interface Props {
     roles: Role[]
 }
 
+/**
+ * Permisos meta que solo el super-admin puede tocar. Espejo de
+ * `TogglePermission::PERMISOS_PROTEGIDOS` del backend. Si cambias uno
+ * aquí, actualízalo allá.
+ */
+const PERMISOS_PROTEGIDOS_PREFIJOS = ['roles.', 'usuarios.']
+
+function esPermisoProtegido(permiso: string): boolean {
+    return PERMISOS_PROTEGIDOS_PREFIJOS.some(p => permiso.startsWith(p))
+}
+
 export default function PermissionMatrix({ modulos, roles }: Props) {
+    const { props } = usePage<{ auth: { permissions: string[] } }>()
+    const esSuperAdmin = props.auth.permissions.includes('*')
+
     const [permisos, setPermisos] = useState<Record<number, string[]>>(
         Object.fromEntries(roles.map(r => [r.id, r.permissions]))
     )
@@ -43,6 +57,7 @@ export default function PermissionMatrix({ modulos, roles }: Props) {
 
     const handleToggle = async (role: Role, permiso: string) => {
         if (role.is_super) return
+        if (esPermisoProtegido(permiso) && !esSuperAdmin) return
 
         const key = `${role.id}-${permiso}`
         setToggling(key)
@@ -119,7 +134,7 @@ export default function PermissionMatrix({ modulos, roles }: Props) {
                                         )}
                                     </div>
                                     {role.users_count > 0 && (
-                                        <span className="mt-0.5 block text-xs font-normal text-slate-400">
+                                        <span className="mt-0.5 block text-xs font-normal text-slate-500">
                                             {role.users_count} usuario{role.users_count !== 1 ? 's' : ''}
                                         </span>
                                     )}
@@ -129,9 +144,9 @@ export default function PermissionMatrix({ modulos, roles }: Props) {
                     </thead>
                     <tbody>
                         {Object.entries(modulos).map(([moduloKey, modulo]) => (
-                            <>
+                            <Fragment key={moduloKey}>
                                 {/* Fila de cabecera del módulo */}
-                                <tr key={`header-${moduloKey}`} className="border-b border-slate-200 bg-slate-50">
+                                <tr className="border-b border-slate-200 bg-slate-50">
                                     <td
                                         colSpan={roles.length + 1}
                                         className="px-4 py-2 text-xs font-extrabold uppercase tracking-wider text-slate-950"
@@ -144,24 +159,37 @@ export default function PermissionMatrix({ modulos, roles }: Props) {
                                 {Object.entries(modulo.actions).map(([accionKey, accionLabel]) => {
                                     const permiso = `${moduloKey}.${accionKey}`
                                     const algunActivo = roles.some(r => tienePermiso(r.id, permiso))
+                                    const esProtegido = esPermisoProtegido(permiso)
                                     return (
                                         <tr key={permiso} className="border-b border-slate-100 bg-white transition-colors duration-200 last:border-0 hover:bg-slate-50">
                                             <td className={`px-4 py-3 ${algunActivo ? 'text-slate-950' : 'text-slate-600'}`}>
                                                 {accionLabel}
                                             </td>
-                                            {roles.map(role => (
-                                                <td key={role.id} className="px-4 py-3 text-center">
+                                            {roles.map(role => {
+                                                const bloqueadoPorProtegido = esProtegido && !esSuperAdmin && !role.is_super
+                                                const switchDisabled = role.is_super || bloqueadoPorProtegido || toggling === `${role.id}-${permiso}`
+                                                const switchEl = (
                                                     <Switch
                                                         checked={tienePermiso(role.id, permiso)}
                                                         onCheckedChange={() => handleToggle(role, permiso)}
-                                                        disabled={role.is_super || toggling === `${role.id}-${permiso}`}
+                                                        disabled={switchDisabled}
                                                     />
-                                                </td>
-                                            ))}
+                                                )
+                                                return (
+                                                    <td key={role.id} className="px-4 py-3 text-center">
+                                                        {bloqueadoPorProtegido ? (
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild><span>{switchEl}</span></TooltipTrigger>
+                                                                <TooltipContent>Solo el super-admin puede modificar este permiso</TooltipContent>
+                                                            </Tooltip>
+                                                        ) : switchEl}
+                                                    </td>
+                                                )
+                                            })}
                                         </tr>
                                     )
                                 })}
-                            </>
+                            </Fragment>
                         ))}
                     </tbody>
                 </table>

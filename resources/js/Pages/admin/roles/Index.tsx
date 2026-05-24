@@ -63,7 +63,7 @@ export default function RolesIndex({ modulos, roles, total_custom, limite }: Pro
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="text-sm text-slate-400">
+                    <span className="text-sm text-slate-500">
                         {total_custom}/{limite} roles personalizados
                     </span>
                     <TooltipProvider delayDuration={200}>
