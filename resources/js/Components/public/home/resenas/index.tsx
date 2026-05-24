@@ -1,55 +1,38 @@
+import { usePage } from '@inertiajs/react'
 import { StarIcon } from 'lucide-react'
 
-const RESENAS = [
-    {
-        nombre: 'María Fernanda L.',
-        ciudad: 'Bogotá',
-        estrellas: 5,
-        texto: 'Increíble. Llevaba años usando tintes con amoníaco y siempre terminaba con el cabello reseco. Con SAVIA mis canas quedaron cubiertas y mi cabello se siente suave y sano. Nunca vuelvo al tinte tradicional.',
-        iniciales: 'MF',
-        color: 'bg-emerald-500',
-    },
-    {
-        nombre: 'Valentina R.',
-        ciudad: 'Medellín',
-        estrellas: 5,
-        texto: 'Me sorprendió lo fácil que es. Seguí los tres pasos del instructivo y desde la primera aplicación quedé feliz. El tono castaño quedó igualito a mi color natural.',
-        iniciales: 'VR',
-        color: 'bg-slate-600',
-    },
-    {
-        nombre: 'Camila Torres',
-        ciudad: 'Cali',
-        estrellas: 5,
-        texto: 'Lo probé con desconfianza porque nunca había creído en los tintes sin amoníaco. Ahora lo recomiendo a todas mis amigas. El resultado dura semanas y el cabello queda brillante.',
-        iniciales: 'CT',
-        color: 'bg-amber-500',
-    },
-    {
-        nombre: 'Luisa Pedraza',
-        ciudad: 'Bucaramanga',
-        estrellas: 4,
-        texto: 'Muy buena experiencia. La aplicación es sencilla y el olor es mucho más agradable que los tintes comunes. La cobertura en canas fue total. Le doy 5 estrellas al resultado y 4 al tiempo de espera.',
-        iniciales: 'LP',
-        color: 'bg-blue-500',
-    },
-    {
-        nombre: 'Daniela M.',
-        ciudad: 'Barranquilla',
-        estrellas: 5,
-        texto: 'Llevo 4 meses usando SAVIA y no pienso cambiar. Mi cabello está más fuerte, las canas no se ven y mi peluquera no puede creer que lo hago en casa.',
-        iniciales: 'DM',
-        color: 'bg-rose-500',
-    },
-    {
-        nombre: 'Andrea Castillo',
-        ciudad: 'Manizales',
-        estrellas: 5,
-        texto: 'Vale cada peso. Kit completo, incluye todo lo que necesitas, y el resultado es profesional. Ya hice mi segundo pedido y aproveché el descuento.',
-        iniciales: 'AC',
-        color: 'bg-violet-500',
-    },
+interface ResenaItem {
+    nombre:     string
+    ciudad:     string
+    estrellas:  number
+    comentario: string
+}
+
+interface ResenasConfig {
+    titulo?:      string | null
+    descripcion?: string | null
+    items?:       ResenaItem[]
+}
+
+interface HeroConfig {
+    resenas_rating?:   number
+    resenas_cantidad?: number
+}
+
+// Reseñas placeholder con avatares neutros y comentarios genéricos. El admin
+// reemplaza desde LinkiuBuild → Inicio → Reseñas con testimonios reales.
+const FALLBACK: ResenaItem[] = [
+    { nombre: 'Ana M.',     ciudad: '',  estrellas: 5, comentario: 'Excelente experiencia de compra. El proceso fue rápido, el producto llegó en perfecto estado y el equipo de atención respondió todas mis dudas.' },
+    { nombre: 'Carlos R.',  ciudad: '',  estrellas: 5, comentario: 'Muy buena calidad y atención. Recomendado al 100%. Volvería a comprar sin dudarlo.' },
+    { nombre: 'Sofía L.',   ciudad: '',  estrellas: 5, comentario: 'El envío llegó antes de lo esperado y el empaque fue impecable. Muy satisfecha con mi pedido.' },
+    { nombre: 'Diego P.',   ciudad: '',  estrellas: 4, comentario: 'Buen producto, buen precio. El proceso de compra fue claro y sin complicaciones. Ya estoy planeando mi próxima compra.' },
+    { nombre: 'Laura S.',   ciudad: '',  estrellas: 5, comentario: 'Servicio impecable de principio a fin. Cuando tuve una consulta, la respondieron en minutos. Una atención al cliente de verdad.' },
+    { nombre: 'Andrés C.',  ciudad: '',  estrellas: 5, comentario: 'Calidad superior a lo que esperaba. Vale cada peso. Definitivamente repito y recomiendo.' },
 ]
+
+function avatarUrl(nombre: string): string {
+    return `https://api.dicebear.com/9.x/micah/svg?seed=${encodeURIComponent(nombre)}`
+}
 
 function Estrellas({ valor }: { valor: number }) {
     return (
@@ -65,7 +48,39 @@ function Estrellas({ valor }: { valor: number }) {
     )
 }
 
+function Card({ r }: { r: ResenaItem }) {
+    return (
+        <div className="flex flex-col gap-4 bg-white border border-slate-200 rounded-lg p-6 h-full">
+            <Estrellas valor={r.estrellas} />
+            <p className="text-base text-slate-700 leading-relaxed flex-1">"{r.comentario}"</p>
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                <img
+                    src={avatarUrl(r.nombre)}
+                    alt={r.nombre}
+                    className="w-9 h-9 rounded-full shrink-0 bg-slate-100"
+                />
+                <div>
+                    <p className="text-sm font-semibold text-slate-900">{r.nombre}</p>
+                    {r.ciudad && <p className="text-xs text-slate-500">{r.ciudad}</p>}
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export default function Resenas() {
+    const { build } = usePage<{
+        build?: { resenas?: ResenasConfig; hero?: HeroConfig }
+    }>().props
+
+    const cfg     = build?.resenas
+    const hero    = build?.hero
+    const titulo  = cfg?.titulo      || 'Lo que dicen nuestros clientes'
+    const desc    = cfg?.descripcion || 'Opiniones reales de quienes ya compraron con nosotros.'
+    const items   = cfg?.items?.length ? cfg.items : FALLBACK
+    const rating  = hero?.resenas_rating   ?? 4.8
+    const cantidad = hero?.resenas_cantidad ?? 0
+
     return (
         <section className="bg-slate-50 py-16">
             <div className="max-w-7xl mx-auto px-6">
@@ -77,35 +92,28 @@ export default function Resenas() {
                                 <StarIcon key={i} className="w-5 h-5 text-amber-500" fill="currentColor" />
                             ))}
                         </div>
-                        <span className="text-base font-semibold text-slate-900">4.7</span>
-                        <span className="text-base text-slate-400">· 312 reseñas verificadas</span>
+                        <span className="text-base font-semibold text-slate-900">{rating.toFixed(1)}</span>
+                        {cantidad > 0 && (
+                            <span className="text-base text-slate-500">· {cantidad.toLocaleString()} reseñas verificadas</span>
+                        )}
                     </div>
-                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight">
-                        Ellas ya confían en SAVIA
-                    </h2>
-                    <p className="mt-3 text-lg text-slate-500 max-w-xl mx-auto">
-                        Más de 1.200 clientas en todo el país comparten su experiencia.
-                    </p>
+                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight">{titulo}</h2>
+                    <p className="mt-3 text-lg text-slate-500 max-w-xl mx-auto">{desc}</p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {RESENAS.map(({ nombre, ciudad, estrellas, texto, iniciales, color }) => (
-                        <div
-                            key={nombre}
-                            className="flex flex-col gap-4 bg-white border border-slate-200 rounded-lg p-6 shadow-md"
-                        >
-                            <Estrellas valor={estrellas} />
-                            <p className="text-base text-slate-700 leading-relaxed flex-1">"{texto}"</p>
-                            <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
-                                <div className={`${color} w-9 h-9 rounded-full flex items-center justify-center shrink-0`}>
-                                    <span className="text-white text-xs font-bold">{iniciales}</span>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-900">{nombre}</p>
-                                    <p className="text-xs text-slate-400">{ciudad}</p>
-                                </div>
-                            </div>
+                {/* Mobile: scroll snap */}
+                <div className="flex md:hidden gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-6 px-6 scrollbar-none">
+                    {items.map((r, i) => (
+                        <div key={i} className="snap-center shrink-0 w-[82vw]">
+                            <Card r={r} />
                         </div>
+                    ))}
+                </div>
+
+                {/* Desktop: grid */}
+                <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-6">
+                    {items.map((r, i) => (
+                        <Card key={i} r={r} />
                     ))}
                 </div>
 

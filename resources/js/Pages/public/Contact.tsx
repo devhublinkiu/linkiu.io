@@ -1,306 +1,332 @@
 import { type ReactNode, useState } from 'react'
-import { MailIcon, MapPinIcon, ClockIcon, MessageCircleIcon, SendIcon, AtSignIcon, PlusIcon, MinusIcon } from 'lucide-react'
+import { usePage, useForm } from '@inertiajs/react'
+import { toast } from 'sonner'
+import { SendIcon } from 'lucide-react'
+import { getIcono } from '@/lib/iconos'
+import { trackFb } from '@/lib/usePixel'
 import WebLayout from '@/Layouts/WebLayout'
-import { cn } from '@/lib/utils'
+import Faq, { type FaqConfig } from '@/Components/public/home/faq'
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-interface InfoContacto {
-    email: string
-    whatsapp: string
-    instagram?: string
-    ciudad: string
-    horario: string
-    horario_fin?: string
+interface Colores { primario: string; secundario: string; acento: string }
+
+interface ContactoHero {
+    titulo:            string | null
+    color_titulo:      string | null
+    descripcion:       string | null
+    color_descripcion: string | null
 }
 
-interface Props {
-    titulo?: string
-    subtitulo?: string
-    info?: InfoContacto
+interface CardContactoItem {
+    color_fondo:      string
+    color_texto:      string
+    color_fondo_icon: string
+    color_icon:       string
+    icono:            string
+    tagline:          string | null
+    titulo:           string | null
+    subtitulo:        string | null
+    link:             string | null
 }
 
-// ─── Defaults ─────────────────────────────────────────────────────────────────
-
-const DEFAULTS: Required<Props> = {
-    titulo: '¿En qué podemos ayudarte?',
-    subtitulo: 'Elige el canal que prefieras. Estamos disponibles para responder tus preguntas, ayudarte con tu pedido o resolver cualquier inquietud.',
-    info: {
-        email: 'hola@savia.co',
-        whatsapp: '+57 300 000 0000',
-        instagram: '@savia.co',
-        ciudad: 'Bogotá, Colombia',
-        horario: 'Lun – Vie · 8:00 am – 6:00 pm',
-        horario_fin: 'Sábados · 9:00 am – 1:00 pm',
-    },
+interface CampoFormItem {
+    key:       string
+    activo:    boolean
+    requerido: boolean
+    orden:     number
 }
 
-// ─── FAQ ──────────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const FAQ = [
-    {
-        pregunta: '¿Cuánto demora el envío?',
-        respuesta: 'Despachamos en 1 día hábil. El tiempo de entrega es de 3 a 5 días hábiles a cualquier ciudad de Colombia. Ciudades principales (Bogotá, Medellín, Cali) pueden recibir en 2 días hábiles.',
-    },
-    {
-        pregunta: '¿Cómo hago seguimiento a mi pedido?',
-        respuesta: 'Una vez despachado, te enviamos el número de guía al correo y WhatsApp registrados. Puedes rastrear tu pedido directamente en la página de la transportadora.',
-    },
-    {
-        pregunta: '¿Puedo devolver o cambiar un producto?',
-        respuesta: 'Sí. Tienes 15 días calendario desde la fecha de recepción para solicitar una devolución o cambio. El producto debe estar sin abrir y en su empaque original. Escríbenos y gestionamos todo.',
-    },
-    {
-        pregunta: '¿Qué métodos de pago aceptan?',
-        respuesta: 'Aceptamos tarjetas de crédito y débito (Visa, Mastercard), PSE, Nequi y contraentrega en ciudades seleccionadas. Todos los pagos están cifrados y son 100% seguros.',
-    },
-    {
-        pregunta: '¿Hacen envíos a toda Colombia?',
-        respuesta: 'Sí, hacemos envíos a todo el territorio nacional. El envío es gratis en pedidos iguales o mayores a $89.900.',
-    },
-    {
-        pregunta: '¿Los productos tienen garantía?',
-        respuesta: 'Todos nuestros productos tienen garantía de satisfacción. Si por cualquier razón no quedas satisfecha, contáctanos dentro de los 15 días siguientes a la compra y buscamos la mejor solución para ti.',
-    },
-]
+function resolverColor(token: string, colores: Colores): string {
+    if (token === 'blanco')     return '#FFFFFF'
+    if (token === 'negro')      return '#000000'
+    if (token === 'primario')   return colores.primario
+    if (token === 'secundario') return colores.secundario
+    if (token === 'acento')     return colores.acento
+    return token
+}
 
-// ─── Componentes ──────────────────────────────────────────────────────────────
+const CAMPO_LABELS: Record<string, string> = {
+    nombre:  'Nombre',
+    correo:  'Correo electrónico',
+    asunto:  'Asunto',
+    mensaje: 'Mensaje',
+    celular: 'Celular',
+    empresa: 'Empresa',
+}
 
-function FaqItem({ pregunta, respuesta, abierto, onToggle }: {
-    pregunta: string
-    respuesta: string
-    abierto: boolean
-    onToggle: () => void
-}) {
-    return (
-        <div className={cn(
-            'rounded-xl border transition-colors duration-200 overflow-hidden',
-            abierto ? 'border-slate-300 bg-white' : 'border-slate-200 bg-slate-50 hover:bg-white'
-        )}>
-            <button
-                onClick={onToggle}
-                className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left"
-            >
-                <span className={cn(
-                    'text-sm font-semibold transition-colors duration-200',
-                    abierto ? 'text-slate-900' : 'text-slate-700'
-                )}>
-                    {pregunta}
-                </span>
-                <div className={cn(
-                    'w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-colors duration-200',
-                    abierto ? 'bg-slate-900' : 'bg-slate-200'
-                )}>
-                    {abierto
-                        ? <MinusIcon className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
-                        : <PlusIcon className="w-3.5 h-3.5 text-slate-500" strokeWidth={2.5} />
-                    }
+const CAMPO_PLACEHOLDERS: Record<string, string> = {
+    nombre:  'Tu nombre',
+    correo:  'tu@correo.com',
+    asunto:  'Asunto del mensaje',
+    mensaje: 'Cuéntanos en qué podemos ayudarte…',
+    celular: '+57 300 000 0000',
+    empresa: 'Nombre de tu empresa',
+}
+
+// ─── Formulario ───────────────────────────────────────────────────────────────
+
+function ContactForm({ campos }: { campos: CampoFormItem[] }) {
+    const [enviado, setEnviado] = useState(false)
+
+    const inputCls = 'w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 transition-colors duration-200 bg-white'
+
+    const { data, setData, post, processing, errors, reset } = useForm<Record<string, string>>({
+        _hp: '',
+        ...Object.fromEntries(campos.map(c => [c.key, ''])),
+    })
+
+    function submit(e: React.FormEvent) {
+        e.preventDefault()
+        post(route('contacto.enviar'), {
+            preserveScroll: true,
+            onSuccess: () => { setEnviado(true); reset(); trackFb('Lead') },
+            onError:   () => toast.error('Error al enviar el mensaje'),
+        })
+    }
+
+    if (enviado) {
+        return (
+            <div className="flex flex-col items-center justify-center text-center py-10 gap-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center">
+                    <SendIcon className="w-6 h-6 text-white" />
                 </div>
-            </button>
-            {abierto && (
-                <p className="px-5 pb-5 text-sm text-slate-500 leading-relaxed border-t border-slate-100 pt-3">
-                    {respuesta}
+                <h2 className="text-xl font-bold text-slate-900">¡Mensaje enviado!</h2>
+                <p className="text-slate-500 max-w-sm text-sm">
+                    Recibimos tu mensaje y te responderemos pronto.
                 </p>
-            )}
-        </div>
+                <button
+                    type="button"
+                    onClick={() => setEnviado(false)}
+                    className="mt-1 text-sm font-medium text-slate-500 underline underline-offset-2 hover:text-slate-900 transition-colors duration-200 ease-in-out"
+                >
+                    Enviar otro mensaje
+                </button>
+            </div>
+        )
+    }
+
+    const camposActivos = [...campos]
+        .filter(c => c.activo)
+        .sort((a, b) => a.orden - b.orden)
+
+    return (
+        <form onSubmit={submit} className="flex flex-col gap-5">
+            {/* Honeypot antispam */}
+            <input type="text" name="_hp" value={data._hp} onChange={e => setData('_hp', e.target.value)} className="hidden" tabIndex={-1} autoComplete="off" />
+
+            <div>
+                <h2 className="text-base font-bold text-slate-900">¿Prefieres escribirnos?</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Completa el formulario y te respondemos a tu correo.</p>
+            </div>
+
+            {camposActivos.map(campo => {
+                const label       = CAMPO_LABELS[campo.key]       ?? campo.key
+                const placeholder = CAMPO_PLACEHOLDERS[campo.key] ?? ''
+                const isTextarea  = campo.key === 'mensaje'
+                const type        = campo.key === 'correo' ? 'email' : campo.key === 'celular' ? 'tel' : 'text'
+
+                return (
+                    <div key={campo.key} className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-slate-600">
+                            {label}
+                            {campo.requerido && <span className="text-red-500 ml-0.5">*</span>}
+                        </label>
+                        {isTextarea ? (
+                            <textarea
+                                value={data[campo.key] ?? ''}
+                                onChange={e => setData(campo.key, e.target.value)}
+                                placeholder={placeholder}
+                                rows={4}
+                                required={campo.requerido}
+                                className={inputCls + ' resize-none'}
+                            />
+                        ) : (
+                            <input
+                                type={type}
+                                value={data[campo.key] ?? ''}
+                                onChange={e => setData(campo.key, e.target.value)}
+                                placeholder={placeholder}
+                                required={campo.requerido}
+                                className={inputCls}
+                            />
+                        )}
+                        {errors[campo.key] && (
+                            <p className="text-xs text-red-500">{errors[campo.key]}</p>
+                        )}
+                    </div>
+                )
+            })}
+
+            <button
+                type="submit"
+                disabled={processing}
+                className="w-full sm:w-auto sm:self-start bg-slate-900 hover:bg-slate-700 disabled:opacity-50 text-white font-bold px-8 py-3 rounded-xl transition-colors duration-200 ease-in-out text-sm flex items-center justify-center gap-2"
+            >
+                <SendIcon className="w-4 h-4" />
+                {processing ? 'Enviando…' : 'Enviar mensaje'}
+            </button>
+        </form>
     )
 }
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 
-function Contact({ titulo, subtitulo, info }: Props) {
-    const t  = titulo    ?? DEFAULTS.titulo
-    const s  = subtitulo ?? DEFAULTS.subtitulo
-    const ci = info      ?? DEFAULTS.info
+function Contact() {
+    const { build } = usePage<{ build?: {
+        colores?:              Colores
+        contacto_hero?:        ContactoHero         | null
+        contacto_cards?:       { items: CardContactoItem[] } | null
+        contacto_form?:        { correo_destino: string | null; campos: CampoFormItem[] } | null
+        contacto_secciones?:   Record<string, boolean> | null
+        faq_contacto?:         FaqConfig            | null
+    }}>().props
 
-    const [faqAbierto, setFaqAbierto] = useState<number | null>(null)
-    const [enviado, setEnviado] = useState(false)
+    const colores = build?.colores ?? { primario: '#314158', secundario: '#62748E', acento: '#FB2C36' }
 
-    const inputCls = 'w-full border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 transition-colors duration-200 bg-white'
+    function visible(key: string): boolean {
+        return build?.contacto_secciones?.[key] !== false
+    }
 
-    const CANALES = [
-        {
-            icono: MessageCircleIcon,
-            label: 'WhatsApp',
-            valor: ci.whatsapp,
-            sub: 'Respuesta en menos de 2 horas',
-            href: `https://wa.me/${ci.whatsapp.replace(/\D/g, '')}`,
-            color: 'bg-emerald-500 hover:bg-emerald-600',
-            iconoBg: 'bg-white/20',
-            textColor: 'text-white',
-            subColor: 'text-emerald-100',
-            externo: true,
-        },
-        {
-            icono: MailIcon,
-            label: 'Correo',
-            valor: ci.email,
-            sub: 'Te respondemos en el día',
-            href: `mailto:${ci.email}`,
-            color: 'bg-white hover:bg-slate-50 border border-slate-200',
-            iconoBg: 'bg-slate-100',
-            textColor: 'text-slate-900',
-            subColor: 'text-slate-400',
-            externo: false,
-        },
-        ...(ci.instagram ? [{
-            icono: AtSignIcon,
-            label: 'Instagram',
-            valor: ci.instagram,
-            sub: 'Síguenos y escríbenos por DM',
-            href: `https://instagram.com/${ci.instagram.replace('@', '')}`,
-            color: 'bg-white hover:bg-slate-50 border border-slate-200',
-            iconoBg: 'bg-slate-100',
-            textColor: 'text-slate-900',
-            subColor: 'text-slate-400',
-            externo: true,
-        }] : []),
+    const titulo        = build?.contacto_hero?.titulo            || '¿En qué podemos ayudarte?'
+    const colorTitulo   = build?.contacto_hero?.color_titulo      || 'negro'
+    const descripcion   = build?.contacto_hero?.descripcion       || 'Elige el canal que prefieras. Estamos disponibles para responder tus preguntas.'
+    const colorDesc     = build?.contacto_hero?.color_descripcion || 'negro'
+
+    const cards   = build?.contacto_cards?.items ?? []
+    const faqData = build?.faq_contacto          ?? null
+
+    // Cards placeholder cuando el admin aún no configura sus canales de contacto.
+    // Representan los 3 canales más comunes (teléfono, email, ubicación) con
+    // estilo "muted" para indicar que están sin configurar. El admin las
+    // reemplaza desde LinkiuBuild → Contacto → Cards.
+    const CARDS_PLACEHOLDER: CardContactoItem[] = [
+        { color_fondo: 'blanco', color_texto: 'primario', color_fondo_icon: 'blanco', color_icon: 'primario',
+          icono: 'phone',   tagline: 'Tu teléfono',  titulo: 'Configura tu número', subtitulo: 'Visible para tus clientes', link: null },
+        { color_fondo: 'blanco', color_texto: 'primario', color_fondo_icon: 'blanco', color_icon: 'primario',
+          icono: 'mail',    tagline: 'Tu correo',    titulo: 'Configura tu email',  subtitulo: 'Para recibir mensajes',     link: null },
+        { color_fondo: 'blanco', color_texto: 'primario', color_fondo_icon: 'blanco', color_icon: 'primario',
+          icono: 'map-pin', tagline: 'Tu ubicación', titulo: 'Configura tu dirección', subtitulo: 'Si tienes tienda física',  link: null },
     ]
+    const cardsMostradas = cards.length > 0 ? cards : CARDS_PLACEHOLDER
+    const usarPlaceholder = cards.length === 0
 
-    const ASUNTOS = [
-        'Información sobre un producto',
-        'Estado de mi pedido',
-        'Devolución o cambio',
-        'Problema con mi compra',
-        'Trabajo con nosotros',
-        'Otro',
+    const camposDefault: CampoFormItem[] = [
+        { key: 'nombre', activo: true, requerido: true, orden: 1 },
+        { key: 'correo', activo: true, requerido: true, orden: 2 },
+        { key: 'asunto', activo: true, requerido: false, orden: 3 },
+        { key: 'mensaje', activo: true, requerido: true, orden: 4 },
     ]
+    const campos = build?.contacto_form?.campos?.length ? build.contacto_form.campos : camposDefault
 
     return (
         <>
-            {/* ── Header ── */}
-            <section className="bg-white border-b border-slate-100 py-14">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-                    <span className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-600 border border-emerald-100 text-xs font-semibold px-3 py-1.5 rounded-full mb-5">
-                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                        Contacto
-                    </span>
-                    <h1 className="text-4xl font-bold text-slate-900 tracking-tight mb-3">{t}</h1>
-                    <p className="text-lg text-slate-500 leading-relaxed max-w-xl mx-auto">{s}</p>
-                </div>
-            </section>
+            {/* ── Hero ── */}
+            {visible('hero') && (
+                <section className="bg-white border-b border-slate-100 py-14">
+                    <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+                        <h1
+                            className="text-4xl font-bold tracking-tight mb-3"
+                            style={{ color: resolverColor(colorTitulo, colores) }}
+                        >
+                            {titulo}
+                        </h1>
+                        <p
+                            className="text-lg leading-relaxed max-w-xl mx-auto"
+                            style={{ color: resolverColor(colorDesc, colores) }}
+                        >
+                            {descripcion}
+                        </p>
+                    </div>
+                </section>
+            )}
 
             <div className="bg-slate-50 py-12">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 flex flex-col gap-10">
 
-                    {/* ── Canales ── */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        {CANALES.map(canal => {
-                            const Icono = canal.icono
-                            return (
-                                <a
-                                    key={canal.label}
-                                    href={canal.href}
-                                    target={canal.externo ? '_blank' : undefined}
-                                    rel={canal.externo ? 'noopener noreferrer' : undefined}
-                                    className={cn(
-                                        'flex flex-col gap-3 p-5 rounded-2xl transition-all duration-200 group',
-                                        canal.color
-                                    )}
-                                >
-                                    <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', canal.iconoBg)}>
-                                        <Icono className={cn('w-5 h-5', canal.textColor)} />
-                                    </div>
-                                    <div>
-                                        <p className={cn('text-[10px] font-semibold uppercase tracking-wider', canal.subColor)}>{canal.label}</p>
-                                        <p className={cn('text-sm font-bold mt-0.5', canal.textColor)}>{canal.valor}</p>
-                                        <p className={cn('text-xs mt-1', canal.subColor)}>{canal.sub}</p>
-                                    </div>
-                                </a>
-                            )
-                        })}
-                    </div>
+                    {/* ── Cards ── */}
+                    {visible('cards') && (
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {cardsMostradas.map((card, i) => {
+                                const bgCard   = resolverColor(card.color_fondo,      colores)
+                                const txtCard  = resolverColor(card.color_texto,      colores)
+                                const bgIcon   = resolverColor(card.color_fondo_icon, colores)
+                                const txtIcon  = resolverColor(card.color_icon,       colores)
+                                const Icono    = getIcono(card.icono)
 
-                    {/* Info secundaria */}
-                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-slate-400">
-                        <span className="flex items-center gap-1.5"><MapPinIcon className="w-3.5 h-3.5" />{ci.ciudad}</span>
-                        <span className="flex items-center gap-1.5"><ClockIcon className="w-3.5 h-3.5" />{ci.horario}</span>
-                        {ci.horario_fin && <span className="flex items-center gap-1.5"><ClockIcon className="w-3.5 h-3.5" />{ci.horario_fin}</span>}
-                    </div>
+                                const inner = (
+                                    <div
+                                        className={`flex flex-col gap-3 p-5 rounded-2xl h-full ${usarPlaceholder ? 'border-2 border-dashed border-slate-200' : ''}`}
+                                        style={{ backgroundColor: usarPlaceholder ? '#FFFFFF' : bgCard }}
+                                    >
+                                        <div
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${usarPlaceholder ? 'border border-dashed border-slate-200 bg-slate-50' : ''}`}
+                                            style={{ backgroundColor: usarPlaceholder ? undefined : bgIcon }}
+                                        >
+                                            <Icono className="w-5 h-5" style={{ color: usarPlaceholder ? '#94A3B8' : txtIcon }} />
+                                        </div>
+                                        <div>
+                                            {card.tagline && (
+                                                <p
+                                                    className="text-xs font-semibold uppercase tracking-wider opacity-60"
+                                                    style={{ color: usarPlaceholder ? '#64748B' : txtCard }}
+                                                >
+                                                    {card.tagline}
+                                                </p>
+                                            )}
+                                            {card.titulo && (
+                                                <p
+                                                    className="text-sm font-bold mt-0.5"
+                                                    style={{ color: usarPlaceholder ? '#94A3B8' : txtCard }}
+                                                >
+                                                    {card.titulo}
+                                                </p>
+                                            )}
+                                            {card.subtitulo && (
+                                                <p
+                                                    className="text-xs mt-1 opacity-70"
+                                                    style={{ color: usarPlaceholder ? '#64748B' : txtCard }}
+                                                >
+                                                    {card.subtitulo}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+
+                                return card.link ? (
+                                    <a
+                                        key={i}
+                                        href={card.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="transition-opacity duration-200 hover:opacity-90"
+                                    >
+                                        {inner}
+                                    </a>
+                                ) : (
+                                    <div key={i}>{inner}</div>
+                                )
+                            })}
+                        </div>
+                    )}
 
                     {/* ── Formulario ── */}
-                    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8">
-                        {enviado ? (
-                            <div className="flex flex-col items-center justify-center text-center py-10 gap-4">
-                                <div className="w-14 h-14 rounded-full bg-emerald-500 flex items-center justify-center shadow-md shadow-emerald-200">
-                                    <SendIcon className="w-6 h-6 text-white" />
-                                </div>
-                                <h2 className="text-xl font-bold text-slate-900">¡Mensaje enviado!</h2>
-                                <p className="text-slate-500 max-w-sm text-sm">
-                                    Recibimos tu mensaje y te responderemos en las próximas 2 horas en días hábiles.
-                                </p>
-                                <button
-                                    onClick={() => setEnviado(false)}
-                                    className="mt-1 text-sm font-medium text-slate-500 underline underline-offset-2 hover:text-slate-900 transition-colors duration-200"
-                                >
-                                    Enviar otro mensaje
-                                </button>
-                            </div>
-                        ) : (
-                            <form onSubmit={e => { e.preventDefault(); setEnviado(true) }} className="flex flex-col gap-5">
-                                <div>
-                                    <h2 className="text-base font-bold text-slate-900">¿Prefieres escribirnos?</h2>
-                                    <p className="text-xs text-slate-400 mt-0.5">Completa el formulario y te respondemos a tu correo.</p>
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-xs font-medium text-slate-600">Nombre</label>
-                                        <input type="text" placeholder="Tu nombre" className={inputCls} required />
-                                    </div>
-                                    <div className="flex flex-col gap-1.5">
-                                        <label className="text-xs font-medium text-slate-600">Correo electrónico</label>
-                                        <input type="email" placeholder="tu@correo.com" className={inputCls} required />
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-xs font-medium text-slate-600">Asunto</label>
-                                    <select className={inputCls} required>
-                                        <option value="">Selecciona un asunto</option>
-                                        {ASUNTOS.map(a => <option key={a}>{a}</option>)}
-                                    </select>
-                                </div>
-
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-xs font-medium text-slate-600">Mensaje</label>
-                                    <textarea
-                                        placeholder="Cuéntanos en qué podemos ayudarte..."
-                                        rows={4}
-                                        className={inputCls + ' resize-none'}
-                                        required
-                                    />
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    className="w-full sm:w-auto sm:self-start bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold px-8 py-3 rounded-xl transition-all duration-200 text-sm flex items-center justify-center gap-2"
-                                >
-                                    <SendIcon className="w-4 h-4" />
-                                    Enviar mensaje
-                                </button>
-                            </form>
-                        )}
-                    </div>
+                    {visible('formulario') && (
+                        <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8">
+                            <ContactForm campos={campos} />
+                        </div>
+                    )}
 
                     {/* ── FAQ ── */}
-                    <div>
-                        <div className="mb-6">
-                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Preguntas frecuentes</h2>
-                            <p className="text-slate-500 mt-1 text-sm">Puede que aquí encuentres la respuesta que buscas.</p>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {FAQ.map(({ pregunta, respuesta }, i) => (
-                                <FaqItem
-                                    key={i}
-                                    pregunta={pregunta}
-                                    respuesta={respuesta}
-                                    abierto={faqAbierto === i}
-                                    onToggle={() => setFaqAbierto(faqAbierto === i ? null : i)}
-                                />
-                            ))}
-                        </div>
-                    </div>
+                    {/* Si faqData es null o items vacío, el componente Faq cae a su FALLBACK
+                        de 3 preguntas genéricas. Así el cliente nuevo ve un FAQ "vivo" en lugar
+                        de un hueco hasta que configure el suyo desde LinkiuBuild → Contacto → FAQ. */}
+                    {visible('faq') && (
+                        <Faq config={faqData} />
+                    )}
 
                 </div>
             </div>

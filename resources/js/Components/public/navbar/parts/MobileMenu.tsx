@@ -1,30 +1,42 @@
-import { useState } from 'react'
-import { Link } from '@inertiajs/react'
+import { useMemo, useState } from 'react'
+import { Link, usePage } from '@inertiajs/react'
 import { ChevronDownIcon, XIcon, UserIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const CATEGORIAS_MOVIL = [
-    { label: 'Cubre Canas', href: '/productos/cubre-canas' },
-    { label: 'Tratamientos', href: '/productos/tratamientos' },
-    { label: 'Hidratación', href: '/productos/hidratacion' },
-    { label: 'Anticaída', href: '/productos/anticaida' },
-    { label: 'Kits y Sets', href: '/productos/kits' },
-]
-
-const LINKS_MOVIL = [
-    { label: 'Inicio', href: '/' },
-    { label: 'Quiénes Somos', href: '/quienes-somos' },
-    { label: 'Blog', href: '/blog' },
-    { label: 'Contacto', href: '/contacto' },
-]
+interface NavConfig {
+    productos_label:  string
+    quienes_label:    string
+    blog_label:       string
+    contacto_label:   string
+    quienes_visible:  boolean
+    blog_visible:     boolean
+    contacto_visible: boolean
+}
 
 interface MobileMenuProps {
-    open: boolean
-    onClose: () => void
+    open:            boolean
+    onClose:         () => void
     clienteLogueado: boolean
 }
 
 export default function MobileMenu({ open, onClose, clienteLogueado }: MobileMenuProps) {
+    const { build } = usePage<{
+        build?: { logo_tienda?: string | null; nav?: NavConfig }
+    }>().props
+
+    const nav     = build?.nav
+    const logoSrc = build?.logo_tienda || '/assets/build_resources/logo_default_admin.svg'
+
+    const productosLabel = nav?.productos_label ?? 'Productos'
+
+    const linksSimples = useMemo(() => {
+        const links: { label: string; href: string }[] = []
+        if (nav?.quienes_visible  ?? true) links.push({ label: nav?.quienes_label  ?? 'Quiénes Somos', href: route('about')      })
+        if (nav?.blog_visible     ?? true) links.push({ label: nav?.blog_label     ?? 'Blog',          href: route('blog.index') })
+        if (nav?.contacto_visible ?? true) links.push({ label: nav?.contacto_label ?? 'Contacto',      href: route('contact')    })
+        return links
+    }, [nav])
+
     const [productosAbierto, setProductosAbierto] = useState(false)
 
     return (
@@ -33,7 +45,7 @@ export default function MobileMenu({ open, onClose, clienteLogueado }: MobileMen
             <div
                 className={cn(
                     'fixed inset-0 bg-slate-900/50 z-40 transition-opacity duration-300 ease-in-out md:hidden',
-                    open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                    open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
                 )}
                 onClick={onClose}
             />
@@ -42,15 +54,16 @@ export default function MobileMenu({ open, onClose, clienteLogueado }: MobileMen
             <div
                 className={cn(
                     'fixed top-0 right-0 h-full w-80 max-w-[85vw] bg-white z-50 flex flex-col shadow-xl transition-transform duration-300 ease-in-out md:hidden',
-                    open ? 'translate-x-0' : 'translate-x-full'
+                    open ? 'translate-x-0' : 'translate-x-full',
                 )}
             >
                 {/* Cabecera del panel */}
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                     <img
-                        src="/assets/logo full linkiu.svg"
-                        alt="Linkiu"
+                        src={logoSrc}
+                        alt="Logo"
                         className="h-6 w-auto"
+                        onError={e => { e.currentTarget.src = '/assets/build_resources/logo_default_admin.svg' }}
                     />
                     <button
                         onClick={onClose}
@@ -78,29 +91,15 @@ export default function MobileMenu({ open, onClose, clienteLogueado }: MobileMen
                             onClick={() => setProductosAbierto(prev => !prev)}
                             className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-50 transition-colors duration-200 ease-in-out"
                         >
-                            Productos
+                            {productosLabel}
                             <ChevronDownIcon className={cn(
                                 'w-4 h-4 text-slate-400 transition-transform duration-200',
-                                productosAbierto && 'rotate-180'
+                                productosAbierto && 'rotate-180',
                             )} />
                         </button>
-                        {productosAbierto && (
-                            <div className="ml-3 mt-0.5 flex flex-col gap-0.5 border-l border-slate-100 pl-3">
-                                {CATEGORIAS_MOVIL.map(cat => (
-                                    <Link
-                                        key={cat.href}
-                                        href={cat.href}
-                                        onClick={onClose}
-                                        className="px-3 py-2 rounded-lg text-sm text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors duration-200 ease-in-out"
-                                    >
-                                        {cat.label}
-                                    </Link>
-                                ))}
-                            </div>
-                        )}
                     </div>
 
-                    {LINKS_MOVIL.slice(1).map(link => (
+                    {linksSimples.map(link => (
                         <Link
                             key={link.href}
                             href={link.href}

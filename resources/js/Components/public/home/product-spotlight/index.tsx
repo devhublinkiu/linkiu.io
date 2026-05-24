@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, usePage } from '@inertiajs/react'
+import { trackFb } from '@/lib/usePixel'
 import { ChevronLeftIcon, ChevronRightIcon, PackageOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import SelectorCantidades, { type OpcionCantidad } from '@/Components/public/product/info/parts/SelectorCantidades'
 
 const FONDOS = [
     'from-amber-50 to-orange-50',
@@ -38,11 +40,40 @@ function descuento(base: number, comparacion: number): number {
     return Math.round((1 - base / comparacion) * 100)
 }
 
+function toOpciones(cantidades: NavCantidad[], precioBase: number | null, precioComparacion: number | null): OpcionCantidad[] {
+    return cantidades.map(c => {
+        const tachado    = c.cantidad === 1
+            ? (precioComparacion ?? null)
+            : (precioBase ? precioBase * c.cantidad : null)
+        const ahorro     = tachado && tachado > c.precio_bundle ? tachado - c.precio_bundle : null
+        const ahorrosPct = ahorro && tachado ? Math.round(ahorro / tachado * 100) : null
+        return {
+            cantidad:        c.cantidad,
+            precio_bundle:   c.precio_bundle,
+            badge_texto:     c.badge_texto,
+            destacado:       c.destacado,
+            imagen:          null,
+            label:           c.cantidad === 1 ? '1 frasco' : `${c.cantidad} frascos`,
+            precioTachado:   tachado,
+            precioPorFrasco: c.precio_bundle / c.cantidad,
+            ahorroMonto:     ahorro,
+            ahorrosPct,
+        }
+    })
+}
+
 export default function ProductSpotlight() {
     const { nav_productos } = usePage<{ nav_productos: NavProducto[] }>().props
     const [activo,   setActivo]   = useState(0)
     const [animando, setAnimando] = useState(false)
     const total = nav_productos.length
+
+    const [cantidadActiva, setCantidadActiva] = useState<OpcionCantidad | null>(() => {
+        if (total === 0) return null
+        const p   = nav_productos[0]
+        const ops = toOpciones(p.cantidades, p.precio_base, p.precio_comparacion)
+        return ops.find(o => o.destacado) ?? ops[0] ?? null
+    })
 
     function ir(idx: number) {
         if (animando || total === 0) return
@@ -59,17 +90,31 @@ export default function ProductSpotlight() {
         return () => clearInterval(t)
     }, [activo, total])
 
+    useEffect(() => {
+        if (total === 0) return
+        const p   = nav_productos[activo]
+        const ops = toOpciones(p.cantidades, p.precio_base, p.precio_comparacion)
+        setCantidadActiva(ops.find(o => o.destacado) ?? ops[0] ?? null)
+        trackFb('ViewContent', {
+            content_ids:  [String(p.id)],
+            content_name: p.nombre,
+            content_type: 'product',
+            value:        p.precio_base ?? undefined,
+            currency:     'COP',
+        })
+    }, [activo])
+
     if (total === 0) return null
 
-    const p    = nav_productos[activo]
-    const href = `/productos/${p.slug}`
-    const pct  = p.precio_base && p.precio_comparacion ? descuento(p.precio_base, p.precio_comparacion) : null
+    const p       = nav_productos[activo]
+    const href    = `/productos/${p.slug}`
+    const pct     = p.precio_base && p.precio_comparacion ? descuento(p.precio_base, p.precio_comparacion) : null
+    const opciones = toOpciones(p.cantidades, p.precio_base, p.precio_comparacion)
 
     return (
         <section className="bg-white py-16 overflow-hidden">
             <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-                {/* Encabezado */}
                 <div className="flex items-center justify-between mb-10">
                     <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Conoce nuestra línea</h2>
                     <div className="hidden sm:flex items-center gap-1.5">
@@ -86,7 +131,6 @@ export default function ProductSpotlight() {
                     </div>
                 </div>
 
-                {/* Slide */}
                 <div className={cn(
                     'grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center transition-opacity duration-200',
                     animando ? 'opacity-0' : 'opacity-100'
@@ -135,7 +179,6 @@ export default function ProductSpotlight() {
                     {/* Info */}
                     <div className="flex flex-col gap-5">
 
-                        {/* Nombre + descripción */}
                         <div>
                             <h3 className="text-3xl font-bold text-slate-900 tracking-tight">{p.nombre}</h3>
                             {p.descripcion && (
@@ -143,60 +186,33 @@ export default function ProductSpotlight() {
                             )}
                         </div>
 
-                        {/* Ofertas de cantidad */}
-                        {p.cantidades.length > 0 && (
-                            <div className="flex flex-col gap-2">
-                                {p.cantidades.map((c, i) => (
-                                    <div
-                                        key={i}
-                                        className={cn(
-                                            'flex items-center justify-between rounded-xl border px-4 py-3 transition-colors duration-200',
-                                            c.destacado
-                                                ? 'border-amber-300 bg-amber-50'
-                                                : 'border-slate-200 bg-white hover:border-slate-300'
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-semibold text-slate-800">
-                                                {c.cantidad === 1 ? '1 unidad' : `${c.cantidad} unidades`}
-                                            </span>
-                                            {c.badge_texto && (
-                                                <span className="text-[10px] font-bold text-white bg-emerald-500 rounded-full px-2 py-0.5">
-                                                    {c.badge_texto}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <span className={cn(
-                                            'text-sm font-black',
-                                            c.destacado ? 'text-amber-700' : 'text-slate-900'
-                                        )}>
-                                            {formatPrecio(c.precio_bundle)}
+                        {opciones.length > 0 ? (
+                            <SelectorCantidades
+                                opciones={opciones}
+                                cantidadActiva={cantidadActiva}
+                                imagenPrincipal={p.imagen}
+                                onSeleccionar={setCantidadActiva}
+                            />
+                        ) : (
+                            <div className="flex items-baseline gap-3 pt-1">
+                                <span className="text-4xl font-black text-slate-900">
+                                    {p.precio_base ? formatPrecio(p.precio_base) : '—'}
+                                </span>
+                                {p.precio_comparacion && (
+                                    <>
+                                        <span className="text-base text-slate-400 line-through">
+                                            {formatPrecio(p.precio_comparacion)}
                                         </span>
-                                    </div>
-                                ))}
+                                        {pct && (
+                                            <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
+                                                {pct}% off
+                                            </span>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         )}
 
-                        {/* Precio */}
-                        <div className="flex items-baseline gap-3 pt-1">
-                            <span className="text-4xl font-black text-slate-900">
-                                {p.precio_base ? formatPrecio(p.precio_base) : '—'}
-                            </span>
-                            {p.precio_comparacion && (
-                                <>
-                                    <span className="text-base text-slate-400 line-through">
-                                        {formatPrecio(p.precio_comparacion)}
-                                    </span>
-                                    {pct && (
-                                        <span className="text-sm font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-full">
-                                            {pct}% off
-                                        </span>
-                                    )}
-                                </>
-                            )}
-                        </div>
-
-                        {/* CTAs */}
                         <div className="flex gap-3 flex-wrap">
                             <Link
                                 href={href}
@@ -212,7 +228,6 @@ export default function ProductSpotlight() {
                             </Link>
                         </div>
 
-                        {/* Dots móvil */}
                         <div className="flex sm:hidden items-center gap-1.5 pt-1">
                             {nav_productos.map((_, i) => (
                                 <button

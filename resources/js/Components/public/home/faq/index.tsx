@@ -1,35 +1,25 @@
 import { useState } from 'react'
+import { usePage } from '@inertiajs/react'
 import { ChevronDownIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-const PREGUNTAS = [
-    {
-        pregunta: '¿SAVIA funciona en canas completamente blancas?',
-        respuesta: 'Sí. SAVIA está formulado específicamente para cubrir canas, incluso las más resistentes. En cabello con más del 80% de canas recomendamos aplicar de raíz a puntas para un resultado uniforme.',
-    },
-    {
-        pregunta: '¿Cuánto dura el resultado?',
-        respuesta: 'La cobertura dura entre 3 y 5 semanas dependiendo del ritmo de crecimiento del cabello y de la frecuencia de lavado. Recomendamos lavar con shampoo para cabello teñido para prolongar el resultado.',
-    },
-    {
-        pregunta: '¿Puedo usarlo si tengo el cabello dañado o procesado?',
-        respuesta: 'SAVIA es apto para cabello procesado, decolorado o con tratamientos químicos previos. Al no contener amoníaco ni peróxido, no agrega daño adicional. Si tu cabello está muy poroso, el tono puede absorber con más intensidad.',
-    },
-    {
-        pregunta: '¿El kit incluye todo lo que necesito?',
-        respuesta: 'Sí. El kit completo incluye la coloración SAVIA 300ml, el activador de color, un acondicionador post-color, guantes de aplicación y el instructivo paso a paso. No necesitas comprar nada más.',
-    },
-    {
-        pregunta: '¿Cuánto tiempo tarda en llegar el pedido?',
-        respuesta: 'Los pedidos se despachan en 24 horas hábiles. El tiempo de entrega es de 2 a 5 días hábiles dependiendo de la ciudad. Bogotá, Medellín, Cali y Barranquilla suelen recibir en 1-2 días hábiles.',
-    },
-    {
-        pregunta: '¿Tiene garantía o política de devolución?',
-        respuesta: 'Si no quedas satisfecha con el resultado, contáctanos dentro de los 15 días siguientes a la compra. Evaluamos cada caso y ofrecemos reposición o devolución del dinero sin complicaciones.',
-    },
+export interface FaqItem { pregunta: string; respuesta: string }
+export interface FaqConfig { titulo: string | null; descripcion: string | null; items: FaqItem[] }
+
+const FALLBACK: FaqItem[] = [
+    { pregunta: '¿Cómo puedo realizar mi pedido?',  respuesta: 'Puedes hacer tu pedido directamente desde nuestra tienda en línea de forma rápida y segura.' },
+    { pregunta: '¿Cuánto demora el envío?',          respuesta: 'Los pedidos se despachan en 24 horas hábiles y llegan en 2 a 5 días hábiles dependiendo de la ciudad.' },
+    { pregunta: '¿Tienen política de devoluciones?', respuesta: 'Sí, tienes 15 días desde la compra para solicitar cambio o devolución del dinero sin complicaciones.' },
 ]
 
-export default function Faq() {
+export default function Faq({ config: configOverride }: { config?: FaqConfig | null } = {}) {
+    const { build } = usePage<{ build?: { faq?: FaqConfig } }>().props
+
+    const cfg   = configOverride ?? build?.faq
+    const items = cfg?.items?.length ? cfg.items : FALLBACK
+    const titulo = cfg?.titulo      || 'Preguntas frecuentes'
+    const desc   = cfg?.descripcion || 'Todo lo que necesitas saber antes de tu primera compra.'
+
     const [abierto, setAbierto] = useState<number | null>(0)
 
     return (
@@ -37,16 +27,12 @@ export default function Faq() {
             <div className="max-w-3xl mx-auto px-6">
 
                 <div className="mb-12">
-                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight">
-                        Preguntas frecuentes
-                    </h2>
-                    <p className="mt-3 text-xl text-slate-500">
-                        Todo lo que necesitas saber antes de tu primera compra.
-                    </p>
+                    <h2 className="text-4xl font-bold text-slate-900 tracking-tight">{titulo}</h2>
+                    <p className="mt-3 text-xl text-slate-500">{desc}</p>
                 </div>
 
                 <div className="flex flex-col divide-y divide-slate-100">
-                    {PREGUNTAS.map(({ pregunta, respuesta }, i) => (
+                    {items.map(({ pregunta, respuesta }, i) => (
                         <div key={i}>
                             <button
                                 onClick={() => setAbierto(abierto === i ? null : i)}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, usePage } from '@inertiajs/react'
 import { ChevronDownIcon, MenuIcon, SearchIcon, ShoppingCartIcon, UserIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -8,25 +8,72 @@ import MegaMenu from './parts/MegaMenu'
 import MobileMenu from './parts/MobileMenu'
 import CartDropdown from './parts/CartDropdown'
 
-const LINKS_SIMPLES = [
-    { label: 'Quiénes Somos', href: '/quienes-somos' },
-    { label: 'Blog', href: '/blog' },
-    { label: 'Contacto', href: '/contacto' },
-]
+interface NavConfig {
+    productos_label:  string
+    quienes_label:    string
+    blog_label:       string
+    contacto_label:   string
+    quienes_visible:  boolean
+    blog_visible:     boolean
+    contacto_visible: boolean
+    buscador_visible: boolean
+    color_bg:         string
+    color_text:       string
+    sticky:           boolean
+}
+
+interface Colores {
+    primario:   string
+    secundario: string
+    acento:     string
+}
 
 export default function Navbar() {
     const { count } = useCart()
-    const { auth } = usePage<{ auth: { client: { nombre: string } | null } }>().props
+    const { auth, build } = usePage<{
+        auth:   { client: { nombre: string } | null }
+        build?: { logo_tienda?: string | null; nav?: NavConfig; colores?: Colores }
+    }>().props
+
+    const nav     = build?.nav
+    const logoSrc = build?.logo_tienda || '/assets/build_resources/logo_default_admin.svg'
+
+    const colores = build?.colores ?? { primario: '#314158', secundario: '#62748E', acento: '#FB2C36' }
+
+    function resolverColor(token: string): string {
+        if (token === 'primario')   return colores.primario
+        if (token === 'secundario') return colores.secundario
+        if (token === 'acento')     return colores.acento
+        if (token === 'blanco')     return '#FFFFFF'
+        return '#000000'
+    }
+
+    const navBg   = resolverColor(nav?.color_bg   ?? 'blanco')
+    const navText = resolverColor(nav?.color_text  ?? 'primario')
+
+    const linksSimples = useMemo(() => {
+        const links: { label: string; href: string }[] = []
+        if (nav?.quienes_visible  ?? true) links.push({ label: nav?.quienes_label  ?? 'Quiénes Somos', href: route('about')      })
+        if (nav?.blog_visible     ?? true) links.push({ label: nav?.blog_label     ?? 'Blog',          href: route('blog.index') })
+        if (nav?.contacto_visible ?? true) links.push({ label: nav?.contacto_label ?? 'Contacto',      href: route('contact')    })
+        return links
+    }, [nav])
+
+    const productosLabel  = nav?.productos_label  ?? 'Productos'
+    const buscadorVisible = nav?.buscador_visible ?? true
+    const esSticky        = nav?.sticky           ?? true
+
     const clienteLogueado = !!auth?.client
-    const [searchAbierto, setSearchAbierto] = useState(false)
-    const [megaMenuAbierto, setMegaMenuAbierto] = useState(false)
+
+    const [searchAbierto,    setSearchAbierto]    = useState(false)
+    const [megaMenuAbierto,  setMegaMenuAbierto]  = useState(false)
     const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
-    const [carritoAbierto, setCarritoAbierto] = useState(false)
-    const [badgeBumping, setBadgeBumping] = useState(false)
+    const [carritoAbierto,   setCarritoAbierto]   = useState(false)
+    const [badgeBumping,     setBadgeBumping]     = useState(false)
     const searchAnchorRef = useRef<HTMLButtonElement>(null)
-    const cartAnchorRef = useRef<HTMLButtonElement>(null)
-    const timerCierreRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const prevCount = useRef(count)
+    const cartAnchorRef   = useRef<HTMLButtonElement>(null)
+    const timerCierreRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const prevCount       = useRef(count)
 
     useEffect(() => {
         if (count > prevCount.current) {
@@ -49,15 +96,19 @@ export default function Navbar() {
 
     return (
         <>
-            <nav className="bg-white border-b border-slate-200 relative">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+            <nav
+                className={cn('border-b border-slate-200 relative', esSticky && 'sticky top-0 z-40')}
+                style={{ backgroundColor: navBg }}
+            >
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4" style={{ color: navText }}>
 
                     {/* Logo */}
                     <Link href="/" className="shrink-0">
                         <img
-                            src="/assets/logo full linkiu.svg"
-                            alt="Linkiu"
+                            src={logoSrc}
+                            alt="Logo"
                             className="h-7 sm:h-8 w-auto"
+                            onError={e => { e.currentTarget.src = '/assets/build_resources/logo_default_admin.svg' }}
                         />
                     </Link>
 
@@ -65,29 +116,26 @@ export default function Navbar() {
                     <div className="hidden md:flex items-center gap-6 flex-1 justify-center">
                         <Link
                             href="/"
-                            className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 ease-in-out"
+                            className="text-sm font-medium transition-opacity duration-200 ease-in-out hover:opacity-70"
                         >
                             Inicio
                         </Link>
 
                         <div onMouseEnter={abrirMegaMenu} onMouseLeave={cerrarMegaMenu}>
-                            <button className={cn(
-                                'flex items-center gap-1 text-sm font-medium transition-colors duration-200 ease-in-out',
-                                megaMenuAbierto ? 'text-slate-900' : 'text-slate-600 hover:text-slate-900'
-                            )}>
-                                Productos
+                            <button className="flex items-center gap-1 text-sm font-medium transition-opacity duration-200 ease-in-out hover:opacity-70">
+                                {productosLabel}
                                 <ChevronDownIcon className={cn(
                                     'w-3.5 h-3.5 transition-transform duration-200',
-                                    megaMenuAbierto && 'rotate-180'
+                                    megaMenuAbierto && 'rotate-180',
                                 )} />
                             </button>
                         </div>
 
-                        {LINKS_SIMPLES.map(link => (
+                        {linksSimples.map(link => (
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200 ease-in-out"
+                                className="text-sm font-medium transition-opacity duration-200 ease-in-out hover:opacity-70"
                             >
                                 {link.label}
                             </Link>
@@ -98,24 +146,28 @@ export default function Navbar() {
                     <div className="flex items-center gap-1 relative">
 
                         {/* Búsqueda */}
-                        <button
-                            ref={searchAnchorRef}
-                            onClick={() => setSearchAbierto(prev => !prev)}
-                            className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors duration-200 ease-in-out"
-                            aria-label="Buscar productos"
-                        >
-                            <SearchIcon className="w-5 h-5" />
-                        </button>
-                        <SearchDropdown
-                            open={searchAbierto}
-                            onClose={() => setSearchAbierto(false)}
-                            anchorRef={searchAnchorRef}
-                        />
+                        {buscadorVisible && (
+                            <>
+                                <button
+                                    ref={searchAnchorRef}
+                                    onClick={() => setSearchAbierto(prev => !prev)}
+                                    className="p-2 rounded-lg hover:opacity-70 hover:bg-black/5 transition-all duration-200 ease-in-out"
+                                    aria-label="Buscar productos"
+                                >
+                                    <SearchIcon className="w-5 h-5" />
+                                </button>
+                                <SearchDropdown
+                                    open={searchAbierto}
+                                    onClose={() => setSearchAbierto(false)}
+                                    anchorRef={searchAnchorRef}
+                                />
+                            </>
+                        )}
 
                         {/* Cuenta / Ingresar — solo desktop */}
                         <Link
                             href={clienteLogueado ? '/cuenta/pedidos' : '/cuenta/login'}
-                            className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors duration-200 ease-in-out"
+                            className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium hover:opacity-70 hover:bg-black/5 transition-all duration-200 ease-in-out"
                         >
                             <UserIcon className="w-5 h-5" />
                             {clienteLogueado ? 'Mi cuenta' : 'Ingresar'}
@@ -125,7 +177,7 @@ export default function Navbar() {
                         <button
                             ref={cartAnchorRef}
                             onClick={() => setCarritoAbierto(prev => !prev)}
-                            className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors duration-200 ease-in-out"
+                            className="p-2 rounded-lg hover:opacity-70 hover:bg-black/5 transition-all duration-200 ease-in-out"
                             aria-label="Ver carrito"
                         >
                             <div className="relative">
@@ -133,7 +185,7 @@ export default function Navbar() {
                                 {count > 0 && (
                                     <span className={cn(
                                         'absolute -top-2 -right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none',
-                                        badgeBumping && 'animate-cart-bump'
+                                        badgeBumping && 'animate-cart-bump',
                                     )}>
                                         {count}
                                     </span>
@@ -149,7 +201,7 @@ export default function Navbar() {
                         {/* Hamburger — solo móvil */}
                         <button
                             onClick={() => setMenuMovilAbierto(true)}
-                            className="md:hidden p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors duration-200 ease-in-out"
+                            className="md:hidden p-2 rounded-lg hover:opacity-70 hover:bg-black/5 transition-all duration-200 ease-in-out"
                             aria-label="Abrir menú"
                         >
                             <MenuIcon className="w-5 h-5" />

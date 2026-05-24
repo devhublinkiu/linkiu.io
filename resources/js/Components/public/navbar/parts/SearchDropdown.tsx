@@ -1,37 +1,39 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link, usePage } from '@inertiajs/react'
 import { SearchIcon, XIcon } from 'lucide-react'
 
-// Datos ficticios — se reemplazarán con datos reales del admin
-const PRODUCTOS_FICTICIOS = [
-    { id: 1, nombre: 'Serum Vitamina C', precio: 29900 },
-    { id: 2, nombre: 'Crema Hidratante SPF 50', precio: 45900 },
-    { id: 3, nombre: 'Tónico Facial Rosas', precio: 22900 },
-    { id: 4, nombre: 'Mascarilla Arcilla Verde', precio: 18900 },
-    { id: 5, nombre: 'Aceite Jojoba Puro', precio: 35900 },
-]
+interface NavProducto {
+    id:          number
+    nombre:      string
+    slug:        string
+    precio_base: number | null
+    imagen:      string | null
+}
 
 function formatearPrecio(precio: number) {
     return new Intl.NumberFormat('es-CO', {
-        style: 'currency',
-        currency: 'COP',
+        style:                 'currency',
+        currency:              'COP',
         maximumFractionDigits: 0,
     }).format(precio)
 }
 
 interface SearchDropdownProps {
-    open: boolean
-    onClose: () => void
+    open:      boolean
+    onClose:   () => void
     anchorRef: React.RefObject<HTMLButtonElement | null>
 }
 
 export default function SearchDropdown({ open, onClose, anchorRef }: SearchDropdownProps) {
     const [query, setQuery] = useState('')
     const dropdownRef = useRef<HTMLDivElement>(null)
-    const inputRef = useRef<HTMLInputElement>(null)
+    const inputRef    = useRef<HTMLInputElement>(null)
+
+    const { nav_productos } = usePage<{ nav_productos: NavProducto[] }>().props
 
     const resultados = query.trim() === ''
-        ? PRODUCTOS_FICTICIOS
-        : PRODUCTOS_FICTICIOS.filter(p =>
+        ? nav_productos
+        : nav_productos.filter(p =>
             p.nombre.toLowerCase().includes(query.toLowerCase())
         )
 
@@ -51,9 +53,9 @@ export default function SearchDropdown({ open, onClose, anchorRef }: SearchDropd
         }
 
         const handleClickFuera = (e: MouseEvent) => {
-            const target = e.target as Node
+            const target        = e.target as Node
             const fueraDropdown = dropdownRef.current && !dropdownRef.current.contains(target)
-            const fueraAnchor = anchorRef.current && !anchorRef.current.contains(target)
+            const fueraAnchor   = anchorRef.current  && !anchorRef.current.contains(target)
             if (fueraDropdown && fueraAnchor) onClose()
         }
 
@@ -102,20 +104,29 @@ export default function SearchDropdown({ open, onClose, anchorRef }: SearchDropd
                     </p>
                 ) : (
                     resultados.map(producto => (
-                        <button
+                        <Link
                             key={producto.id}
+                            href={`/productos/${producto.slug}`}
+                            onClick={onClose}
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors duration-200 ease-in-out text-left"
                         >
-                            <div className="w-10 h-10 rounded-lg bg-slate-100 shrink-0" />
+                            <div className="w-10 h-10 rounded-lg bg-slate-100 shrink-0 overflow-hidden">
+                                {producto.imagen
+                                    ? <img src={producto.imagen} alt="" className="w-full h-full object-cover" />
+                                    : null
+                                }
+                            </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-slate-700 truncate">
                                     {producto.nombre}
                                 </p>
-                                <p className="text-xs text-slate-500">
-                                    {formatearPrecio(producto.precio)}
-                                </p>
+                                {producto.precio_base !== null && (
+                                    <p className="text-xs text-slate-500">
+                                        {formatearPrecio(producto.precio_base)}
+                                    </p>
+                                )}
                             </div>
-                        </button>
+                        </Link>
                     ))
                 )}
             </div>

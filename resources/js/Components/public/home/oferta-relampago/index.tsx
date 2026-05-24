@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, usePage } from '@inertiajs/react'
-import { PackageOpen, StarIcon, ZapIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { PackageOpen, ZapIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 // ─── Timer ────────────────────────────────────────────────────────────────────
@@ -51,11 +51,6 @@ interface NavProducto {
     badge:               string | null
 }
 
-function seeded(seed: number, min = 0, max = 100): number {
-    const x = Math.sin(seed * 9301 + 49297) * 233280
-    return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min
-}
-
 function formatPrecio(n: number) {
     return '$' + n.toLocaleString('es-CO')
 }
@@ -67,9 +62,7 @@ function descuento(base: number, comparacion: number): number {
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
 function ProductCard({ producto, h, m, s }: { producto: NavProducto; h: string; m: string; s: string }) {
-    const estrellas = seeded(producto.id * 3, 40, 50) / 10
-    const resenas   = seeded(producto.id * 7, 50, 400)
-    const pct       = producto.precio_base && producto.precio_comparacion
+    const pct = producto.precio_base && producto.precio_comparacion
         ? descuento(producto.precio_base, producto.precio_comparacion)
         : null
 
@@ -125,16 +118,6 @@ function ProductCard({ producto, h, m, s }: { producto: NavProducto; h: string; 
             {/* Info */}
             <div className="p-3.5 flex flex-col gap-2 flex-1">
                 <p className="text-xs font-bold text-slate-900 leading-tight">{producto.nombre}</p>
-
-                {/* Estrellas */}
-                <div className="flex items-center gap-1">
-                    <div className="flex items-center gap-0.5">
-                        {[1,2,3,4,5].map(i => (
-                            <StarIcon key={i} className={cn('w-3 h-3', i <= Math.round(estrellas) ? 'text-amber-400' : 'text-slate-200')} fill="currentColor" />
-                        ))}
-                    </div>
-                    <span className="text-[10px] text-slate-400">({resenas})</span>
-                </div>
 
                 {/* Precio */}
                 <div className="mt-auto flex items-baseline gap-2 flex-wrap">

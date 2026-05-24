@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react'
-import { PackageOpen, StarIcon, ZapIcon } from 'lucide-react'
+import { PackageOpen, ZapIcon } from 'lucide-react'
 import { useFlashTimer } from '@/Components/public/products/ProductCard'
 
 const COLORES = ['bg-amber-400', 'bg-emerald-500', 'bg-blue-400', 'bg-violet-400', 'bg-orange-400', 'bg-rose-400', 'bg-slate-400']
@@ -22,11 +22,6 @@ function formatPrecio(n: number) {
 
 function descuento(base: number, comparacion: number): number {
     return Math.round((1 - base / comparacion) * 100)
-}
-
-function seeded(seed: number, min = 0, max = 100): number {
-    const x = Math.sin(seed * 9301 + 49297) * 233280
-    return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min
 }
 
 function Digito({ valor }: { valor: string }) {
@@ -67,9 +62,7 @@ export default function MegaMenu() {
                         </p>
                         <div className="grid grid-cols-4 gap-3">
                             {nav_productos.map((p, i) => {
-                                const estrellas = seeded(p.id * 3, 40, 50) / 10
-                                const resenas   = seeded(p.id * 7, 50, 400)
-                                const pct       = p.precio_base && p.precio_comparacion
+                                const pct = p.precio_base && p.precio_comparacion
                                     ? descuento(p.precio_base, p.precio_comparacion)
                                     : null
                                 return (
@@ -123,14 +116,6 @@ export default function MegaMenu() {
                                         {/* Info */}
                                         <div className="p-2.5 flex flex-col gap-1">
                                             <p className="text-xs font-bold text-slate-900 leading-tight">{p.nombre}</p>
-
-                                            {/* Estrellas */}
-                                            <div className="flex items-center gap-0.5">
-                                                {[1,2,3,4,5].map(n => (
-                                                    <StarIcon key={n} className={`w-2.5 h-2.5 ${n <= Math.round(estrellas) ? 'text-amber-400' : 'text-slate-200'}`} fill="currentColor" />
-                                                ))}
-                                                <span className="text-[9px] text-slate-400 ml-0.5">({resenas})</span>
-                                            </div>
 
                                             {/* Precio */}
                                             <div className="mt-0.5 flex items-baseline gap-1.5 flex-wrap">

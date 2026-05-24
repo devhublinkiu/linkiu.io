@@ -32,7 +32,7 @@ function ItemRow({ item, onRemove }: { item: CartItem; onRemove: () => void }) {
                 <p className="text-sm font-bold text-slate-900">{formatPrecio(item.precio)}</p>
                 <button
                     onClick={onRemove}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-300 hover:text-red-500 transition-all duration-150"
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-slate-300 hover:text-red-500 transition-all duration-200 ease-in-out"
                     aria-label="Eliminar"
                 >
                     <Trash2Icon className="w-3.5 h-3.5" />
@@ -84,13 +84,13 @@ export default function CartDropdown({ open, onClose, anchorRef }: Props) {
                 <div className="flex items-center gap-2 shrink-0">
                     <button
                         onClick={() => toast.dismiss(t)}
-                        className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors duration-150"
+                        className="text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors duration-200 ease-in-out"
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={() => { clearCart(); toast.dismiss(t) }}
-                        className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors duration-150"
+                        className="text-xs font-semibold text-red-500 hover:text-red-700 transition-colors duration-200 ease-in-out"
                     >
                         Vaciar
                     </button>
@@ -114,7 +114,7 @@ export default function CartDropdown({ open, onClose, anchorRef }: Props) {
                         <p className="text-xs text-slate-400">{items.length} {items.length === 1 ? 'producto' : 'productos'}</p>
                         <button
                             onClick={vaciarCarrito}
-                            className="text-xs text-slate-400 hover:text-red-500 transition-colors duration-150"
+                            className="text-xs text-slate-400 hover:text-red-500 transition-colors duration-200 ease-in-out"
                         >
                             Vaciar
                         </button>
@@ -140,7 +140,7 @@ export default function CartDropdown({ open, onClose, anchorRef }: Props) {
                     {restantes > 0 && (
                         <button
                             onClick={() => setExpandido(v => !v)}
-                            className="flex items-center justify-center gap-1 w-full py-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors duration-150"
+                            className="flex items-center justify-center gap-1 w-full py-1.5 text-xs text-slate-400 hover:text-slate-700 transition-colors duration-200 ease-in-out"
                         >
                             {expandido
                                 ? 'Ver menos'
