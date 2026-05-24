@@ -1,12 +1,18 @@
 <?php
 
+use App\Http\Controllers\Client\Auth\ForgotPasswordController as ClientForgotPasswordController;
+use App\Http\Controllers\Client\Auth\OTPController as ClientOTPController;
+use App\Http\Controllers\Client\Auth\ResetPasswordController as ClientResetPasswordController;
 use App\Http\Controllers\Client\ClientLoginController;
 use App\Http\Controllers\Client\CuentaController;
 use App\Http\Controllers\Client\CuentaDireccionesController;
 use App\Http\Controllers\MercadoPagoController;
-use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductViewsController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Public\BlogController;
+use App\Http\Controllers\Public\FomoController;
+use App\Http\Controllers\Public\OrderController;
+use App\Http\Controllers\Public\ProductosController as PublicProductosController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -14,9 +20,13 @@ Route::get('/', function () {
     return Inertia::render('public/Home');
 })->name('home');
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Compatibilidad con controllers Auth de Breeze (login estándar, verificación
+// de email, confirm password) que redirigen vía route('dashboard'). El render
+// del scaffold "You're logged in!" se eliminó — todo admin debe aterrizar en
+// /admin/dashboard, que es el dashboard real del proyecto.
+Route::get('/dashboard', fn () => redirect()->route('admin.dashboard'))
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::get('/checkout', function () {
     $metodos = \App\Models\MetodoPago::where('activo', true)
@@ -75,77 +85,27 @@ Route::get('/api/check-email', function (\Illuminate\Http\Request $request) {
     ]);
 })->name('check-email');
 
+// Blog público
+Route::get('/blog',          [BlogController::class, 'index'])->name('blog.index');
+Route::get('/blog/{slug}',   [BlogController::class, 'show'] )->name('blog.show');
+
 Route::post('/orden', [OrderController::class, 'store'])->name('orden.store');
-Route::get('/orden/{codigo}/gracias', [OrderController::class, 'confirmacion'])->name('orden.confirmacion');
-Route::get('/orden/{codigo}', [OrderController::class, 'seguimiento'])->name('orden.seguimiento');
+Route::get('/orden/{order:acceso_token}/gracias', [OrderController::class, 'confirmacion'])->name('orden.confirmacion');
+Route::get('/orden/{order:acceso_token}',         [OrderController::class, 'seguimiento'] )->name('orden.seguimiento');
 
 Route::post('/track/product-view', [ProductViewsController::class, 'track'])->name('track.product-view');
 
+Route::get('/api/fomo',  [FomoController::class, 'index']  )->name('fomo.index');
+Route::post('/api/fomo-view', [FomoController::class, 'logView'])->name('fomo.log-view');
+
 // MercadoPago
-Route::post('/api/mp/pagar',        [MercadoPagoController::class, 'pagar']   )->name('mp.pagar');
+Route::post('/api/mp/pagar',        [MercadoPagoController::class, 'pagar']   )->name('mp.pagar')->middleware('throttle:mp-pagar');
 Route::get('/mp/resultado',         [MercadoPagoController::class, 'callback'])->name('mp.callback');
 Route::post('/webhooks/mercadopago',[MercadoPagoController::class, 'webhook'] )->name('mp.webhook');
 
-Route::get('/productos', function () {
-    return Inertia::render('public/Products');
-})->name('productos');
-
-Route::get('/productos/savia-cubre-canas', function () {
-    $producto = \App\Models\Producto::where('slug', 'savia-cubre-canas')
-        ->with(['hooks', 'cantidades', 'imagenes', 'variableGrupos.items'])
-        ->first();
-
-    return Inertia::render('public/Product', [
-        'producto_id'  => $producto?->id,
-        'nombre'       => $producto?->nombre,
-        'unidad'       => $producto?->unidad ?? 'Unidad',
-        'hooks'        => $producto
-            ? $producto->hooks->where('activo', true)->map(fn ($h) => [
-                'key'    => $h->hook_key,
-                'config' => $h->config ?? [],
-            ])->values()->toArray()
-            : [],
-        'layout_orden'     => $producto?->layout_orden ?? null,
-        'precio_base'      => $producto?->precio_base,
-        'imagen_principal' => $producto?->imagenes->firstWhere('principal', true)?->url
-                           ?? $producto?->imagenes->sortBy('orden')->first()?->url,
-        'imagenes'         => $producto
-            ? $producto->imagenes->sortBy('orden')->map(fn ($i) => [
-                'url'       => $i->url,
-                'principal' => (bool) $i->principal,
-            ])->values()->toArray()
-            : [],
-        'grupos'           => $producto
-            ? $producto->variableGrupos->sortBy('orden')->map(fn ($g) => [
-                'id'    => $g->id,
-                'nombre' => $g->nombre,
-                'tipo'  => $g->tipo,
-                'items' => $g->items->where('activo', true)->sortBy('orden')->map(fn ($i) => [
-                    'id'            => $i->id,
-                    'nombre'        => $i->nombre,
-                    'valor'         => $i->valor,
-                    'url'           => $i->url,
-                    'precio_ajuste' => $i->precio_ajuste,
-                ])->values()->toArray(),
-            ])->values()->toArray()
-            : [],
-        'cantidades'       => $producto
-            ? $producto->cantidades->sortBy('orden')->map(fn ($c) => [
-                'cantidad'      => $c->cantidad,
-                'precio_bundle' => $c->precio_bundle,
-                'badge_texto'   => $c->badge_texto,
-                'destacado'     => $c->destacado,
-                'imagen'        => $c->imagen,
-            ])->values()->toArray()
-            : [],
-    ]);
-})->name('producto.savia');
-
-Route::get('/productos/{categoria}', function (string $categoria) {
-    return Inertia::render('public/ProductCategory', [
-        'categoriaSlug' => $categoria,
-    ]);
-})->name('productos.categoria');
+Route::get('/productos',                   [PublicProductosController::class, 'index'])    ->name('productos');
+Route::get('/productos/categoria/{slug}',  [PublicProductosController::class, 'categoria'])->name('productos.categoria');
+Route::get('/productos/{slug}',            [PublicProductosController::class, 'show'])     ->name('producto.show');
 
 Route::get('/quienes-somos', function () {
     return Inertia::render('public/About');
@@ -155,6 +115,8 @@ Route::get('/contacto', function () {
     return Inertia::render('public/Contact');
 })->name('contact');
 
+Route::post('/contacto/enviar', [\App\Http\Controllers\ContactoFormController::class, 'enviar'])->name('contacto.enviar');
+
 Route::get('/components-preview', function () {
     return Inertia::render('public/ComponentsPreview');
 })->name('components-preview');
@@ -162,8 +124,22 @@ Route::get('/components-preview', function () {
 // Cuenta de cliente
 Route::prefix('cuenta')->name('cuenta.')->group(function () {
     Route::get('/login',  [ClientLoginController::class, 'mostrar']   )->name('login');
-    Route::post('/login', [ClientLoginController::class, 'autenticar'])->name('login.post');
+    Route::post('/login', [ClientLoginController::class, 'autenticar'])->name('login.post')->middleware('throttle:client-login');
     Route::post('/logout',[ClientLoginController::class, 'logout']    )->name('logout');
+
+    // Recuperación de contraseña (flujo OTP — comparte Actions con admin vía guard 'client')
+    Route::get('/blocked', fn () => Inertia::render('clients/auth/AccountBlocked'))->name('blocked');
+
+    Route::get('/forgot-password',  [ClientForgotPasswordController::class, 'mostrar'])->name('forgot-password');
+    Route::post('/forgot-password', [ClientForgotPasswordController::class, 'enviar'])->name('forgot-password.post')->middleware('throttle:5,1');
+
+    Route::get('/choose-otp-method',  [ClientOTPController::class, 'mostrarMetodo'])->name('choose-otp-method');
+    Route::post('/choose-otp-method', [ClientOTPController::class, 'enviarOTP'])->name('choose-otp-method.post')->middleware('throttle:5,1');
+
+    Route::post('/verify-otp', [ClientOTPController::class, 'verificar'])->name('verify-otp')->middleware('throttle:10,1');
+
+    Route::get('/reset-password',  [ClientResetPasswordController::class, 'mostrar'])->name('reset-password');
+    Route::post('/reset-password', [ClientResetPasswordController::class, 'actualizar'])->name('reset-password.post');
 
     Route::middleware('auth.client')->group(function () {
         Route::get('/pedidos',    [CuentaController::class, 'pedidos']      )->name('pedidos');

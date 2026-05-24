@@ -5,9 +5,10 @@ import {
     ChevronLeft, ChevronRight,
     Flame, MousePointer, Video,
     Wallet, CreditCard, Sparkles, Truck, Crosshair,
+    Palette, AlignJustify, LayoutGrid, Home, Info, Phone,
 } from 'lucide-react'
 import { usePage } from '@inertiajs/react'
-import { TooltipProvider } from '@/Components/ui/Tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
 import NavItem from './parts/NavItem'
 import NavGroup, { NavGroupChild } from './parts/NavGroup'
 
@@ -37,9 +38,21 @@ const NAV: NavEntry[] = [
     { type: 'item',  label: 'Cupones',           icon: Ticket,          routeName: null },
     { type: 'item',  label: 'Métodos de pago',   icon: CreditCard,      routeName: 'admin.metodos-pago.index', permiso: 'metodos-pago.ver' },
     { type: 'item',  label: 'Métodos de envío',  icon: Truck,           routeName: 'admin.envio.index', permiso: 'envio.ver' },
-    { type: 'item',  label: 'LinkiuBuild',       icon: Hammer,          routeName: null },
+    {
+        type: 'group',
+        label: 'LinkiuBuild',
+        icon: Hammer,
+        children: [
+            { label: 'Widgets',        icon: LayoutGrid,    routeName: 'admin.build.widgets',        permiso: 'linkiubuild.ver' },
+            { label: 'Theme',          icon: Palette,       routeName: 'admin.build.theme',          permiso: 'linkiubuild.ver' },
+            { label: 'Menú',           icon: AlignJustify,  routeName: 'admin.build.menu',           permiso: 'linkiubuild.ver' },
+            { label: 'Inicio',         icon: Home,          routeName: 'admin.build.inicio',         permiso: 'linkiubuild.ver' },
+            { label: 'Quiénes Somos',  icon: Info,          routeName: 'admin.build.quienes-somos',  permiso: 'linkiubuild.ver' },
+            { label: 'Contacto',       icon: Phone,         routeName: 'admin.build.contacto',       permiso: 'linkiubuild.ver' },
+        ],
+    },
     { type: 'item',  label: 'Webhooks',          icon: Webhook,         routeName: null },
-    { type: 'item',  label: 'Blogs',             icon: FileText,        routeName: null },
+    { type: 'item',  label: 'Blog',              icon: FileText,        routeName: 'admin.blogs.index', permiso: 'blogs.ver' },
     {
         type: 'group',
         label: 'Roles y permisos',
@@ -131,15 +144,21 @@ export default function Sidebar({ collapsed, onToggleCollapse, logoUrl }: Props)
                             src={logoUrl ?? '/assets/build_resources/logo_default_admin.svg'}
                             alt="Logo"
                             className="h-10 w-auto object-contain"
+                            onError={e => { e.currentTarget.src = '/assets/build_resources/logo_default_admin.svg' }}
                         />
                     )}
-                    <button
-                        onClick={onToggleCollapse}
-                        className="rounded-md p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600"
-                        title={collapsed ? 'Expandir sidebar' : 'Contraer sidebar'}
-                    >
-                        {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
-                    </button>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                onClick={onToggleCollapse}
+                                className="rounded-md p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-600"
+                                aria-label={collapsed ? 'Expandir sidebar' : 'Contraer sidebar'}
+                            >
+                                {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{collapsed ? 'Expandir sidebar' : 'Contraer sidebar'}</TooltipContent>
+                    </Tooltip>
                 </div>
 
                 {/* Navegación */}

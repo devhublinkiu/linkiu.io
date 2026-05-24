@@ -6,18 +6,84 @@ declare module 'ziggy-js' {
     "home": [],
     "dashboard": [],
     "checkout": [],
-    "orden.confirmacion": [],
+    "check-email": [],
+    "orden.store": [],
+    "orden.confirmacion": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "acceso_token"
+        }
+    ],
+    "orden.seguimiento": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "acceso_token"
+        }
+    ],
+    "track.product-view": [],
+    "fomo.index": [],
+    "fomo.log-view": [],
+    "mp.pagar": [],
+    "mp.callback": [],
+    "mp.webhook": [],
     "productos": [],
-    "producto.savia": [],
     "productos.categoria": [
         {
-            "name": "categoria",
+            "name": "slug",
+            "required": true
+        }
+    ],
+    "producto.show": [
+        {
+            "name": "slug",
             "required": true
         }
     ],
     "about": [],
     "contact": [],
+    "contacto.enviar": [],
     "components-preview": [],
+    "cuenta.login": [],
+    "cuenta.login.post": [],
+    "cuenta.logout": [],
+    "cuenta.blocked": [],
+    "cuenta.forgot-password": [],
+    "cuenta.forgot-password.post": [],
+    "cuenta.choose-otp-method": [],
+    "cuenta.choose-otp-method.post": [],
+    "cuenta.verify-otp": [],
+    "cuenta.reset-password": [],
+    "cuenta.reset-password.post": [],
+    "cuenta.pedidos": [],
+    "cuenta.perfil": [],
+    "cuenta.perfil.update": [],
+    "cuenta.seguridad": [],
+    "cuenta.seguridad.update": [],
+    "cuenta.direcciones": [],
+    "cuenta.direcciones.store": [],
+    "cuenta.direcciones.update": [
+        {
+            "name": "address",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "cuenta.direcciones.destroy": [
+        {
+            "name": "address",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "cuenta.direcciones.predeterminada": [
+        {
+            "name": "address",
+            "required": true,
+            "binding": "id"
+        }
+    ],
     "profile.edit": [],
     "profile.update": [],
     "profile.destroy": [],
@@ -72,6 +138,8 @@ declare module 'ziggy-js' {
         }
     ],
     "admin.dashboard": [],
+    "admin.perfil": [],
+    "admin.perfil.personal": [],
     "admin.logout": [],
     "admin.usuarios.index": [],
     "admin.usuarios.store": [],
@@ -93,6 +161,13 @@ declare module 'ziggy-js' {
     "admin.productos.create": [],
     "admin.productos.store": [],
     "admin.productos.edit": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.productos.destroy": [
         {
             "name": "producto",
             "required": true,
@@ -144,6 +219,186 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.productos.layout": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.productos.hooks.toggle": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "hook",
+            "required": true
+        }
+    ],
+    "admin.productos.hooks.config": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "hook",
+            "required": true
+        }
+    ],
+    "admin.productos.hooks.imagenes.store": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "hook",
+            "required": true
+        }
+    ],
+    "admin.productos.hooks.imagenes.destroy": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "hook",
+            "required": true
+        }
+    ],
+    "admin.productos.variables.grupos.store": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.productos.variables.grupos.update": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "grupo",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.productos.variables.grupos.destroy": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "grupo",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.productos.variables.items.store": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "grupo",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.productos.variables.items.update": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "grupo",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "item",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.productos.variables.items.toggle": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "grupo",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "item",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.productos.variables.items.destroy": [
+        {
+            "name": "producto",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "grupo",
+            "required": true,
+            "binding": "id"
+        },
+        {
+            "name": "item",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.metodos-pago.index": [],
+    "admin.metodos-pago.toggle": [
+        {
+            "name": "metodo",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.metodos-pago.config": [
+        {
+            "name": "metodo",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.envio.index": [],
+    "admin.envio.zonas.store": [],
+    "admin.envio.zonas.update": [
+        {
+            "name": "zona",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.envio.zonas.destroy": [
+        {
+            "name": "zona",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.integraciones.pixeles": [],
+    "admin.integraciones.pixeles.update": [],
+    "admin.integraciones.pasarelas": [],
+    "admin.integraciones.pasarelas.update": [],
     "admin.categorias.index": [],
     "admin.categorias.store": [],
     "admin.categorias.update": [
@@ -160,6 +415,116 @@ declare module 'ziggy-js' {
             "binding": "id"
         }
     ],
+    "admin.ordenes.index": [],
+    "admin.ordenes.export": [],
+    "admin.ordenes.show": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.ordenes.estado": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.ordenes.notas-internas": [
+        {
+            "name": "order",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.clientes.index": [],
+    "admin.clientes.export": [],
+    "admin.clientes.show": [
+        {
+            "name": "client",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.clientes.update": [
+        {
+            "name": "client",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.clientes.email": [
+        {
+            "name": "client",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.build.theme": [],
+    "admin.build.theme.colores": [],
+    "admin.build.theme.botones": [],
+    "admin.build.theme.logos": [],
+    "admin.build.theme.seo": [],
+    "admin.build.menu": [],
+    "admin.build.menu.ticker": [],
+    "admin.build.menu.anuncios.store": [],
+    "admin.build.menu.anuncios.update": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.build.menu.anuncios.toggle": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.build.menu.anuncios.destroy": [
+        {
+            "name": "announcement",
+            "required": true,
+            "binding": "id"
+        }
+    ],
+    "admin.build.menu.nav": [],
+    "admin.build.inicio": [],
+    "admin.build.inicio.seccion": [],
+    "admin.build.inicio.ticker.config": [],
+    "admin.build.inicio.beneficios.config": [],
+    "admin.build.inicio.como_funciona.config": [],
+    "admin.build.inicio.banners.config": [],
+    "admin.build.inicio.banners.imagenes.store": [],
+    "admin.build.inicio.banners.imagenes.destroy": [],
+    "admin.build.inicio.cta.config": [],
+    "admin.build.inicio.faq.config": [],
+    "admin.build.inicio.carrusel.config": [],
+    "admin.build.inicio.carrusel.imagenes.store": [],
+    "admin.build.inicio.carrusel.imagenes.destroy": [],
+    "admin.build.inicio.hero.config": [],
+    "admin.build.inicio.resenas.config": [],
+    "admin.build.inicio.hero.imagenes.store": [],
+    "admin.build.inicio.hero.imagenes.destroy": [],
+    "admin.build.quienes-somos": [],
+    "admin.build.quienes-somos.identidad.config": [],
+    "admin.build.quienes-somos.historia.config": [],
+    "admin.build.quienes-somos.historia.imagen.store": [],
+    "admin.build.quienes-somos.historia.imagen.destroy": [],
+    "admin.build.quienes-somos.stats.config": [],
+    "admin.build.quienes-somos.mision-vision.config": [],
+    "admin.build.quienes-somos.valores.config": [],
+    "admin.build.quienes-somos.seccion": [],
+    "admin.build.quienes-somos.cta.config": [],
+    "admin.build.contacto": [],
+    "admin.build.contacto.hero.config": [],
+    "admin.build.contacto.cards.config": [],
+    "admin.build.contacto.form.config": [],
+    "admin.build.contacto.seccion": [],
+    "admin.build.widgets": [],
+    "admin.build.widgets.update": [],
     "admin.roles.index": [],
     "admin.roles.store": [],
     "admin.roles.toggle-permission": [

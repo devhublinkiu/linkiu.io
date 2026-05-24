@@ -4,6 +4,7 @@ import './bootstrap';
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot, hydrateRoot } from 'react-dom/client';
+import { bootstrapSpaPixelTracker } from './lib/spaPixelTracker';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -13,6 +14,8 @@ if (import.meta.env.VITE_MP_PUBLIC_KEY) {
         advancedFraudPrevention: true,
     });
 }
+
+bootstrapSpaPixelTracker();
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,

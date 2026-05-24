@@ -90,9 +90,26 @@ return [
     'perfil' => [
         'label'   => 'Perfil',
         'actions' => [
-            'ver'          => 'Ver',
-            'editar'       => 'Editar datos personales',
-            'editar-tienda' => 'Editar datos de la tienda',
+            'ver'    => 'Ver',
+            'editar' => 'Editar datos personales',
+        ],
+    ],
+
+    'linkiubuild' => [
+        'label'   => 'LinkiuBuild',
+        'actions' => [
+            'ver'    => 'Ver',
+            'editar' => 'Editar',
+        ],
+    ],
+
+    'blogs' => [
+        'label'   => 'Blog',
+        'actions' => [
+            'ver'      => 'Ver',
+            'crear'    => 'Crear',
+            'editar'   => 'Editar',
+            'eliminar' => 'Eliminar',
         ],
     ],
 
