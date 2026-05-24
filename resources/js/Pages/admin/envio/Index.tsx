@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Truck, MapPin, PencilIcon, Trash2Icon, PlusIcon } from 'lucide-react'
@@ -28,7 +28,7 @@ function TipoCostoBadge({ zona }: { zona: ZonaEnvio }) {
         return (
             <div className="text-right">
                 <p className="text-sm font-semibold text-slate-900">{formatPrecio(zona.costo ?? 0)}</p>
-                <p className="text-[10px] text-emerald-600">Gratis desde {formatPrecio(zona.umbral_gratis)}</p>
+                <p className="text-xs text-emerald-600">Gratis desde {formatPrecio(zona.umbral_gratis)}</p>
             </div>
         )
     }
@@ -36,7 +36,7 @@ function TipoCostoBadge({ zona }: { zona: ZonaEnvio }) {
 }
 
 export default function EnvioIndex({ zonas }: Props) {
-    const { props } = usePage<{ auth: { permissions: string[] } }>()
+    const { props } = usePage<{ auth: { permissions: string[] }; flash?: { status?: string } }>()
     const puede = (p: string) => props.auth.permissions.includes('*') || props.auth.permissions.includes(p)
     const puedeEditar = puede('envio.editar')
 
@@ -44,12 +44,22 @@ export default function EnvioIndex({ zonas }: Props) {
     const [zonaEditar,   setZonaEditar]   = useState<ZonaEnvio | null>(null)
     const [zonaEliminar, setZonaEliminar] = useState<ZonaEnvio | null>(null)
 
+    // Flash unificado: backend envía 'Zona creada/actualizada/eliminada.' Una
+    // sola fuente de verdad. Reemplaza los toast.success hardcoded del frontend.
+    useEffect(() => {
+        if (props.flash?.status) toast.success(props.flash.status)
+    }, [props.flash?.status])
+
     function confirmarEliminarZona() {
         if (!zonaEliminar) return
+        // Guard preventivo — backend también valida con can:envio.editar
+        if (!puedeEditar) return
+
         router.delete(route('admin.envio.zonas.destroy', zonaEliminar.id), {
             preserveScroll: true,
-            onSuccess: () => { toast.success('Zona eliminada'); setZonaEliminar(null) },
-            onError:   () => toast.error('Error al eliminar'),
+            // toast.success viene del flash unificado. Solo cerramos el dialog.
+            onSuccess: () => setZonaEliminar(null),
+            onError:   (errors) => toast.error((errors.zona as string | undefined) ?? 'Error al eliminar'),
         })
     }
 
@@ -101,7 +111,7 @@ export default function EnvioIndex({ zonas }: Props) {
                         <div className="rounded-lg border border-dashed border-slate-200 py-16 text-center">
                             <MapPin className="mx-auto mb-2 size-6 text-slate-400" />
                             <p className="text-sm text-slate-500">Aún no hay zonas creadas.</p>
-                            <p className="text-xs text-slate-400 mt-1">Crea una zona para definir dónde y cuánto cobras por envío.</p>
+                            <p className="text-xs text-slate-500 mt-1">Crea una zona para definir dónde y cuánto cobras por envío.</p>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2">
@@ -114,10 +124,10 @@ export default function EnvioIndex({ zonas }: Props) {
                                         <div className="flex items-center gap-2">
                                             <p className="text-sm font-semibold text-slate-900">{zona.nombre}</p>
                                             <span className={cn(
-                                                'text-[10px] font-medium rounded-full px-2 py-0.5',
+                                                'text-xs font-medium rounded-full px-2 py-0.5',
                                                 zona.activo
                                                     ? 'bg-emerald-50 text-emerald-600'
-                                                    : 'bg-slate-100 text-slate-400'
+                                                    : 'bg-slate-100 text-slate-500'
                                             )}>
                                                 {zona.activo ? 'Activa' : 'Inactiva'}
                                             </span>
@@ -126,18 +136,18 @@ export default function EnvioIndex({ zonas }: Props) {
                                             {zona.departamentos.slice(0, 4).map(d => (
                                                 <span
                                                     key={d.id}
-                                                    className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-600"
+                                                    className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600"
                                                 >
                                                     {d.nombre} ({d.ciudades.length})
                                                 </span>
                                             ))}
                                             {zona.departamentos.length > 4 && (
-                                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] text-slate-500">
+                                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
                                                     +{zona.departamentos.length - 4} dptos más
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-[10px] text-slate-400 mt-1">
+                                        <p className="text-xs text-slate-500 mt-1">
                                             {zona.departamentos.length} {zona.departamentos.length === 1 ? 'departamento' : 'departamentos'} · {totalCiudades(zona)} {totalCiudades(zona) === 1 ? 'ciudad' : 'ciudades'}
                                         </p>
                                     </div>
@@ -153,7 +163,7 @@ export default function EnvioIndex({ zonas }: Props) {
                                                 variant="ghost"
                                                 size="icon-sm"
                                                 onClick={() => setZonaEliminar(zona)}
-                                                className="text-red-400 hover:text-red-600 hover:bg-red-50"
+                                                className="text-red-500 hover:text-red-600 hover:bg-red-50"
                                             >
                                                 <Trash2Icon />
                                             </Button>

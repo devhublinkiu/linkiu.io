@@ -6,9 +6,12 @@ use App\Actions\Envio\DeleteZonaEnvio;
 use App\Actions\Envio\StoreZonaEnvio;
 use App\Actions\Envio\UpdateZonaEnvio;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Envio\StoreZonaEnvioRequest;
+use App\Http\Requests\Envio\UpdateZonaEnvioRequest;
 use App\Models\ZonaEnvio;
+use App\Services\ColombiaDataService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -16,55 +19,60 @@ class ConfiguracionEnvioController extends Controller
 {
     public function index(): Response
     {
+        abort_if(! auth()->user()->can('envio.ver'), 403);
+
         return Inertia::render('admin/envio/Index', [
             'zonas' => ZonaEnvio::orderBy('orden')->orderBy('id')->get(),
         ]);
     }
 
-    public function storeZona(Request $request, StoreZonaEnvio $action): RedirectResponse
+    public function storeZona(StoreZonaEnvioRequest $request, StoreZonaEnvio $action): RedirectResponse
     {
-        $data = $request->validate([
-            'nombre'                              => 'required|string|max:100',
-            'departamentos'                       => 'required|array|min:1',
-            'departamentos.*.id'                  => 'required|integer',
-            'departamentos.*.nombre'              => 'required|string|max:100',
-            'departamentos.*.ciudades'            => 'required|array|min:1',
-            'departamentos.*.ciudades.*.id'       => 'required|integer',
-            'departamentos.*.ciudades.*.nombre'   => 'required|string|max:100',
-            'tipo_costo'                          => 'required|in:gratis,costo_fijo,gratis_desde',
-            'costo'                               => 'nullable|integer|min:0',
-            'umbral_gratis'                       => 'nullable|integer|min:0',
-        ]);
+        // authorize() del FormRequest valida el permiso (envio.editar).
+        try {
+            $action->handle($request->validated());
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['zona' => $e->getMessage()]);
+        }
 
-        $action->handle($data);
-
-        return back();
+        return back()->with('status', 'Zona creada.');
     }
 
-    public function updateZona(Request $request, ZonaEnvio $zona, UpdateZonaEnvio $action): RedirectResponse
+    public function updateZona(UpdateZonaEnvioRequest $request, ZonaEnvio $zona, UpdateZonaEnvio $action): RedirectResponse
     {
-        $data = $request->validate([
-            'nombre'                              => 'required|string|max:100',
-            'departamentos'                       => 'required|array|min:1',
-            'departamentos.*.id'                  => 'required|integer',
-            'departamentos.*.nombre'              => 'required|string|max:100',
-            'departamentos.*.ciudades'            => 'required|array|min:1',
-            'departamentos.*.ciudades.*.id'       => 'required|integer',
-            'departamentos.*.ciudades.*.nombre'   => 'required|string|max:100',
-            'tipo_costo'                          => 'required|in:gratis,costo_fijo,gratis_desde',
-            'costo'                               => 'nullable|integer|min:0',
-            'umbral_gratis'                       => 'nullable|integer|min:0',
-        ]);
+        try {
+            $action->handle($zona, $request->validated());
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['zona' => $e->getMessage()]);
+        }
 
-        $action->handle($zona, $data);
-
-        return back();
+        return back()->with('status', 'Zona actualizada.');
     }
 
     public function destroyZona(ZonaEnvio $zona, DeleteZonaEnvio $action): RedirectResponse
     {
+        abort_if(! auth()->user()->can('envio.editar'), 403);
+
         $action->handle($zona);
 
-        return back();
+        return back()->with('status', 'Zona eliminada.');
+    }
+
+    /**
+     * Proxy cacheado a api-colombia.com — el frontend del ZonaDialog llama aquí
+     * en lugar de pegarle directo a la API externa. Reduce latencia (cache 24h)
+     * y nos blinda ante caídas momentáneas del servicio externo.
+     */
+    public function colombiaData(ColombiaDataService $service): JsonResponse
+    {
+        abort_if(! auth()->user()->can('envio.editar'), 403);
+
+        try {
+            return response()->json($service->obtener());
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'error' => 'No se pudo cargar la lista de departamentos y ciudades. Intenta en unos minutos.',
+            ], 503);
+        }
     }
 }
