@@ -59,7 +59,7 @@ function NavigationMenuItem({
 }
 
 const navigationMenuTriggerStyle = cva(
-  "group inline-flex h-9 w-max cursor-pointer items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium transition-[color,box-shadow] outline-none hover:bg-slate-100 hover:text-slate-700 focus:bg-slate-100 focus:text-slate-700 focus-visible:ring-3 focus-visible:ring-slate-300/50 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-slate-100/50 data-[state=open]:text-slate-700 data-[state=open]:hover:bg-slate-100 data-[state=open]:focus:bg-slate-100"
+  "group inline-flex h-9 w-max cursor-pointer items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-medium transition-[color,box-shadow] outline-none hover:bg-slate-100 hover:text-slate-700 focus:bg-slate-100 focus:text-slate-700 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-slate-100/50 data-[state=open]:text-slate-700 data-[state=open]:hover:bg-slate-100 data-[state=open]:focus:bg-slate-100"
 )
 
 function NavigationMenuTrigger({
@@ -125,7 +125,7 @@ function NavigationMenuLink({
     <NavigationMenuPrimitive.Link
       data-slot="navigation-menu-link"
       className={cn(
-        "flex cursor-pointer flex-col gap-1 rounded-sm p-2 text-sm transition-all outline-none hover:bg-slate-100 hover:text-slate-700 focus:bg-slate-100 focus:text-slate-700 focus-visible:ring-3 focus-visible:ring-slate-300/50 focus-visible:outline-1 data-[active=true]:bg-slate-100/50 data-[active=true]:text-slate-700 data-[active=true]:hover:bg-slate-100 data-[active=true]:focus:bg-slate-100 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-slate-500",
+        "flex cursor-pointer flex-col gap-1 rounded-sm p-2 text-sm transition-all outline-none hover:bg-slate-100 hover:text-slate-700 focus:bg-slate-100 focus:text-slate-700 focus-visible:outline-1 data-[active=true]:bg-slate-100/50 data-[active=true]:text-slate-700 data-[active=true]:hover:bg-slate-100 data-[active=true]:focus:bg-slate-100 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-slate-500",
         className
       )}
       {...props}

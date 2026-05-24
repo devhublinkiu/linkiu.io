@@ -404,9 +404,8 @@ function SidebarGroupLabel({
             data-slot="sidebar-group-label"
             data-sidebar="group-label"
             className={cn(
-                "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-slate-500 ring-slate-300/50 outline-none transition-[margin,opacity] duration-200 ease-linear",
+                "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-slate-500 outline-none transition-[margin,opacity] duration-200 ease-linear",
                 "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
-                "focus-visible:ring-2",
                 "[&>svg]:size-4 [&>svg]:shrink-0",
                 className
             )}
@@ -427,11 +426,10 @@ function SidebarGroupAction({
             data-slot="sidebar-group-action"
             data-sidebar="group-action"
             className={cn(
-                "absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-slate-700 ring-slate-300/50 outline-none transition-transform",
+                "absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-slate-700 outline-none transition-transform",
                 "group-data-[collapsible=icon]:hidden",
                 "after:absolute after:-inset-2",
                 "hover:bg-slate-100 hover:text-slate-700",
-                "focus-visible:ring-2",
                 "md:after:hidden",
                 "[&>svg]:size-4 [&>svg]:shrink-0",
                 className
@@ -483,11 +481,10 @@ function SidebarMenuItem({
 const sidebarMenuButtonVariants = cva(
     [
         "peer/menu-button group/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm",
-        "ring-slate-300/50 outline-none transition-[width,height,padding]",
+        "outline-none transition-[width,height,padding]",
         "group-has-[[data-sidebar=menu-action]]/menu-item:pr-8",
         "group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2",
         "hover:bg-slate-100 hover:text-slate-700",
-        "focus-visible:ring-2",
         "active:bg-slate-100 active:text-slate-700",
         "disabled:pointer-events-none disabled:opacity-50",
         "aria-disabled:pointer-events-none aria-disabled:opacity-50",
@@ -578,7 +575,7 @@ function SidebarMenuAction({
             data-slot="sidebar-menu-action"
             data-sidebar="menu-action"
             className={cn(
-                "absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-slate-700 ring-slate-300/50 outline-none transition-transform",
+                "absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-slate-700 outline-none transition-transform",
                 "group-data-[collapsible=icon]:hidden",
                 "peer-hover/menu-button:text-slate-700",
                 "peer-data-[size=default]/menu-button:top-1.5",
@@ -586,7 +583,6 @@ function SidebarMenuAction({
                 "peer-data-[size=sm]/menu-button:top-1",
                 "after:absolute after:-inset-2",
                 "hover:bg-slate-100 hover:text-slate-700",
-                "focus-visible:ring-2",
                 "md:after:hidden",
                 "[&>svg]:size-4 [&>svg]:shrink-0",
                 showOnHover && [
@@ -703,10 +699,9 @@ function SidebarMenuSubButton({
             data-size={size}
             data-active={isActive}
             className={cn(
-                "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-slate-700 ring-slate-300/50 outline-none",
+                "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-slate-700 outline-none",
                 "group-data-[collapsible=icon]:hidden",
                 "hover:bg-slate-100 hover:text-slate-700",
-                "focus-visible:ring-2",
                 "active:bg-slate-100 active:text-slate-700",
                 "disabled:pointer-events-none disabled:opacity-50",
                 "aria-disabled:pointer-events-none aria-disabled:opacity-50",

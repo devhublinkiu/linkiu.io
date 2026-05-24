@@ -64,7 +64,7 @@ function TabsTrigger({
         "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-sm font-medium whitespace-nowrap text-slate-500 transition-all",
         "group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start",
         "hover:text-slate-700",
-        "focus-visible:border-slate-400 focus-visible:ring-3 focus-visible:ring-slate-300/50 focus-visible:outline-1 focus-visible:outline-slate-400",
+        "focus-visible:border-slate-400 focus-visible:outline-1 focus-visible:outline-slate-400",
         "disabled:pointer-events-none disabled:opacity-50",
         "has-[[data-icon=inline-end]]:pr-1 has-[[data-icon=inline-start]]:pl-1",
         "group-data-[variant=default]/tabs-list:data-[state=active]:shadow-sm",

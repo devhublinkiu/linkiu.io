@@ -211,7 +211,7 @@ function CalendarDayButton({
             data-range-middle={modifiers.range_middle}
             className={cn(
                 "relative isolate z-10 flex aspect-square size-auto w-full min-w-[var(--cell-size)] flex-col gap-1 border-0 leading-none font-normal",
-                "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-slate-400 group-data-[focused=true]/day:ring-3 group-data-[focused=true]/day:ring-slate-300/50",
+                "group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:border-slate-400",
                 "data-[range-end=true]:rounded-[var(--cell-radius)] data-[range-end=true]:rounded-r-[var(--cell-radius)] data-[range-end=true]:bg-slate-600 data-[range-end=true]:text-white",
                 "data-[range-middle=true]:rounded-none data-[range-middle=true]:bg-slate-100 data-[range-middle=true]:text-slate-700",
                 "data-[range-start=true]:rounded-[var(--cell-radius)] data-[range-start=true]:rounded-l-[var(--cell-radius)] data-[range-start=true]:bg-slate-600 data-[range-start=true]:text-white",

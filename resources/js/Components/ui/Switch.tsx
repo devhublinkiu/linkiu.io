@@ -16,7 +16,7 @@ function Switch({
       data-size={size}
       className={cn(
         "peer group/switch relative inline-flex shrink-0 items-center rounded-full border-2 border-transparent transition-all outline-none after:absolute after:-inset-x-3 after:-inset-y-2",
-        "aria-invalid:border-red-400 aria-invalid:ring-2 aria-invalid:ring-red-200",
+        "aria-invalid:border-red-400",
         "data-[size=default]:h-5 data-[size=default]:w-9",
         "data-[size=sm]:h-4 data-[size=sm]:w-6",
         "data-[state=checked]:bg-slate-950 data-[state=unchecked]:bg-slate-200",
