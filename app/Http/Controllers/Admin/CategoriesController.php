@@ -11,17 +11,20 @@ use App\Http\Requests\Categorias\UpdateCategoryRequest;
 use App\Models\Category;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 
 class CategoriesController extends Controller
 {
     public function index()
     {
+        abort_if(! auth()->user()->can('categorias.ver'), 403);
+
         $categorias = Category::with('parent')
             ->withCount(['children', 'productos'])
             ->orderByRaw('CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END')
             ->orderBy('name')
-            ->get()
-            ->map(fn (Category $c) => [
+            ->paginate(20)
+            ->through(fn (Category $c) => [
                 'id'             => $c->id,
                 'name'           => $c->name,
                 'slug'           => $c->slug,
@@ -46,32 +49,38 @@ class CategoriesController extends Controller
 
     public function store(StoreCategoryRequest $request, CreateCategory $action)
     {
+        abort_if(! auth()->user()->can('categorias.crear'), 403);
+
         $action->execute($request->validated());
 
-        return back()->with('status', 'CategorÃ­a creada correctamente.');
+        return back()->with('status', 'Categoría creada correctamente.');
     }
 
     public function update(UpdateCategoryRequest $request, Category $category, UpdateCategory $action)
     {
+        abort_if(! auth()->user()->can('categorias.editar'), 403);
+
         $action->execute($category, $request->validated());
 
-        return back()->with('status', 'CategorÃ­a actualizada correctamente.');
+        return back()->with('status', 'Categoría actualizada correctamente.');
     }
 
     public function destroy(Category $category, DeleteCategory $action)
     {
+        abort_if(! auth()->user()->can('categorias.eliminar'), 403);
+
         $resultado = $action->execute($category);
 
         if (isset($resultado['error'])) {
             $mensaje = match ($resultado['error']) {
-                'tiene_subcategorias' => 'No se puede eliminar una categorÃ­a que tiene subcategorÃ­as.',
-                'tiene_productos'     => 'No se puede eliminar una categorÃ­a que tiene productos asociados.',
-                default               => 'No se pudo eliminar la categorÃ­a.',
+                'tiene_subcategorias' => 'No se puede eliminar una categoría que tiene subcategorías.',
+                'tiene_productos'     => 'No se puede eliminar una categoría que tiene productos asociados.',
+                default               => 'No se pudo eliminar la categoría.',
             };
 
             return back()->withErrors(['general' => $mensaje]);
         }
 
-        return back()->with('status', 'CategorÃ­a eliminada correctamente.');
+        return back()->with('status', 'Categoría eliminada correctamente.');
     }
 }

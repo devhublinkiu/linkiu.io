@@ -9,7 +9,6 @@ import { Label } from '@/Components/ui/Label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/Select'
 import { Switch } from '@/Components/ui/Switch'
 import { Textarea } from '@/Components/ui/Textarea'
-
 interface Categoria {
     id: number
     name: string
@@ -31,16 +30,6 @@ interface Props {
     onClose: () => void
     categoria: Categoria | null
     padres: Padre[]
-}
-
-function generarSlug(nombre: string): string {
-    return nombre
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .trim()
-        .replace(/\s+/g, '-')
 }
 
 export default function EditCategoryModal({ open, onClose, categoria, padres }: Props) {
@@ -80,7 +69,7 @@ export default function EditCategoryModal({ open, onClose, categoria, padres }: 
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => { reset(); onClose() },
-            onError:   () => toast.error('Error al guardar los cambios'),
+            onError:   (errs) => toast.error((errs.general as string | undefined) ?? 'Error al guardar los cambios'),
         })
     }
 
@@ -132,6 +121,10 @@ export default function EditCategoryModal({ open, onClose, categoria, padres }: 
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ninguna">Ninguna (es categoría raíz)</SelectItem>
+                                {/* `padres` viene del backend filtrado a categorías RAÍZ (whereNull
+                                    parent_id), así que un descendiente nunca aparece como opción —
+                                    no puede haber ciclo desde el UI. Solo filtramos el auto-padre.
+                                    Backend valida igual con NoCicloJerarquiaCategoria como defensa. */}
                                 {padres
                                     .filter(p => p.id !== categoria?.id)
                                     .map(p => (

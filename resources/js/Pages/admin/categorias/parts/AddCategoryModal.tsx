@@ -9,6 +9,7 @@ import { Label } from '@/Components/ui/Label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/Select'
 import { Switch } from '@/Components/ui/Switch'
 import { Textarea } from '@/Components/ui/Textarea'
+import { generarSlug } from '@/lib/utils'
 
 interface Padre {
     id: number
@@ -19,16 +20,6 @@ interface Props {
     open: boolean
     onClose: () => void
     padres: Padre[]
-}
-
-function generarSlug(nombre: string): string {
-    return nombre
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .trim()
-        .replace(/\s+/g, '-')
 }
 
 export default function AddCategoryModal({ open, onClose, padres }: Props) {
@@ -58,7 +49,7 @@ export default function AddCategoryModal({ open, onClose, padres }: Props) {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => { reset(); onClose() },
-            onError:   () => toast.error('Error al crear la categoría'),
+            onError:   (errs) => toast.error((errs.general as string | undefined) ?? 'Error al crear la categoría'),
         })
     }
 
