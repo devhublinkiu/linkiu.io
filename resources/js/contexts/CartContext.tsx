@@ -42,11 +42,49 @@ const CartContext = createContext<CartContextType>({
     total: 0,
 })
 
+/**
+ * Verifica que un item de localStorage tenga el shape esperado de CartItem.
+ * Protege contra basura: items truncados, schemas viejos, JSON manipulado.
+ */
+function esItemValido(x: unknown): x is CartItem {
+    if (!x || typeof x !== 'object') return false
+    const i = x as Record<string, unknown>
+    return typeof i.id       === 'string'
+        && typeof i.nombre   === 'string' && i.nombre.length > 0
+        && typeof i.precio   === 'number' && Number.isFinite(i.precio) && i.precio >= 0
+        && typeof i.cantidad === 'number' && Number.isInteger(i.cantidad) && i.cantidad > 0
+        && typeof i.imagen   === 'string'
+        && typeof i.label    === 'string'
+}
+
+/**
+ * Carga el carrito desde localStorage filtrando items con shape inválido.
+ * Si TODO está malformado, devuelve array vacío y limpia localStorage para
+ * no acumular basura indefinidamente entre cargas.
+ */
 function cargarCarrito(): CartItem[] {
     try {
         const guardado = localStorage.getItem('carrito')
-        return guardado ? JSON.parse(guardado) : []
+        if (!guardado) return []
+
+        const parsed = JSON.parse(guardado)
+        if (!Array.isArray(parsed)) {
+            localStorage.removeItem('carrito')
+            return []
+        }
+
+        const validos = parsed.filter(esItemValido)
+
+        // Si filtramos algo, re-persistir el carrito limpio para no acumular
+        // basura entre cargas y mantener localStorage liviano.
+        if (validos.length !== parsed.length) {
+            localStorage.setItem('carrito', JSON.stringify(validos))
+        }
+
+        return validos
     } catch {
+        // JSON corrupto — limpiar para evitar errores en cada visita.
+        localStorage.removeItem('carrito')
         return []
     }
 }
