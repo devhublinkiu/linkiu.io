@@ -68,6 +68,7 @@ Linkiu.io es una plataforma para emprendedores de dropshipping y ecommerce que o
     4. En la página, usar `usePage().props.auth.permissions` para deshabilitar botones de acción
 - **No crear componentes nuevos sin antes verificar** — Antes de crear cualquier componente, revisar si ya existe en `Components/ui/` o si alguna variante del existente cubre el caso. Consultar `ComponentsPreview.tsx` para ver todas las variantes disponibles. Nunca deformar un componente existente añadiéndole variantes para un uso puntual — si una variante nueva aplica globalmente, agregarla correctamente al componente; si es un uso único, resolverlo con `className`.
 - **Usar siempre componentes UI para elementos de formulario** — Todo `<input>`, `<button>`, `<textarea>` o `<select>` debe ser reemplazado por `Input`, `Button`, `Textarea` o `Select` de `@/Components/ui/`. Excepciones permitidas: `type="color"` nativo oculto (picker), `type="file"` oculto, y botones de icono ultra-compactos en tablas que ya siguen el patrón establecido en el resto de módulos. Nunca escribir `className="h-9 rounded-md bg-slate-900 px-4..."` en un botón cuando `<Button>` ya tiene ese estilo.
+- **`ring` solo en Input y Textarea** — `focus-visible:ring-*` está prohibido en cualquier otro elemento (`Select`, botones, cards, etc.). Los `Select` usan únicamente cambio de borde en focus (`border-slate-400`), sin ring.
 - **Tooltips — nunca usar `title=""`** — El atributo `title` nativo está prohibido. Siempre usar el componente `Tooltip` / `TooltipContent` de `@/Components/ui/Tooltip`. Si el elemento ya está dentro de un `<TooltipProvider>`, solo hace falta envolver con `<Tooltip>` + `<TooltipTrigger>` + `<TooltipContent>`.
 - **Toast obligatorio en toda acción CRU/D** — Toda operación de crear, actualizar o eliminar debe mostrar un toast de confirmación visual al usuario. Reglas específicas:
   - **Patrón flash (navegación Inertia):** El backend envía `back()->with('status', '...')` y el frontend lo captura con `useEffect(() => { if (props.flash?.status) toast.success(props.flash.status) }, [props.flash?.status])`. Usar para `post()`/`put()` en modales y formularios que navegan.
@@ -80,11 +81,39 @@ Linkiu.io es una plataforma para emprendedores de dropshipping y ecommerce que o
   - `<AlertDialogAction variant="destructive">` — nunca con `className` de color hardcodeado
   - El estado del dialog se maneja con `useState<Entidad | null>(null)` — el propio objeto, no solo el ID, para poder mostrar el nombre en la descripción
 - **Permisos — patrón estándar en páginas index** — Toda página index debe tener la función helper `puede()` que lee `props.auth.permissions`. Todo botón deshabilitado (por falta de permiso O por límite del sistema) debe tener un `<Tooltip>` explicando el motivo. Nunca ocultar un botón — siempre mostrar disabled + tooltip.
+- **Patrón canonical de Index admin** — Toda página `Pages/admin/[modulo]/Index.tsx` debe seguir esta estructura para garantizar consistencia visual entre módulos:
+  - **Header del módulo:** icono cuadrado `w-9 h-9 rounded-lg bg-slate-100` con icono del módulo `w-4 h-4 text-slate-600`, al lado `h1.text-lg.font-bold.text-slate-900` + subtitle `text-xs text-slate-500` con un stat informativo (ej. "N en total"). A la derecha: search (si aplica) + export (si aplica) + botón principal `<Button size="sm">`.
+  - **Filtros (opcional):** tabs underline con `border-b border-slate-200` + tab activa `border-b-2 border-slate-900 text-slate-900` + inactiva `border-transparent text-slate-500 hover:text-slate-700`.
+  - **Tabla:** usar componentes `<Table>` / `<TableHeader>` / `<TableBody>` / `<TableRow>` / `<TableHead>` / `<TableCell>` de `@/Components/ui/Table` — **prohibido `<table>` HTML crudo**. Wrapper externo `bg-white border border-slate-200 rounded-xl overflow-hidden`.
+  - **Empty state:** usar componentes `<Empty>` con `className="border border-dashed border-slate-200 bg-white"` + `<EmptyHeader>` + `<EmptyMedia variant="icon">` + `<EmptyTitle>` + `<EmptyDescription>` + opcional `<EmptyContent>` con CTA. Importar de `@/Components/ui/Empty`.
+  - **Paginación:** usar `<Pagination>` / `<PaginationContent>` / `<PaginationItem>` / `<PaginationEllipsis>` de `@/Components/ui/Pagination`. Patrón: prev (ghost icon) + números (`variant="outline"` cuando activa, `"ghost"` cuando no) + next. Truncar con `<PaginationEllipsis>` si hay más de 7 páginas, mostrando: `[1, ..., current-1, current, current+1, ..., last]`.
+  - **Iconos de acción en celdas:** `<button className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors duration-200">` con `size-3.5` para el icono. Para acción destructiva: `hover:bg-red-50 hover:text-red-600`.
+  - **Row clickeable (opcional):** agregar `cursor-pointer` y `onClick` que navega a edit/show. Las celdas con interacción interna (modales, tooltips activos) deben tener `onClick={e => e.stopPropagation()}`.
+  - **Referencia viva:** `Pages/admin/ordenes/Index.tsx` y `Pages/admin/clientes/Index.tsx` son la referencia canonical más completa. `Pages/admin/categorias/Index.tsx`, `Pages/admin/blog/Index.tsx` y `Pages/admin/productos/Index.tsx` son ejemplos del patrón aplicado.
 - **Storage: dos buckets S3** — El proyecto usa dos buckets separados:
   - `linkiu-assets`: recursos estáticos de Linkiu (imágenes de correos, logos del sistema). Público. La URL base se configura con `LINKIU_ASSETS_URL` en el `.env`. No varía entre instalaciones.
-  - `linkiu-clients`: archivos subidos por clientes (imágenes de productos, avatares, etc.). Privado. Se configura con `AWS_BUCKET=linkiu-clients` y `AWS_ROOT=[nombre-cliente]` para aislar cada instalación en su propia carpeta.
+  - `linkiu-clients`: archivos subidos por clientes (imágenes de productos, logos, hero, banners, blog, comprobantes de pago, etc.). Se configura con `AWS_BUCKET=linkiu-clients` y `AWS_ROOT=[nombre-cliente]` para aislar cada instalación en su propia carpeta.
+  - **Bucket policy del cliente — híbrido**: la carpeta del cliente (`linkiu-clients/{AWS_ROOT}/*`) es **pública para lectura** (sirve assets visibles en la tienda: logos, productos, hero, banners, carrusel, categorías, blog, quienes-somos, contacto). La subcarpeta `ordenes/*` queda **denegada explícitamente** porque guarda comprobantes de pago de clientes (datos sensibles). Acceso a comprobantes solo vía signed URL (`Storage::disk('s3')->temporaryUrl()`) desde el admin.
+  - **Bucket policy ejemplo** (reemplazar `{AWS_ROOT}` por el valor configurado):
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        { "Effect": "Allow", "Principal": "*", "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:::linkiu-clients/{AWS_ROOT}/*" },
+        { "Effect": "Deny",  "Principal": "*", "Action": "s3:GetObject",
+          "Resource": "arn:aws:s3:::linkiu-clients/{AWS_ROOT}/ordenes/*" }
+      ]
+    }
+    ```
+  - **Si una imagen se ve rota en el admin/tienda**: primer sospechoso es la policy del bucket — verificar que la carpeta donde se subió la imagen esté incluida en el Allow. Los componentes con `<img src={url} onError={...}>` esconden 403 silenciosamente, generando la sensación de "no se guarda" cuando en realidad sí se guarda en BD.
   - En las plantillas Blade de correo usar `{{ env('LINKIU_ASSETS_URL') }}` para los recursos del bucket `linkiu-assets`. Si hay cache de config activo, correr `php artisan config:clear`.
   - **Regla general de dónde va cada asset:** Si el archivo lo consume un servidor externo (correo, webhook, integración de terceros) → S3. Si lo consume el navegador del usuario a través de la propia app → `public/`. Nunca poner en S3 assets de error pages ni recursos del sistema que deban funcionar aunque S3 esté caído.
+- **Queue: `sync` en dev, `database` con worker en prod** — Toda Action que despacha jobs (notificaciones, emails, WhatsApp, Ably push, etc.) usa `dispatch()`. El `QUEUE_CONNECTION` define qué pasa con esos jobs:
+  - **Dev local (`.env`):** `QUEUE_CONNECTION=sync` — los jobs corren inmediato bloqueando el response. Sin worker. Si dejás `database` en dev sin levantar `php artisan queue:work`, los jobs se acumulan en la tabla `jobs` y nunca se ejecutan (síntomas: emails no llegan, real-time Ably no actualiza, WhatsApp no se dispara, notif al admin no llega — todos a la vez).
+  - **Producción (`.env.production` en Forge):** `QUEUE_CONNECTION=database` + worker registrado en Forge → Site → Queue Workers (`php artisan queue:work --tries=3 --timeout=90`). Sin el worker, prod queda con el mismo problema que dev.
+  - Si una notificación "no llega" y el resto funciona, ANTES de tocar el código del job verificar dos cosas: 1) `SELECT COUNT(*) FROM jobs` (¿hay jobs acumulados?), 2) ¿está corriendo el worker?
+- **Componentes shadcn/Radix — `forwardRef` obligatorio en wrappers de primitives** — Todo wrapper de un primitive de Radix UI (Overlay, Content, Trigger, Item, Thumb, Indicator, ScrollUpButton, etc.) debe usar `React.forwardRef`. Radix UI pasa refs internamente para focus management, positioning y portales — en React 18, function components sin forwardRef pierden el ref y disparan el warning `Function components cannot be given refs` + bugs sutiles de UX (focus trap roto, tooltips mal posicionados). Patrón canonical en `Components/ui/Dialog.tsx:32` (DialogOverlay). Wrappers que solo renderan `<div>`, `<li>`, `<ul>`, `<thead>` (HTML nativo) NO necesitan forwardRef.
 - Comentarios en español
 - Nombres descriptivos en español
 - Seguir convenciones del lenguaje/framework utilizado

@@ -43,6 +43,23 @@ Sistema de diseño basado en Tailwind CSS. Este documento define los únicos val
 | Labels / secondary text | `text-sm` | 14px |
 | Metadata / badges (mínimo) | `text-xs` | 12px |
 
+### Excepciones tipográficas documentadas
+
+Tamaños fuera de la escala estándar, autorizados solo en casos puntuales por necesidad funcional:
+
+| Clase | Tamaño | Uso permitido |
+|-------|--------|---------------|
+| `text-[10px]` | 10px | Dígitos de countdown en `AnnouncementBar` (barra superior con timer compacto); timestamps, badges de plataforma y key/value de eventos en `PixelDebug` (overlay de debugging) |
+| `text-[9px]`  | 9px  | Dígitos y separadores de countdown del strip "Oferta relámpago" en `ProductCard` y micro-labels del mismo strip ("Oferta Relámpago") |
+| `text-[11px]` | 11px | Hints técnicos secundarios bajo inputs del admin de integraciones (Pixel ID, IDs externos, etc.) donde un `text-xs` competiría visualmente con el label principal |
+
+**Regla:** estos tamaños son **excepción**, no patrón. Solo aplican en:
+- Countdowns/timers visualmente compactos donde subir a `text-xs` rompería el layout
+- Debug overlays / herramientas internas (PixelDebug) donde la densidad de info es la prioridad
+- Hints técnicos del admin donde el contenido es de referencia, no de lectura primaria
+
+Cualquier nuevo uso debe quedar documentado aquí.
+
 ### Pesos permitidos
 
 - `font-normal` — body, descripciones
@@ -131,6 +148,17 @@ Sistema de diseño basado en Tailwind CSS. Este documento define los únicos val
 - `orange-500` `#FF6900` — ícono / texto alerta
 - `orange-600` `#F54900` — badge alerta crítica
 
+### Excepción: logos oficiales de plataformas externas
+
+Los logos de marcas externas (Meta, Google, MercadoPago, etc.) **conservan sus colores de marca oficiales** aunque estén fuera de la paleta del proyecto. Reconocibilidad > consistencia.
+
+| Marca | Color | Componente |
+|-------|-------|------------|
+| Meta (Facebook) | `#1877F2` | `Components/icons/MetaLogo.tsx` |
+| Google | `#4285F4` | `Components/icons/GoogleLogo.tsx` |
+
+**Regla:** estos colores SOLO aparecen dentro de los componentes de logo de su marca correspondiente. No usar `#1877F2` o `#4285F4` para otros elementos del UI (botones, fondos, badges, etc.).
+
 ---
 
 ## Z-Index
@@ -194,7 +222,7 @@ Reglas obligatorias para texto sobre fondo:
 | Active | `border-slate-800 text-slate-800 bg-slate-100` |
 | Disabled | `border-slate-200 text-slate-300 cursor-not-allowed` |
 
-### Input / Select / Textarea
+### Input / Textarea
 
 | Estado | Clases |
 |--------|--------|
@@ -202,6 +230,17 @@ Reglas obligatorias para texto sobre fondo:
 | Focus | `border-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300` |
 | Error | `border-red-400 focus-visible:ring-red-200` |
 | Disabled | `bg-gray-100 text-slate-400 cursor-not-allowed` |
+
+### Select
+
+| Estado | Clases |
+|--------|--------|
+| Default | `border border-slate-200 bg-white text-slate-700` |
+| Focus | `border-slate-400 focus-visible:outline-none` |
+| Error | `border-red-400` |
+| Disabled | `bg-gray-100 text-slate-400 cursor-not-allowed` |
+
+> **Regla de oro:** `ring` y `focus-visible:ring-*` son exclusivos de `Input` y `Textarea`. Los `Select` solo usan cambio de borde en focus — nunca ring.
 
 ---
 
@@ -225,10 +264,11 @@ Reglas obligatorias para texto sobre fondo:
 
 ### Focus (accesibilidad discreta)
 
-Aplicar en todos los elementos interactivos:
+**Exclusivo de `Input` y `Textarea`:**
 ```
 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300
 ```
+`ring` está **prohibido** en cualquier otro elemento (botones, selects, checkboxes, tabs, etc.).
 Usar `focus-visible` — nunca `focus` solo — para que no aparezca al hacer clic con mouse.
 
 ---
