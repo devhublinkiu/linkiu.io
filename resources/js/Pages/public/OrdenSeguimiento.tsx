@@ -65,17 +65,29 @@ function OrdenSeguimiento() {
 
     useEffect(() => {
         const client = getAblyClient()
-        const canal = client.channels.get(`orders.${ordenInicial.codigo}`)
+        const canal  = client.channels.get(`orders.${ordenInicial.codigo}`)
 
-        canal.subscribe('orden.actualizada', (msg) => {
+        function manejarEvento(msg: { data: unknown }) {
             const data = msg.data as { estado: EstadoOrden; numero_guia?: string | null; transportadora?: string | null }
             setEstado(data.estado)
             if (data.numero_guia !== undefined)    setNumeroGuia(data.numero_guia ?? null)
             if (data.transportadora !== undefined) setTransportadora(data.transportadora ?? null)
             toast.info(LABEL_ESTADO[data.estado] ?? 'Estado actualizado')
-        })
+        }
 
-        return () => { canal.unsubscribe('orden.actualizada') }
+        canal.subscribe('orden.actualizada', manejarEvento)
+
+        // Re-suscribir tras reconexión (wifi caído, suspend laptop). Sin esto
+        // el cliente perdería actualizaciones en silencio cuando vuelva online.
+        function onReconectado() {
+            canal.subscribe('orden.actualizada', manejarEvento)
+        }
+        client.connection.on('connected', onReconectado)
+
+        return () => {
+            canal.unsubscribe('orden.actualizada', manejarEvento)
+            client.connection.off('connected', onReconectado)
+        }
     }, [ordenInicial.codigo])
 
     const cancelado = estado === 'cancelado'
@@ -102,7 +114,7 @@ function OrdenSeguimiento() {
                         {cancelado ? (
                             <div className="text-center py-4">
                                 <p className="text-base font-bold text-red-500 mb-1">Pedido cancelado</p>
-                                <p className="text-sm text-slate-400">Si tienes preguntas, contáctanos por WhatsApp.</p>
+                                <p className="text-sm text-slate-500">Si tienes preguntas, contáctanos por WhatsApp.</p>
                             </div>
                         ) : (
                             <div className="flex items-start justify-between gap-2">
@@ -128,8 +140,8 @@ function OrdenSeguimiento() {
                                                 )}
                                             </div>
                                             {/* Texto */}
-                                            <p className={`text-[11px] font-semibold text-center leading-tight ${
-                                                completado || actual ? 'text-slate-900' : 'text-slate-400'
+                                            <p className={`text-xs font-semibold text-center leading-tight ${
+                                                completado || actual ? 'text-slate-900' : 'text-slate-500'
                                             }`}>
                                                 {paso.label}
                                             </p>
@@ -176,11 +188,11 @@ function OrdenSeguimiento() {
                                     )}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-slate-900">{item.nombre}</p>
-                                        {item.label && <p className="text-xs text-slate-400">{item.label}</p>}
+                                        {item.label && <p className="text-xs text-slate-500">{item.label}</p>}
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="text-sm font-bold text-slate-900">{formatPrecio(item.precio * item.cantidad)}</p>
-                                        <p className="text-xs text-slate-400">x{item.cantidad}</p>
+                                        <p className="text-xs text-slate-500">x{item.cantidad}</p>
                                     </div>
                                 </div>
                             ))}
@@ -209,7 +221,7 @@ function OrdenSeguimiento() {
                     </div>
 
                     <div className="text-center">
-                        <Link href="/" className="text-sm text-slate-400 hover:text-slate-600 transition-colors duration-200">
+                        <Link href="/" className="text-sm text-slate-500 hover:text-slate-700 transition-colors duration-200">
                             ← Volver al inicio
                         </Link>
                     </div>

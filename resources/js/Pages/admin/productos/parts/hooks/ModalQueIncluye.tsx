@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -17,7 +17,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX = 8
+const MAX = HOOK_LIMITS.QUE_INCLUYE_ITEMS
 
 export default function ModalQueIncluye({ open, onClose, productoId, config }: Props) {
     const [titulo,    setTitulo]    = useState<string>((config?.titulo as string) ?? '')
@@ -46,16 +46,14 @@ export default function ModalQueIncluye({ open, onClose, productoId, config }: P
     function guardar() {
         const validos = items.filter(it => it.texto.trim())
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'que_incluye' }),
-            { config: { titulo: titulo.trim() || null, items: validos } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'que_incluye',
+            config:  { titulo: titulo.trim() || null, items: validos },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -70,7 +68,7 @@ export default function ModalQueIncluye({ open, onClose, productoId, config }: P
 
                     {/* Título personalizable */}
                     <div className="space-y-1.5">
-                        <Label htmlFor="titulo-kit">Título <span className="font-normal text-slate-400">(opcional)</span></Label>
+                        <Label htmlFor="titulo-kit">Título <span className="font-normal text-slate-500">(opcional)</span></Label>
                         <Input
                             id="titulo-kit"
                             value={titulo}
@@ -78,7 +76,7 @@ export default function ModalQueIncluye({ open, onClose, productoId, config }: P
                             placeholder="Kit completo incluye"
                             maxLength={60}
                         />
-                        <p className="text-xs text-slate-400">Por defecto: "Kit completo incluye"</p>
+                        <p className="text-xs text-slate-500">Por defecto: "Kit completo incluye"</p>
                     </div>
 
                     <div className="space-y-2">
@@ -88,12 +86,12 @@ export default function ModalQueIncluye({ open, onClose, productoId, config }: P
                                 value={item.icono}
                                 onChange={v => actualizar(i, 'icono', v)}
                             />
-                            <input
+                            <Input
                                 type="text"
                                 placeholder={`Ítem ${i + 1}`}
                                 value={item.texto}
                                 onChange={e => actualizar(i, 'texto', e.target.value)}
-                                className="flex-1 h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                className="flex-1 h-9"
                             />
                             <button
                                 type="button"

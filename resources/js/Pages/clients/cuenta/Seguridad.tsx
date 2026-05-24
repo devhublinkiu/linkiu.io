@@ -51,7 +51,7 @@ function Seguridad() {
         <>
             <Head title="Seguridad" />
 
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden max-w-md">
+            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden max-w-md">
                 <div className="px-5 py-4 border-b border-slate-100">
                     <span className="text-sm font-semibold text-slate-900">Cambiar contraseña</span>
                 </div>
@@ -66,7 +66,7 @@ function Seguridad() {
                                 className="pr-9"
                             />
                             <button type="button" tabIndex={-1} onClick={() => setVerActual(!verActual)}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200">
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors duration-200">
                                 {verActual ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                             </button>
                         </div>
@@ -83,11 +83,11 @@ function Seguridad() {
                                 className="pr-9"
                             />
                             <button type="button" tabIndex={-1} onClick={() => setVerNueva(!verNueva)}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200">
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors duration-200">
                                 {verNueva ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                             </button>
                         </div>
-                        <p className="text-[11px] text-slate-400">Mínimo 8 caracteres.</p>
+                        <p className="text-xs text-slate-500">Mínimo 8 caracteres.</p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -100,7 +100,7 @@ function Seguridad() {
                                 className="pr-9"
                             />
                             <button type="button" tabIndex={-1} onClick={() => setVerConfirmar(!verConfirmar)}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200">
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors duration-200">
                                 {verConfirmar ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                             </button>
                         </div>

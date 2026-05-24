@@ -12,7 +12,7 @@ import {
     AlertDialogHeader, AlertDialogTitle,
 } from '@/Components/ui/AlertDialog'
 import { formatearPrecio } from '@/lib/utils'
-import type { ProductoData, VariableGrupoData, VariableItemData } from '../edit'
+import type { ProductoData, VariableGrupoData, VariableItemData } from '../Edit'
 
 interface Props {
     producto: ProductoData

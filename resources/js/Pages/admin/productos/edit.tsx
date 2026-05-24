@@ -11,10 +11,13 @@ import TabVariables    from './parts/TabVariables'
 import TabLinkiuHooks  from './parts/TabLinkiuHooks'
 import TabLayout       from './parts/TabLayout'
 
+// Orden: información → imágenes → precio. El precio va DESPUÉS de imágenes
+// porque las ofertas por cantidad necesitan asignar una imagen por oferta,
+// así que es natural subirlas primero.
 const TABS = [
     { id: 'informacion', label: 'Información',  icon: Info              },
-    { id: 'precio',      label: 'Precio',        icon: CircleDollarSign  },
     { id: 'imagenes',    label: 'Imágenes',      icon: Images            },
+    { id: 'precio',      label: 'Precio',        icon: CircleDollarSign  },
     { id: 'variables',   label: 'Variables',     icon: Layers            },
     { id: 'linkiuhooks', label: 'LinkiuHooks',   icon: Zap               },
     { id: 'layout',      label: 'Layout',          icon: LayoutTemplate    },

@@ -40,6 +40,13 @@ $info = $etiquetas[$orden->estado] ?? ['titulo' => 'Actualización de tu pedido'
     </div>
     @endif
 
+    @if ($orden->estado === 'cancelado' && $orden->motivo_cancelacion)
+    <div style="background-color:#FEF2F2;border-radius:12px;padding:16px 20px;margin:0 0 28px 0;">
+        <p style="font-size:13px;color:#9F0712;margin:0 0 6px 0;font-weight:600;">Motivo de la cancelación</p>
+        <p style="font-size:14px;color:#45556C;margin:0;line-height:1.5;">{{ $orden->motivo_cancelacion }}</p>
+    </div>
+    @endif
+
     <a href="{{ $urlSeguimiento }}"
        style="background-color:#45556C;color:#FFFFFF;border-radius:8px;padding:12px 28px;font-size:15px;font-weight:600;text-decoration:none;display:inline-block;margin-bottom:24px;">
         Ver estado de mi pedido

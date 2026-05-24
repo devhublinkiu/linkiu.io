@@ -45,7 +45,7 @@ class OrdenEstadoCambiadoMail extends Mailable
             view: 'emails.orden-estado-cambiado',
             with: [
                 'orden'          => $this->orden,
-                'urlSeguimiento' => url("/orden/{$this->orden->codigo}"),
+                'urlSeguimiento' => url("/orden/{$this->orden->acceso_token}"),
             ],
         );
     }

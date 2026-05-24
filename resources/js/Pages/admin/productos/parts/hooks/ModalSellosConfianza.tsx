@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -16,7 +16,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX = 3
+const MAX = HOOK_LIMITS.SELLOS_CONFIANZA
 
 export default function ModalSellosConfianza({ open, onClose, productoId, config }: Props) {
     const [sellos,    setSellos]    = useState<Sello[]>((config?.sellos as Sello[]) ?? [])
@@ -43,16 +43,14 @@ export default function ModalSellosConfianza({ open, onClose, productoId, config
     function guardar() {
         const validos = sellos.filter(s => s.titulo.trim())
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'sellos_confianza' }),
-            { config: { sellos: validos } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'sellos_confianza',
+            config:  { sellos: validos },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (

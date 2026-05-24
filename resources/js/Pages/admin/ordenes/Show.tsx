@@ -1,12 +1,20 @@
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { ArrowLeftIcon, FileTextIcon, EyeIcon, DownloadIcon, XIcon, XCircleIcon } from 'lucide-react'
+import { ArrowLeftIcon, FileTextIcon, EyeIcon, DownloadIcon, XCircleIcon } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
 import { Textarea } from '@/Components/ui/Textarea'
-import StatusBadge from './parts/StatusBadge'
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel,
+    AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+    AlertDialogHeader, AlertDialogTitle,
+} from '@/Components/ui/AlertDialog'
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/Components/ui/Dialog'
+import StatusBadge, { type Estado } from './parts/StatusBadge'
 
 interface OrderItem {
     id: number
@@ -20,7 +28,7 @@ interface OrderItem {
 interface Orden {
     id: number
     codigo: string
-    estado: string
+    estado: Estado
     metodo_pago: string
     subtotal: number
     costo_envio: number
@@ -55,13 +63,25 @@ function formatPrecio(n: number) {
     return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n)
 }
 
+interface SharedProps {
+    orden: Orden
+    flash: { status?: string }
+}
+
 function OrdenShow() {
-    const { orden } = usePage<{ orden: Orden }>().props
+    const { orden, flash } = usePage<SharedProps>().props
     const [notasInternas, setNotasInternas] = useState(orden.notas_internas ?? '')
     const [guardando, setGuardando] = useState(false)
     const [estadoPendiente, setEstadoPendiente] = useState<string | null>(null)
     const [numeroGuia, setNumeroGuia] = useState('')
     const [transportadora, setTransportadora] = useState('')
+
+    useEffect(() => {
+        if (flash?.status) toast.success(flash.status)
+    }, [flash?.status])
+
+    const [confirmarCancelar, setConfirmarCancelar] = useState(false)
+    const [motivoCancelacion, setMotivoCancelacion] = useState('')
 
     function cambiarEstado(nuevoEstado: string) {
         if (nuevoEstado === orden.estado) return
@@ -69,11 +89,27 @@ function OrdenShow() {
             setEstadoPendiente('enviado')
             return
         }
+        if (nuevoEstado === 'cancelado') {
+            setMotivoCancelacion('')
+            setConfirmarCancelar(true)
+            return
+        }
         router.post(route('admin.ordenes.estado', orden.id), { estado: nuevoEstado }, {
             preserveScroll: true,
-            onSuccess: () => toast.success('Estado actualizado'),
-            onError:   () => toast.error('Error al actualizar el estado'),
+            onError: () => toast.error('Error al actualizar el estado'),
         })
+    }
+
+    function confirmarCancelacion() {
+        router.post(
+            route('admin.ordenes.estado', orden.id),
+            { estado: 'cancelado', motivo_cancelacion: motivoCancelacion || null },
+            {
+                preserveScroll: true,
+                onSuccess: () => setConfirmarCancelar(false),
+                onError:   () => { toast.error('Error al cancelar el pedido'); setConfirmarCancelar(false) },
+            },
+        )
     }
 
     function confirmarEnviado() {
@@ -81,10 +117,10 @@ function OrdenShow() {
             route('admin.ordenes.estado', orden.id),
             { estado: 'enviado', numero_guia: numeroGuia, transportadora },
             {
-            preserveScroll: true,
-            onSuccess: () => { toast.success('Orden marcada como enviada'); setEstadoPendiente(null); setNumeroGuia(''); setTransportadora('') },
-            onError:   () => toast.error('Error al actualizar el estado'),
-        }
+                preserveScroll: true,
+                onSuccess: () => { setEstadoPendiente(null); setNumeroGuia(''); setTransportadora('') },
+                onError:   () => toast.error('Error al actualizar el estado'),
+            },
         )
     }
 
@@ -94,11 +130,10 @@ function OrdenShow() {
             route('admin.ordenes.notas-internas', orden.id),
             { notas_internas: notasInternas },
             {
-            preserveScroll: true,
-            onSuccess: () => toast.success('Notas guardadas'),
-            onError:   () => toast.error('Error al guardar las notas'),
-            onFinish:  () => setGuardando(false),
-        }
+                preserveScroll: true,
+                onError:   () => toast.error('Error al guardar las notas'),
+                onFinish:  () => setGuardando(false),
+            },
         )
     }
 
@@ -122,9 +157,9 @@ function OrdenShow() {
                 <div className="flex-1">
                     <div className="flex items-center gap-2">
                         <h1 className="text-lg font-bold text-slate-900 font-mono">{orden.codigo}</h1>
-                        <StatusBadge estado={orden.estado as any} />
+                        <StatusBadge estado={orden.estado} />
                     </div>
-                    <p className="text-xs text-slate-400">{orden.created_at}</p>
+                    <p className="text-xs text-slate-500">{orden.created_at}</p>
                 </div>
             </div>
 
@@ -134,7 +169,7 @@ function OrdenShow() {
                 <div className="flex flex-col gap-6">
 
                     {/* Items */}
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100">
                             <h2 className="text-sm font-bold text-slate-900">Productos</h2>
                         </div>
@@ -148,11 +183,11 @@ function OrdenShow() {
                                     )}
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-slate-900">{item.nombre}</p>
-                                        {item.label && <p className="text-xs text-slate-400">{item.label}</p>}
+                                        {item.label && <p className="text-xs text-slate-500">{item.label}</p>}
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="text-sm font-bold text-slate-900">{formatPrecio(item.precio * item.cantidad)}</p>
-                                        <p className="text-xs text-slate-400">x{item.cantidad} · {formatPrecio(item.precio)}</p>
+                                        <p className="text-xs text-slate-500">x{item.cantidad} · {formatPrecio(item.precio)}</p>
                                     </div>
                                 </div>
                             ))}
@@ -178,10 +213,10 @@ function OrdenShow() {
                     </div>
 
                     {/* Notas internas */}
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100">
                             <h2 className="text-sm font-bold text-slate-900">Notas internas</h2>
-                            <p className="text-xs text-slate-400 mt-0.5">Solo visible para el equipo, no se envía al cliente.</p>
+                            <p className="text-xs text-slate-500 mt-0.5">Solo visible para el equipo, no se envía al cliente.</p>
                         </div>
                         <div className="p-5 flex flex-col gap-3">
                             <Textarea
@@ -209,7 +244,7 @@ function OrdenShow() {
                 <div className="flex flex-col gap-6">
 
                     {/* Cambiar estado */}
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100">
                             <h2 className="text-sm font-bold text-slate-900">Estado del pedido</h2>
                         </div>
@@ -235,7 +270,7 @@ function OrdenShow() {
                                             {LABEL_FLUJO[est]}
                                         </span>
                                         {esActual && (
-                                            <span className="text-[10px] font-medium text-slate-400">Actual</span>
+                                            <span className="text-xs font-medium text-slate-500">Actual</span>
                                         )}
                                     </button>
                                 )
@@ -265,7 +300,7 @@ function OrdenShow() {
                             <div className="px-5 pb-5 flex flex-col gap-3 border-t border-slate-100 pt-4">
                                 <div>
                                     <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                                        Transportadora <span className="text-slate-400 font-normal">(opcional)</span>
+                                        Transportadora <span className="text-slate-500 font-normal">(opcional)</span>
                                     </label>
                                     <Input
                                         value={transportadora}
@@ -275,7 +310,7 @@ function OrdenShow() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-slate-600 mb-1.5">
-                                        Número de guía <span className="text-slate-400 font-normal">(opcional)</span>
+                                        Número de guía <span className="text-slate-500 font-normal">(opcional)</span>
                                     </label>
                                     <Input
                                         value={numeroGuia}
@@ -296,7 +331,7 @@ function OrdenShow() {
                     </div>
 
                     {/* Datos del cliente */}
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100">
                             <h2 className="text-sm font-bold text-slate-900">Cliente</h2>
                         </div>
@@ -308,7 +343,7 @@ function OrdenShow() {
                     </div>
 
                     {/* Dirección */}
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100">
                             <h2 className="text-sm font-bold text-slate-900">Dirección de entrega</h2>
                         </div>
@@ -316,13 +351,13 @@ function OrdenShow() {
                             <p>{orden.direccion}{orden.apartamento ? ` · ${orden.apartamento}` : ''}</p>
                             <p>{orden.ciudad}, {orden.departamento}</p>
                             {orden.notas && (
-                                <p className="text-slate-400 text-xs mt-1 italic">"{orden.notas}"</p>
+                                <p className="text-slate-500 text-xs mt-1 italic">"{orden.notas}"</p>
                             )}
                         </div>
                     </div>
 
                     {/* Método de pago */}
-                    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100">
                             <h2 className="text-sm font-bold text-slate-900">Método de pago</h2>
                         </div>
@@ -353,75 +388,94 @@ function OrdenShow() {
                 </div>
             </div>
 
+            {/* AlertDialog cancelar pedido */}
+            <AlertDialog open={confirmarCancelar} onOpenChange={setConfirmarCancelar}>
+                <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Cancelar el pedido {orden.codigo}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Esta acción es irreversible y notificará al cliente {orden.nombre} {orden.apellido} por correo y WhatsApp.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div className="space-y-1.5 px-1">
+                        <label htmlFor="motivo-cancelacion" className="text-xs font-medium text-slate-600">
+                            Motivo <span className="text-slate-500 font-normal">(opcional, se incluye en la notificación al cliente)</span>
+                        </label>
+                        <Textarea
+                            id="motivo-cancelacion"
+                            value={motivoCancelacion}
+                            onChange={e => setMotivoCancelacion(e.target.value)}
+                            maxLength={500}
+                            rows={3}
+                            placeholder="Ej: producto sin stock, dirección fuera de cobertura…"
+                            className="resize-none"
+                        />
+                    </div>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Volver</AlertDialogCancel>
+                        <AlertDialogAction variant="destructive" onClick={confirmarCancelacion}>
+                            Sí, cancelar pedido
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
             {/* Modal comprobante */}
-            {verComprobante && (
-                <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-4"
-                    onClick={() => setVerComprobante(false)}
-                >
-                    <div
-                        className="relative bg-white rounded-2xl overflow-hidden w-full max-w-md"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
-                            <p className="text-sm font-semibold text-slate-900">Comprobante de pago</p>
-                            <div className="flex items-center gap-3">
+            <Dialog open={verComprobante} onOpenChange={setVerComprobante}>
+                <DialogContent className="max-w-md p-0">
+                    <DialogHeader className="px-4 py-3 pr-12 border-b border-slate-100">
+                        <div className="flex items-center justify-between gap-3">
+                            <DialogTitle className="text-sm font-semibold text-slate-900">
+                                Comprobante de pago
+                            </DialogTitle>
+                            <a
+                                href={orden.comprobante_url!}
+                                download
+                                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors duration-200 shrink-0"
+                            >
+                                <DownloadIcon className="w-3.5 h-3.5" />
+                                Descargar
+                            </a>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-4 flex items-center justify-center">
+                        {extensionImg ? (
+                            <img
+                                src={orden.comprobante_url!}
+                                alt="Comprobante"
+                                className="max-h-[70vh] max-w-full rounded-lg object-contain"
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center gap-3 py-8 text-center">
+                                <FileTextIcon className="w-8 h-8 text-slate-300" />
+                                <p className="text-sm text-slate-600 font-medium">Comprobante PDF</p>
                                 <a
                                     href={orden.comprobante_url!}
-                                    download
-                                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 transition-colors duration-200"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-slate-500 hover:text-slate-700 transition-colors duration-200"
                                 >
-                                    <DownloadIcon className="w-3.5 h-3.5" />
-                                    Descargar
+                                    Abrir en nueva pestaña →
                                 </a>
-                                <button
-                                    onClick={() => setVerComprobante(false)}
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors duration-200"
-                                >
-                                    <XIcon className="w-4 h-4" />
-                                </button>
                             </div>
-                        </div>
-                        <div className="p-4 flex items-center justify-center">
-                            {extensionImg ? (
-                                <img
-                                    src={orden.comprobante_url!}
-                                    alt="Comprobante"
-                                    className="max-h-[70vh] max-w-full rounded-lg object-contain"
-                                />
-                            ) : (
-                                <div className="flex flex-col items-center gap-3 py-8 text-center">
-                                    <FileTextIcon className="w-10 h-10 text-slate-300" />
-                                    <p className="text-sm text-slate-600 font-medium">Comprobante PDF</p>
-                                    <a
-                                        href={orden.comprobante_url!}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-slate-400 hover:text-slate-700 transition-colors duration-200"
-                                    >
-                                        Abrir en nueva pestaña →
-                                    </a>
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
-                </div>
-            )}
+                </DialogContent>
+            </Dialog>
         </>
     )
 }
 
-OrdenShow.layout = (page: ReactNode) => {
-    const { orden } = (page as any).props
-    return (
-        <AdminLayout breadcrumbs={[
-            { label: 'Panel', href: route('admin.dashboard') },
-            { label: 'Órdenes', href: route('admin.ordenes.index') },
-            { label: orden.codigo },
-        ]}>
-            {page}
-        </AdminLayout>
-    )
-}
+OrdenShow.layout = (page: ReactNode) => (
+    <AdminLayout breadcrumbs={[
+        { label: 'Panel', href: route('admin.dashboard') },
+        { label: 'Órdenes', href: route('admin.ordenes.index') },
+        { label: 'Detalle' },
+    ]}>
+        {page}
+    </AdminLayout>
+)
 
 export default OrdenShow

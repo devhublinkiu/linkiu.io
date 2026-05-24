@@ -24,8 +24,15 @@ class ClientLoginController extends Controller
             'password' => 'required',
         ]);
 
+        $email = strtolower(trim((string) $request->email));
+
+        // Bloqueo por OTP fallido (escribe esta key VerifyOTP cuando supera el límite)
+        if (cache()->has("client_blocked_{$email}")) {
+            return redirect()->route('cuenta.blocked');
+        }
+
         if (! auth('client')->attempt([
-            'email'    => $request->email,
+            'email'    => $email,
             'password' => $request->password,
         ], $request->boolean('recordar'))) {
             return back()->withErrors(['email' => 'Correo o contraseña incorrectos.']);

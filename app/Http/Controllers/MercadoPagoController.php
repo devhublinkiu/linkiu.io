@@ -2,23 +2,22 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\OrdenConfirmadaMail;
-use App\Models\Client;
+use App\Actions\Orders\CrearOrden;
+use App\Jobs\NotificarOrdenCreada;
 use App\Models\Order;
+use App\Services\EnvioService;
 use App\Services\MercadoPagoService;
-use App\Services\SendPulseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 
 class MercadoPagoController extends Controller
 {
     public function __construct(
         private MercadoPagoService $mp,
-        private SendPulseService $sendPulse,
+        private CrearOrden $crearOrden,
+        private EnvioService $envioService,
     ) {}
 
     // -------------------------------------------------------------------------
@@ -56,14 +55,75 @@ class MercadoPagoController extends Controller
             'order.items.*.label'                    => 'nullable|string',
             'order.items.*.cantidad'                 => 'required|integer|min:1',
             'order.items.*.precio'                   => 'required|integer|min:0',
+            // producto_id es nullable porque el frontend solo lo envía si el
+            // item viene del catálogo. Items sin producto_id quedan fuera del
+            // snapshot de performance (Score/Temperatura). Si en producción
+            // aparecen muchos items sin producto_id, hay que investigar de
+            // dónde se generan e idealmente forzar required.
             'order.items.*.producto_id'              => 'nullable|integer|exists:productos,id',
         ]);
+
+        if (! $this->mp->tieneCredenciales()) {
+            Log::warning('MP pagar intentado sin credenciales configuradas', ['email' => $data['order']['email']]);
+            return response()->json([
+                'error' => 'La pasarela de pago no está disponible en este momento. Por favor, contacta al soporte de la tienda.',
+            ], 422);
+        }
+
+        // Defensa anti-tampering: recalcular total con EnvioService y validar
+        // que el monto que MP está por cobrar (transaction_amount) coincide con
+        // el cálculo autoritativo del backend. Si difieren, abortamos ANTES de
+        // cobrar — sin esto, un cliente podría manipular costo_envio=0 desde
+        // la consola y pagar menos del precio real.
+        $costoEnvioReal = $this->envioService->calcularCostoEnvio(
+            ciudad:   $data['order']['ciudad'],
+            subtotal: (int) $data['order']['subtotal'],
+        );
+
+        if ($costoEnvioReal === null) {
+            return response()->json([
+                'error' => 'La ciudad seleccionada no tiene cobertura de envío.',
+            ], 422);
+        }
+
+        $totalReal = (int) $data['order']['subtotal'] + $costoEnvioReal + (int) $data['order']['recargo'];
+
+        if ((int) $data['form_data']['transaction_amount'] !== $totalReal) {
+            Log::warning('MP pagar: total cliente difiere del recalculado', [
+                'email'         => $data['order']['email'],
+                'total_cliente' => $data['form_data']['transaction_amount'],
+                'total_real'    => $totalReal,
+            ]);
+            return response()->json([
+                'error' => 'El total del pedido cambió. Recarga la página y vuelve a intentar.',
+            ], 422);
+        }
+
+        // Sobrescribimos los valores del cliente con los autoritativos para
+        // que CrearOrden los persista correctamente (defensa redundante).
+        $data['order']['costo_envio'] = $costoEnvioReal;
+        $data['order']['total']       = $totalReal;
+
+        // Idempotency-Key estable: misma combinación email+total+items dentro
+        // de la misma ventana de 1 minuto produce el mismo key. Si el cliente
+        // re-clickea Pagar (red lenta), MP detecta el duplicado y devuelve el
+        // mismo payment_id en lugar de cobrar 2 veces.
+        $idempotencyKey = hash('sha256', json_encode([
+            'email'  => $data['order']['email'],
+            'total'  => $data['order']['total'],
+            'items'  => array_map(
+                fn ($i) => ($i['producto_id'] ?? 'x') . ':' . $i['cantidad'],
+                $data['order']['items'],
+            ),
+            'minute' => now()->format('Y-m-d-H-i'),
+        ]));
 
         try {
             $resultado = $this->mp->crearPago(
                 formData:        $data['form_data'],
                 descripcion:     'Pedido Linkiu',
                 notificationUrl: route('mp.webhook'),
+                idempotencyKey:  $idempotencyKey,
             );
         } catch (\MercadoPago\Exceptions\MPApiException $e) {
             Log::error('MP pagar API error', [
@@ -84,79 +144,44 @@ class MercadoPagoController extends Controller
             return response()->json(['error' => $mensaje], 422);
         }
 
-        // Crear la orden en la BD
-        $orden = DB::transaction(function () use ($data, $resultado) {
-            $cliente = Client::updateOrCreate(
-                ['email' => $data['order']['email']],
-                [
-                    'nombre'   => $data['order']['nombre'],
-                    'apellido' => $data['order']['apellido'],
-                    'telefono' => $data['order']['telefono'],
-                ],
-            );
+        // Delegamos a CrearOrden: maneja cliente + orden + items + dirección.
+        // Si MP ya aprobó, la orden se crea como 'confirmado' y se notifica
+        // de una; si está pending, queda 'pendiente' y NO notifica al cliente
+        // — el webhook se encargará cuando MP confirme.
+        $aprobado = $status === 'approved';
 
-            $orden = Order::create([
-                'codigo'           => $this->generarCodigo(),
-                'client_id'        => $cliente->id,
-                'estado'           => $resultado['status'] === 'approved' ? 'confirmado' : 'pendiente',
-                'metodo_pago'      => 'mercadopago',
+        $orden = $this->crearOrden->execute(
+            data: [...$data['order'], 'metodo_pago' => 'mercadopago'],
+            extra: [
                 'mp_payment_id'    => (string) $resultado['id'],
                 'mp_status'        => $resultado['status'],
                 'mp_status_detail' => $resultado['status_detail'],
-                'subtotal'         => $data['order']['subtotal'],
-                'costo_envio'      => $data['order']['costo_envio'],
-                'recargo'          => $data['order']['recargo'],
-                'total'            => $data['order']['total'],
-                'nombre'           => $data['order']['nombre'],
-                'apellido'         => $data['order']['apellido'],
-                'email'            => $data['order']['email'],
-                'telefono'         => $data['order']['telefono'],
-                'departamento'     => $data['order']['departamento'],
-                'ciudad'           => $data['order']['ciudad'],
-                'direccion'        => $data['order']['direccion'],
-                'apartamento'      => $data['order']['apartamento'] ?? null,
-                'notas'            => $data['order']['notas'] ?? null,
-            ]);
+                'mp_notificado_at' => $aprobado ? now() : null,
+            ],
+            estadoInicial: $aprobado ? 'confirmado' : 'pendiente',
+            notificar:     $aprobado,
+        );
 
-            foreach ($data['order']['items'] as $item) {
-                $orden->items()->create([
-                    'producto_id'     => $item['producto_id'] ?? null,
-                    'producto_nombre' => $item['nombre'],
-                    'producto_imagen' => $item['imagen'] ?? null,
-                    'label'           => $item['label'] ?? null,
-                    'cantidad'        => $item['cantidad'],
-                    'precio_unitario' => $item['precio'],
+        // Pending: notificar SOLO al admin vía Ably. NO dispatcheamos
+        // NotificarOrdenCreada porque ese job también notifica al cliente
+        // (mail + WhatsApp), y queremos esperar a que MP confirme antes de
+        // decirle al cliente "tu pedido fue recibido". El webhook approved
+        // se encargará de eso.
+        //
+        // Mantenido inline (vs un Job) porque es una sola operación liviana
+        // con manejo de error explícito y sin background processing necesario.
+        if (! $aprobado) {
+            try {
+                $ably = new \Ably\AblyRest(config('broadcasting.connections.ably.key'));
+                $ably->channels->get('admin-orders')->publish('orden.nueva', [
+                    'id'         => $orden->id,
+                    'codigo'     => $orden->codigo,
+                    'nombre'     => $orden->nombre . ' ' . $orden->apellido,
+                    'total'      => $orden->total,
+                    'created_at' => $orden->created_at->format('H:i'),
                 ]);
-            }
-
-            return $orden;
-        });
-
-        // Notificación en tiempo real al admin
-        try {
-            $ably = new \Ably\AblyRest(config('broadcasting.connections.ably.key'));
-            $ably->channels->get('admin-orders')->publish('orden.nueva', [
-                'id'         => $orden->id,
-                'codigo'     => $orden->codigo,
-                'nombre'     => $orden->nombre . ' ' . $orden->apellido,
-                'total'      => $orden->total,
-                'created_at' => $orden->created_at->format('H:i'),
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Ably publish MP NuevoOrden: ' . $e->getMessage());
-        }
-
-        // Enviar email y WhatsApp solo si ya está aprobado
-        if ($status === 'approved') {
-            try {
-                Mail::to($orden->email)->send(new OrdenConfirmadaMail($orden));
             } catch (\Exception $e) {
-                Log::error('OrdenConfirmadaMail MP: ' . $e->getMessage());
-            }
-            try {
-                $this->sendPulse->notificarOrdenCreada($orden);
-            } catch (\Exception $e) {
-                Log::error('SendPulse notificarOrdenCreada MP: ' . $e->getMessage());
+                Log::error('Ably publish MP NuevoOrden (pending): ' . $e->getMessage());
             }
         }
 
@@ -164,6 +189,7 @@ class MercadoPagoController extends Controller
             'status'                => $status,
             'status_detail'         => $resultado['status_detail'],
             'codigo'                => $orden->codigo,
+            'acceso_token'          => $orden->acceso_token,
             'nombre'                => $orden->nombre,
             'email'                 => $orden->email,
             'total'                 => $orden->total,
@@ -182,8 +208,16 @@ class MercadoPagoController extends Controller
         $xRequestId = $request->header('x-request-id', '');
         $dataId     = $request->query('data_id') ?? ($request->input('data.id', ''));
 
-        if ($xSignature && ! $this->mp->verificarWebhook($xSignature, $xRequestId, $dataId)) {
-            Log::warning('MP webhook firma inválida');
+        // Fail-closed: si NO hay firma, NO hay secret, o la firma no valida,
+        // rechazamos. `verificarWebhook` retorna false en cualquiera de esos
+        // casos. Esto evita que un atacante manipule el estado de órdenes
+        // ajenas conociendo solo el mp_payment_id.
+        if (! $this->mp->verificarWebhook($xSignature, $xRequestId, $dataId)) {
+            Log::warning('MP webhook firma inválida o ausente', [
+                'ip'        => $request->ip(),
+                'tiene_sig' => (bool) $xSignature,
+                'data_id'   => $dataId,
+            ]);
             return response()->json(['ok' => false], 401);
         }
 
@@ -207,19 +241,18 @@ class MercadoPagoController extends Controller
         $orden->mp_status        = $pago['status'];
         $orden->mp_status_detail = $pago['status_detail'];
 
-        if ($pago['status'] === 'approved') {
-            $orden->estado = 'confirmado';
-            try {
-                Mail::to($orden->email)->send(new OrdenConfirmadaMail($orden));
-            } catch (\Exception $e) {
-                Log::error('OrdenConfirmadaMail Webhook: ' . $e->getMessage());
-            }
-            try {
-                $this->sendPulse->notificarOrdenCreada($orden);
-            } catch (\Exception $e) {
-                Log::error('SendPulse notificarOrdenCreada Webhook: ' . $e->getMessage());
-            }
-        } elseif (in_array($pago['status'], ['rejected', 'cancelled'])) {
+        // Idempotencia: MP reenvía webhooks múltiples veces. Solo
+        // dispatch NotificarOrdenCreada una vez por orden — la columna
+        // mp_notificado_at deja constancia explícita.
+        if ($pago['status'] === 'approved' && $orden->mp_notificado_at === null) {
+            $orden->estado            = 'confirmado';
+            $orden->mp_notificado_at  = now();
+            $orden->save();
+            NotificarOrdenCreada::dispatch($orden);
+            return response()->json(['ok' => true]);
+        }
+
+        if (in_array($pago['status'], ['rejected', 'cancelled'])) {
             $orden->estado = 'cancelado';
         }
 
@@ -241,15 +274,6 @@ class MercadoPagoController extends Controller
     }
 
     // -------------------------------------------------------------------------
-
-    private function generarCodigo(): string
-    {
-        do {
-            $numero = str_pad((string) random_int(1, 99999), 5, '0', STR_PAD_LEFT);
-            $codigo = "LNK-{$numero}";
-        } while (Order::where('codigo', $codigo)->exists());
-        return $codigo;
-    }
 
     private function mensajeRechazo(?string $detail): string
     {

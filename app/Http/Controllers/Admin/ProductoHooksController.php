@@ -15,9 +15,9 @@ class ProductoHooksController extends Controller
     {
         abort_unless(LinkiuHook::tryFrom($hook) !== null, 404);
 
-        $action->execute($hook, $producto);
+        $activo = $action->execute($hook, $producto);
 
-        return back();
+        return back()->with('status', $activo ? 'Hook activado.' : 'Hook desactivado.');
     }
 
     public function saveConfig(Request $request, Producto $producto, string $hook, SaveProductoHookConfig $action)

@@ -52,7 +52,7 @@ function Perfil() {
         <>
             <Head title="Mi perfil" />
 
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
                     <span className="text-sm font-semibold text-slate-900">Información personal</span>
                     {!editando ? (
@@ -92,7 +92,7 @@ function Perfil() {
                     <div className="space-y-1.5">
                         <Label>Correo electrónico</Label>
                         <p className="text-sm text-slate-500">{inicial.email}</p>
-                        <p className="text-[11px] text-slate-400">El correo no se puede cambiar.</p>
+                        <p className="text-xs text-slate-500">El correo no se puede cambiar.</p>
                     </div>
                     <div className="space-y-1.5">
                         <Label>Teléfono</Label>

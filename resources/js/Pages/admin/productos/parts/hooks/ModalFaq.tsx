@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -17,7 +17,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX = 10
+const MAX = HOOK_LIMITS.FAQ
 
 export default function ModalFaq({ open, onClose, productoId, config }: Props) {
     const [titulo,    setTitulo]    = useState((config?.titulo as string) ?? '')
@@ -50,16 +50,14 @@ export default function ModalFaq({ open, onClose, productoId, config }: Props) {
     function guardar() {
         const validas = faqs.filter(f => f.pregunta.trim() && f.respuesta.trim())
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'preguntas_frecuentes' }),
-            { config: { titulo: titulo.trim() || undefined, faqs: validas } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'preguntas_frecuentes',
+            config:  { titulo: titulo.trim() || undefined, faqs: validas },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -72,7 +70,7 @@ export default function ModalFaq({ open, onClose, productoId, config }: Props) {
 
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
                     <div className="space-y-1.5">
-                        <Label>Título <span className="text-slate-400">(opcional)</span></Label>
+                        <Label>Título <span className="text-slate-500">(opcional)</span></Label>
                         <Input
                             placeholder="Preguntas frecuentes"
                             value={titulo}

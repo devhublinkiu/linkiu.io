@@ -6,7 +6,7 @@ import { Button } from '@/Components/ui/Button'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { ProductoData, HookCatalogItem } from '../edit'
+import type { ProductoData, HookCatalogItem } from '../Edit'
 
 const ICON_MAP: Record<string, React.ElementType> = {
     info:                        PackageOpen,

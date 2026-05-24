@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { router } from '@inertiajs/react'
+import { ComponentType, useEffect, useMemo, useState } from 'react'
+import { router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
 import HookCard           from './hooks/HookCard'
 import ModalQueIncluye    from './hooks/ModalQueIncluye'
@@ -17,7 +17,38 @@ import ModalGarantia          from './hooks/ModalGarantia'
 import ModalFaq               from './hooks/ModalFaq'
 import ModalBadgeProducto     from './hooks/ModalBadgeProducto'
 import ModalUrgenciaStock     from './hooks/ModalUrgenciaStock'
-import type { ProductoData, HookCatalogItem, HookData } from '../edit'
+import type { ProductoData, HookCatalogItem, HookData } from '../Edit'
+
+interface HookModalProps {
+    open:       boolean
+    onClose:    () => void
+    productoId: number
+    config:     Record<string, unknown> | null
+}
+
+/**
+ * Mapping centralizado hook_key → componente modal. Agregar un hook
+ * nuevo configurable solo requiere: (1) crear el archivo en
+ * `parts/hooks/` y (2) registrarlo aquí. El render de los modales se
+ * deriva de este mapa.
+ */
+const MODAL_MAP: Partial<Record<string, ComponentType<HookModalProps>>> = {
+    que_incluye:                ModalQueIncluye,
+    sellos_confianza:           ModalSellosConfianza,
+    gancho_promesa:             ModalGanchoPromesa,
+    slider_imagenes:            ModalSliderImagenes,
+    tabla_comparativa:          ModalTablaComparativa,
+    comparacion_visual:         ModalComparacionVisual,
+    ficha_tecnica:              ModalFichaTecnica,
+    caracteristicas_destacadas: ModalCaracteristicas,
+    como_funciona:              ModalComoFunciona,
+    resenas_clientes:           ModalResenasClientes,
+    galeria_resultados:         ModalGaleriaResultados,
+    garantia:                   ModalGarantia,
+    preguntas_frecuentes:       ModalFaq,
+    badge_producto:             ModalBadgeProducto,
+    urgencia_stock:             ModalUrgenciaStock,
+}
 
 interface Props {
     producto: ProductoData
@@ -41,6 +72,15 @@ export default function TabLinkiuHooks({ producto, catalogo }: Props) {
     const [toggling,    setToggling]    = useState<Set<string>>(new Set())
     const [activeModal, setActiveModal] = useState<string | null>(null)
 
+    // Flash unificado: el mensaje de éxito (Hook configurado, activado, etc.)
+    // viene del backend. Una sola fuente de verdad — evita toast.success
+    // hardcoded en cada modal.
+    const flash = usePage<{ flash?: { status?: string } }>().props.flash
+
+    useEffect(() => {
+        if (flash?.status) toast.success(flash.status)
+    }, [flash?.status])
+
     const hookState = useMemo(() => {
         const map: Record<string, HookData> = {}
         for (const h of producto.hooks) map[h.key] = h
@@ -48,15 +88,13 @@ export default function TabLinkiuHooks({ producto, catalogo }: Props) {
     }, [producto.hooks])
 
     const toggle = (hookKey: string) => {
-        const estaActivo = hookState[hookKey]?.activo ?? false
         setToggling(prev => new Set(prev).add(hookKey))
         router.post(
             route('admin.productos.hooks.toggle', { producto: producto.id, hook: hookKey }),
             {},
             {
                 preserveScroll: true,
-                onSuccess: () => toast.success(estaActivo ? 'Hook desactivado' : 'Hook activado'),
-                onError:   () => toast.error('Error al cambiar el estado'),
+                onError: () => toast.error('Error al cambiar el estado'),
                 onFinish: () => setToggling(prev => {
                     const next = new Set(prev)
                     next.delete(hookKey)
@@ -65,8 +103,6 @@ export default function TabLinkiuHooks({ producto, catalogo }: Props) {
             },
         )
     }
-
-    const activeConfig = activeModal ? (hookState[activeModal]?.config ?? null) : null
 
     return (
         <div className="space-y-8">
@@ -77,7 +113,7 @@ export default function TabLinkiuHooks({ producto, catalogo }: Props) {
                     <div key={sec.vista}>
                         <div className="mb-3">
                             <h3 className="text-sm font-medium text-slate-700">{sec.label}</h3>
-                            <p className="text-xs text-slate-400">{sec.desc}</p>
+                            <p className="text-xs text-slate-500">{sec.desc}</p>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                             {items.map(item => (
@@ -99,97 +135,21 @@ export default function TabLinkiuHooks({ producto, catalogo }: Props) {
                 )
             })}
 
-            {/* ── Modales ─────────────────────────────────────────────────────── */}
-            <ModalQueIncluye
-                open={activeModal === 'que_incluye'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalSellosConfianza
-                open={activeModal === 'sellos_confianza'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalGanchoPromesa
-                open={activeModal === 'gancho_promesa'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalSliderImagenes
-                open={activeModal === 'slider_imagenes'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalTablaComparativa
-                open={activeModal === 'tabla_comparativa'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalComparacionVisual
-                open={activeModal === 'comparacion_visual'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalFichaTecnica
-                open={activeModal === 'ficha_tecnica'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalCaracteristicas
-                open={activeModal === 'caracteristicas_destacadas'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalComoFunciona
-                open={activeModal === 'como_funciona'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalResenasClientes
-                open={activeModal === 'resenas_clientes'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalGaleriaResultados
-                open={activeModal === 'galeria_resultados'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalGarantia
-                open={activeModal === 'garantia'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalFaq
-                open={activeModal === 'preguntas_frecuentes'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalBadgeProducto
-                open={activeModal === 'badge_producto'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
-            <ModalUrgenciaStock
-                open={activeModal === 'urgencia_stock'}
-                onClose={() => setActiveModal(null)}
-                productoId={producto.id}
-                config={activeConfig}
-            />
+            {/* Modales — un mount por hook configurable; visibilidad controlada
+                por `open`. Mantener todos montados permite que Sheet anime el
+                close cuando activeModal cambia a null. */}
+            {(Object.keys(MODAL_MAP) as Array<keyof typeof MODAL_MAP>).map(key => {
+                const Modal = MODAL_MAP[key]!
+                return (
+                    <Modal
+                        key={key}
+                        open={activeModal === key}
+                        onClose={() => setActiveModal(null)}
+                        productoId={producto.id}
+                        config={hookState[key]?.config ?? null}
+                    />
+                )
+            })}
         </div>
     )
 }

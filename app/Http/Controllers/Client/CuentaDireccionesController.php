@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Actions\Cuenta\Direcciones\ActualizarDireccion;
+use App\Actions\Cuenta\Direcciones\CrearDireccion;
+use App\Actions\Cuenta\Direcciones\EliminarDireccion;
+use App\Actions\Cuenta\Direcciones\MarcarPredeterminada;
 use App\Http\Controllers\Controller;
 use App\Models\ClientAddress;
 use App\Models\ZonaEnvio;
@@ -44,9 +48,9 @@ class CuentaDireccionesController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request, CrearDireccion $action)
     {
-        $data = $request->validate([
+        $datos = $request->validate([
             'etiqueta'     => 'nullable|string|max:50',
             'departamento' => 'required|string|max:100',
             'ciudad'       => 'required|string|max:100',
@@ -54,26 +58,16 @@ class CuentaDireccionesController extends Controller
             'apartamento'  => 'nullable|string|max:100',
         ]);
 
-        $client = auth('client')->user();
+        $action->execute(auth('client')->user(), $datos);
 
-        // Rellenar nombre/telefono desde el perfil del cliente
-        $data['nombre']   = $client->nombre . ' ' . $client->apellido;
-        $data['telefono'] = $client->telefono;
-
-        if ($client->addresses()->count() === 0) {
-            $data['predeterminada'] = true;
-        }
-
-        $client->addresses()->create($data);
-
-        return back();
+        return back()->with('status', 'Dirección creada.');
     }
 
-    public function update(Request $request, ClientAddress $address)
+    public function update(Request $request, ClientAddress $address, ActualizarDireccion $action)
     {
         $this->authorizeAddress($address);
 
-        $data = $request->validate([
+        $datos = $request->validate([
             'etiqueta'     => 'nullable|string|max:50',
             'departamento' => 'required|string|max:100',
             'ciudad'       => 'required|string|max:100',
@@ -81,40 +75,27 @@ class CuentaDireccionesController extends Controller
             'apartamento'  => 'nullable|string|max:100',
         ]);
 
-        $client = auth('client')->user();
-        $data['nombre']   = $client->nombre . ' ' . $client->apellido;
-        $data['telefono'] = $client->telefono;
+        $action->execute(auth('client')->user(), $address, $datos);
 
-        $address->update($data);
-
-        return back();
+        return back()->with('status', 'Dirección actualizada.');
     }
 
-    public function destroy(ClientAddress $address)
+    public function destroy(ClientAddress $address, EliminarDireccion $action)
     {
         $this->authorizeAddress($address);
 
-        $wasPredeterminada = $address->predeterminada;
-        $client            = auth('client')->user();
+        $action->execute(auth('client')->user(), $address);
 
-        $address->delete();
-
-        if ($wasPredeterminada) {
-            $client->addresses()->oldest()->first()?->update(['predeterminada' => true]);
-        }
-
-        return back();
+        return back()->with('status', 'Dirección eliminada.');
     }
 
-    public function setPredeterminada(ClientAddress $address)
+    public function setPredeterminada(ClientAddress $address, MarcarPredeterminada $action)
     {
         $this->authorizeAddress($address);
 
-        $client = auth('client')->user();
-        $client->addresses()->update(['predeterminada' => false]);
-        $address->update(['predeterminada' => true]);
+        $action->execute(auth('client')->user(), $address);
 
-        return back();
+        return back()->with('status', 'Dirección predeterminada actualizada.');
     }
 
     private function authorizeAddress(ClientAddress $address): void

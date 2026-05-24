@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Integracion;
+use App\Models\BuildConfig;
 use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -26,15 +26,15 @@ class SendPulseService
             $orden->nombre,
             $orden->codigo,
             '$' . number_format($orden->total, 0, ',', '.'),
-            url("/orden/{$orden->codigo}"),
-            Integracion::get('tienda_telefono', config('sendpulse.merchant_phone', '')),
+            url("/orden/{$orden->acceso_token}"),
+            BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', '')),
         ]);
     }
 
     public function notificarCambioEstado(Order $orden): bool
     {
-        $url           = url("/orden/{$orden->codigo}");
-        $merchantPhone = Integracion::get('tienda_telefono', config('sendpulse.merchant_phone', ''));
+        $url           = url("/orden/{$orden->acceso_token}");
+        $merchantPhone = BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', ''));
 
         return match ($orden->estado) {
             'confirmado' => $this->enviarPlantilla($orden->telefono, 'order_confirmed', [

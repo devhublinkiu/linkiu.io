@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
+import { postHookConfig } from '@/lib/hooks'
 import { ImageIcon, Trash2 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
+import { Button } from '@/Components/ui/Button'
 
 interface ImagenItem { url: string; ruta: string }
 
@@ -59,25 +60,30 @@ export default function ModalComparacionVisual({ open, onClose, productoId, conf
         const imagen  = slot === 'antes' ? imagenAntes : imagenDespues
         const setImg  = slot === 'antes' ? setImagenAntes : setImagenDespues
         if (!imagen) return
+
+        // UI optimista con rollback en caso de fallo del DELETE.
         setImg(null)
-        await axios.delete(
-            route('admin.productos.hooks.imagenes.destroy', { producto: productoId, hook: 'comparacion_visual' }),
-            { data: { ruta: imagen.ruta } },
-        ).catch(() => { toast.error('Error al eliminar la imagen') })
+        try {
+            await axios.delete(
+                route('admin.productos.hooks.imagenes.destroy', { producto: productoId, hook: 'comparacion_visual' }),
+                { data: { ruta: imagen.ruta } },
+            )
+        } catch {
+            setImg(imagen)
+            toast.error('Error al eliminar la imagen')
+        }
     }
 
     function guardar() {
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'comparacion_visual' }),
-            { config: { titulo, imagen_antes: imagenAntes, imagen_despues: imagenDespues } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'comparacion_visual',
+            config:  { titulo, imagen_antes: imagenAntes, imagen_despues: imagenDespues },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     const puedeGuardar = !!imagenAntes && !!imagenDespues
@@ -100,7 +106,7 @@ export default function ModalComparacionVisual({ open, onClose, productoId, conf
                             value={titulo}
                             onChange={e => setTitulo(e.target.value)}
                             placeholder="Antes y después (opcional)"
-                            className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                            className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
                         />
                     </div>
 
@@ -129,21 +135,10 @@ export default function ModalComparacionVisual({ open, onClose, productoId, conf
                 </div>
 
                 <SheetFooter>
-                    <button
-                        type="button"
-                        onClick={guardar}
-                        disabled={guardando || !puedeGuardar}
-                        className="h-9 rounded-md bg-slate-900 px-5 text-sm font-medium text-white transition-colors duration-200 hover:bg-slate-700 disabled:opacity-50"
-                    >
+                    <Button onClick={guardar} disabled={guardando || !puedeGuardar}>
                         {guardando ? 'Guardando…' : 'Guardar'}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="h-9 rounded-md border border-slate-200 px-4 text-sm font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-100"
-                    >
-                        Cancelar
-                    </button>
+                    </Button>
+                    <Button variant="outline" onClick={onClose}>Cancelar</Button>
                 </SheetFooter>
             </SheetContent>
         </Sheet>
@@ -154,7 +149,7 @@ interface SlotProps {
     label:     string
     imagen:    { url: string } | null
     subiendo:  boolean
-    inputRef:  React.RefObject<HTMLInputElement>
+    inputRef:  React.RefObject<HTMLInputElement | null>
     onEliminar: () => void
 }
 
@@ -180,7 +175,7 @@ function ImagenSlot({ label, imagen, subiendo, inputRef, onEliminar }: SlotProps
                     type="button"
                     disabled={subiendo}
                     onClick={() => !subiendo && inputRef.current?.click()}
-                    className="flex aspect-video w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-400 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex aspect-video w-full flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                     {subiendo
                         ? <div className="size-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />

@@ -35,7 +35,7 @@ class OrdenConfirmadaMail extends Mailable
             view: 'emails.orden-confirmada',
             with: [
                 'orden'        => $this->orden->load('items'),
-                'urlSeguimiento' => url("/orden/{$this->orden->codigo}"),
+                'urlSeguimiento' => url("/orden/{$this->orden->acceso_token}"),
             ],
         );
     }

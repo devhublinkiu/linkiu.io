@@ -2,7 +2,7 @@ import { Settings2 } from 'lucide-react'
 import { Button } from '@/Components/ui/Button'
 import { Switch } from '@/Components/ui/Switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
-import type { HookCatalogItem } from '../../edit'
+import type { HookCatalogItem } from '../../Edit'
 
 interface Props {
     item:        HookCatalogItem
@@ -26,7 +26,7 @@ export default function HookCard({ item, activo, toggling, onToggle, onConfigure
                         {item.tipo === 'simple' ? 'Simple' : 'Configurable'}
                     </span>
                 </div>
-                <p className="mt-1 line-clamp-2 text-xs text-slate-400">{item.descripcion}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-slate-500">{item.descripcion}</p>
             </div>
 
             <div className="flex flex-shrink-0 items-center gap-2">

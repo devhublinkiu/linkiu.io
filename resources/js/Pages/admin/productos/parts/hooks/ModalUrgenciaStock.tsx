@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
+import { postHookConfig } from '@/lib/hooks'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
 import { Label } from '@/Components/ui/Label'
@@ -28,22 +28,18 @@ export default function ModalUrgenciaStock({ open, onClose, productoId, config }
 
     function guardar() {
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'urgencia_stock' }),
-            {
-                config: {
-                    stock_total:    parseInt(stockTotal)    || 50,
-                    stock_restante: parseInt(stockRestante) || 12,
-                    duracion_horas: parseInt(duracionHoras) || 8,
-                },
-            } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
+        postHookConfig({
+            productoId,
+            hookKey: 'urgencia_stock',
+            config:  {
+                stock_total:    parseInt(stockTotal)    || 50,
+                stock_restante: parseInt(stockRestante) || 12,
+                duracion_horas: parseInt(duracionHoras) || 8,
             },
-        )
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -66,7 +62,7 @@ export default function ModalUrgenciaStock({ open, onClose, productoId, config }
                             onChange={e => setStockTotal(e.target.value)}
                             placeholder="50"
                         />
-                        <p className="text-xs text-slate-400">Capacidad máxima de tu lote actual.</p>
+                        <p className="text-xs text-slate-500">Capacidad máxima de tu lote actual.</p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -79,7 +75,7 @@ export default function ModalUrgenciaStock({ open, onClose, productoId, config }
                             onChange={e => setStockRestante(e.target.value)}
                             placeholder="12"
                         />
-                        <p className="text-xs text-slate-400">Unidades visibles al cargar la página.</p>
+                        <p className="text-xs text-slate-500">Unidades visibles al cargar la página.</p>
                     </div>
 
                     <div className="space-y-1.5">
@@ -93,7 +89,7 @@ export default function ModalUrgenciaStock({ open, onClose, productoId, config }
                             onChange={e => setDuracionHoras(e.target.value)}
                             placeholder="8"
                         />
-                        <p className="text-xs text-slate-400">Tiempo hasta que el stock se agota visualmente. Recomendado: 4–12 h.</p>
+                        <p className="text-xs text-slate-500">Tiempo hasta que el stock se agota visualmente. Recomendado: 4–12 h.</p>
                     </div>
 
                 </div>

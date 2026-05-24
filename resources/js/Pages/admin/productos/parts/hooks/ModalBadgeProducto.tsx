@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
+import { Button } from '@/Components/ui/Button'
+import { Input } from '@/Components/ui/Input'
+import { postHookConfig } from '@/lib/hooks'
 
 interface Props {
     open:       boolean
@@ -15,6 +17,12 @@ export default function ModalBadgeProducto({ open, onClose, productoId, config }
     const [color,     setColor]     = useState((config?.color as string) ?? '#10b981')
     const [guardando, setGuardando] = useState(false)
 
+    // Dep array intencionalmente solo `[open]` — sincronizamos el form
+    // con `config` SOLO al abrir el modal. Agregar `config` a las deps
+    // resetearía los campos si el padre re-renderiza (ej. Inertia replace
+    // tras un save de otro hook) mientras el usuario está editando, lo
+    // cual borraría su input no guardado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         if (!open) return
         setTexto((config?.texto as string) ?? '')
@@ -27,16 +35,14 @@ export default function ModalBadgeProducto({ open, onClose, productoId, config }
 
     function guardar() {
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'badge_producto' }),
-            { config: { texto, color } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'badge_producto',
+            config:  { texto, color },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -50,12 +56,12 @@ export default function ModalBadgeProducto({ open, onClose, productoId, config }
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
                     <div>
                         <label className="block text-xs font-medium text-slate-700 mb-1">Texto del badge</label>
-                        <input
+                        <Input
                             type="text"
                             value={texto}
                             onChange={e => setTexto(e.target.value)}
                             placeholder="Ej. Nuevo, Oferta, Más vendido"
-                            className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                            className="h-9"
                         />
                     </div>
                     <div>
@@ -70,11 +76,11 @@ export default function ModalBadgeProducto({ open, onClose, productoId, config }
                                 />
                                 <div className="size-full rounded-md" style={{ backgroundColor: color }} />
                             </div>
-                            <input
+                            <Input
                                 type="text"
                                 value={color}
                                 onChange={e => setColor(e.target.value)}
-                                className="flex-1 h-9 rounded-md border border-slate-200 bg-white px-3 text-sm font-mono text-slate-900 focus:border-slate-400 focus:outline-none"
+                                className="flex-1 h-9 font-mono"
                             />
                         </div>
                     </div>
@@ -92,18 +98,10 @@ export default function ModalBadgeProducto({ open, onClose, productoId, config }
                 </div>
 
                 <SheetFooter>
-                    <button
-                        type="button"
-                        onClick={guardar}
-                        disabled={guardando || !texto.trim()}
-                        className="h-9 rounded-md bg-slate-900 px-5 text-sm font-medium text-white transition-colors duration-200 hover:bg-slate-700 disabled:opacity-50"
-                    >
+                    <Button onClick={guardar} disabled={guardando || !texto.trim()}>
                         {guardando ? 'Guardando…' : 'Guardar'}
-                    </button>
-                    <button type="button" onClick={onClose}
-                        className="h-9 rounded-md border border-slate-200 px-4 text-sm font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-100">
-                        Cancelar
-                    </button>
+                    </Button>
+                    <Button variant="outline" onClick={onClose}>Cancelar</Button>
                 </SheetFooter>
             </SheetContent>
         </Sheet>

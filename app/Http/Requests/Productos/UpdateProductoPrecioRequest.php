@@ -17,7 +17,7 @@ class UpdateProductoPrecioRequest extends FormRequest
             'precio_base'                => ['required', 'numeric', 'min:0'],
             'precio_comparacion'         => ['nullable', 'numeric', 'min:0'],
             'aplica_iva'                 => ['boolean'],
-            'iva_porcentaje'             => ['nullable', 'in:0,5,10.5,16,19,21'],
+            'iva_porcentaje'             => ['nullable', 'in:0,5,19'],
             'cantidades'                 => ['array'],
             'cantidades.*.cantidad'      => ['required', 'integer', 'min:1'],
             'cantidades.*.precio_bundle' => ['required', 'numeric', 'min:0'],

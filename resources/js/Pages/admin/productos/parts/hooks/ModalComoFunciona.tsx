@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 
@@ -14,7 +14,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX = 4
+const MAX = HOOK_LIMITS.COMO_FUNCIONA_PASOS
 
 export default function ModalComoFunciona({ open, onClose, productoId, config }: Props) {
     const [titulo,      setTitulo]      = useState((config?.titulo      as string) ?? 'Cómo funciona')
@@ -49,16 +49,14 @@ export default function ModalComoFunciona({ open, onClose, productoId, config }:
     function guardar() {
         const validos = pasos.filter(p => p.titulo.trim())
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'como_funciona' }),
-            { config: { titulo, descripcion, pasos: validos } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'como_funciona',
+            config:  { titulo, descripcion, pasos: validos },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -81,13 +79,13 @@ export default function ModalComoFunciona({ open, onClose, productoId, config }:
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Descripción <span className="text-slate-400">(opcional)</span></label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Descripción <span className="text-slate-500">(opcional)</span></label>
                             <input
                                 type="text"
                                 value={descripcion}
                                 onChange={e => setDescripcion(e.target.value)}
                                 placeholder="Opcional"
-                                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
                             />
                         </div>
                     </div>
@@ -106,14 +104,14 @@ export default function ModalComoFunciona({ open, onClose, productoId, config }:
                                     placeholder="Título del paso"
                                     value={paso.titulo}
                                     onChange={e => actualizar(i, 'titulo', e.target.value)}
-                                    className="w-full h-8 rounded border border-slate-200 bg-white px-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                    className="w-full h-8 rounded border border-slate-200 bg-white px-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
                                 />
                                 <textarea
                                     rows={2}
                                     placeholder="Descripción…"
                                     value={paso.descripcion}
                                     onChange={e => actualizar(i, 'descripcion', e.target.value)}
-                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none resize-none"
+                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none resize-none"
                                 />
                             </div>
                         ))}

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { ImageIcon, Trash2 } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
+import { Button } from '@/Components/ui/Button'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 
 interface ImagenItem { url: string; ruta: string }
 
@@ -14,7 +15,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX = 8
+const MAX = HOOK_LIMITS.SLIDER_IMAGENES
 
 export default function ModalSliderImagenes({ open, onClose, productoId, config }: Props) {
     const [imagenes,  setImagenes]  = useState<ImagenItem[]>((config?.imagenes as ImagenItem[]) ?? [])
@@ -31,6 +32,11 @@ export default function ModalSliderImagenes({ open, onClose, productoId, config 
         if (!v) onClose()
     }
 
+    // Usamos axios (no router.post) para uploads: Inertia router con
+    // FormData requiere `forceFormData: true` y aun así no expone el
+    // response payload típico — necesitamos `res.data` con la URL+ruta
+    // que devuelve el backend para añadirla al state inmediatamente.
+    // Mismo patrón en ModalGaleriaResultados y ModalComparacionVisual.
     async function subirArchivo(file: File) {
         if (imagenes.length >= MAX) return
         setSubiendo(true)
@@ -50,11 +56,20 @@ export default function ModalSliderImagenes({ open, onClose, productoId, config 
     }
 
     async function eliminar(item: ImagenItem) {
+        // UI optimista: quitamos del array antes de esperar el DELETE.
+        // Si el DELETE falla, restauramos el state para no dejar la UI
+        // mostrando algo que en realidad sigue en S3.
+        const snapshot = imagenes
         setImagenes(prev => prev.filter(i => i.ruta !== item.ruta))
-        await axios.delete(
-            route('admin.productos.hooks.imagenes.destroy', { producto: productoId, hook: 'slider_imagenes' }),
-            { data: { ruta: item.ruta } },
-        ).catch(() => { toast.error('Error al eliminar la imagen') })
+        try {
+            await axios.delete(
+                route('admin.productos.hooks.imagenes.destroy', { producto: productoId, hook: 'slider_imagenes' }),
+                { data: { ruta: item.ruta } },
+            )
+        } catch {
+            setImagenes(snapshot)
+            toast.error('Error al eliminar la imagen')
+        }
     }
 
     function onChangeInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -65,16 +80,14 @@ export default function ModalSliderImagenes({ open, onClose, productoId, config 
 
     function guardar() {
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'slider_imagenes' }),
-            { config: { imagenes } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'slider_imagenes',
+            config:  { imagenes },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -113,7 +126,7 @@ export default function ModalSliderImagenes({ open, onClose, productoId, config 
                             type="button"
                             disabled={subiendo}
                             onClick={() => !subiendo && inputRef.current?.click()}
-                            className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-400 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {subiendo
                                 ? <div className="size-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
@@ -134,21 +147,10 @@ export default function ModalSliderImagenes({ open, onClose, productoId, config 
                 </div>
 
                 <SheetFooter>
-                    <button
-                        type="button"
-                        onClick={guardar}
-                        disabled={guardando || imagenes.length === 0}
-                        className="h-9 rounded-md bg-slate-900 px-5 text-sm font-medium text-white transition-colors duration-200 hover:bg-slate-700 disabled:opacity-50"
-                    >
+                    <Button onClick={guardar} disabled={guardando || imagenes.length === 0}>
                         {guardando ? 'Guardando…' : 'Guardar'}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="h-9 rounded-md border border-slate-200 px-4 text-sm font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-100"
-                    >
-                        Cancelar
-                    </button>
+                    </Button>
+                    <Button variant="outline" onClick={onClose}>Cancelar</Button>
                 </SheetFooter>
             </SheetContent>
         </Sheet>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Plus, Trash2, StarIcon } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -17,7 +17,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX = 15
+const MAX = HOOK_LIMITS.RESENAS
 
 export default function ModalResenasClientes({ open, onClose, productoId, config }: Props) {
     const [titulo,    setTitulo]    = useState((config?.titulo as string) ?? '')
@@ -46,16 +46,14 @@ export default function ModalResenasClientes({ open, onClose, productoId, config
     function guardar() {
         const validas = resenas.filter(r => r.nombre.trim() && r.comentario.trim())
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'resenas_clientes' }),
-            { config: { titulo: titulo.trim() || undefined, resenas: validas } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'resenas_clientes',
+            config:  { titulo: titulo.trim() || undefined, resenas: validas },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -68,7 +66,7 @@ export default function ModalResenasClientes({ open, onClose, productoId, config
 
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
                     <div className="space-y-1.5">
-                        <Label>Título <span className="text-slate-400">(opcional)</span></Label>
+                        <Label>Título <span className="text-slate-500">(opcional)</span></Label>
                         <Input
                             placeholder="Reseñas de clientes"
                             value={titulo}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 import IconPicker from '@/Components/ui/IconPicker'
@@ -15,7 +15,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX = 4
+const MAX = HOOK_LIMITS.CARACTERISTICAS
 
 export default function ModalCaracteristicas({ open, onClose, productoId, config }: Props) {
     const [titulo,      setTitulo]      = useState((config?.titulo      as string) ?? 'Características destacadas')
@@ -46,16 +46,14 @@ export default function ModalCaracteristicas({ open, onClose, productoId, config
     function guardar() {
         const validos = items.filter(it => it.titulo.trim())
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'caracteristicas_destacadas' }),
-            { config: { titulo, descripcion, items: validos } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'caracteristicas_destacadas',
+            config:  { titulo, descripcion, items: validos },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -75,9 +73,9 @@ export default function ModalCaracteristicas({ open, onClose, productoId, config
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Descripción <span className="text-slate-400">(opcional)</span></label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Descripción <span className="text-slate-500">(opcional)</span></label>
                             <input type="text" value={descripcion} onChange={e => setDescripcion(e.target.value)} placeholder="Opcional"
-                                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
                             />
                         </div>
                     </div>
@@ -95,11 +93,11 @@ export default function ModalCaracteristicas({ open, onClose, productoId, config
                                 <div className="flex gap-2 items-center">
                                     <IconPicker value={item.icono} onChange={v => actualizar(i, 'icono', v)} />
                                     <input type="text" placeholder="Título" value={item.titulo} onChange={e => actualizar(i, 'titulo', e.target.value)}
-                                        className="flex-1 h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                        className="flex-1 h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
                                     />
                                 </div>
                                 <textarea rows={2} placeholder="Descripción…" value={item.descripcion} onChange={e => actualizar(i, 'descripcion', e.target.value)}
-                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none resize-none"
+                                    className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none resize-none"
                                 />
                             </div>
                         ))}

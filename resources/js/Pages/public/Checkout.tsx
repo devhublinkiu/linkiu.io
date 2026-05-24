@@ -123,7 +123,7 @@ function Checkout() {
         clearCart()
 
         if (resultado.status === 'approved') {
-            router.visit(route('orden.confirmacion', { codigo: resultado.codigo }))
+            router.visit(route('orden.confirmacion', { order: resultado.acceso_token }))
             return
         }
 
@@ -142,7 +142,7 @@ function Checkout() {
 
         // pending sin redirect → mismo flujo que contraentrega
         if (resultado.status === 'pending') {
-            router.visit(route('orden.confirmacion', { codigo: resultado.codigo }))
+            router.visit(route('orden.confirmacion', { order: resultado.acceso_token }))
         }
     }
 
@@ -264,12 +264,12 @@ function Checkout() {
                         {PASOS.map((paso, i) => (
                             <div key={paso} className="flex items-center">
                                 <div className="flex items-center gap-2">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
-                                        i <= 2 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                        i <= 2 ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'
                                     }`}>
                                         {i + 1}
                                     </div>
-                                    <span className={`text-xs font-medium hidden sm:block ${i <= 2 ? 'text-slate-900' : 'text-slate-400'}`}>
+                                    <span className={`text-xs font-medium hidden sm:block ${i <= 2 ? 'text-slate-900' : 'text-slate-500'}`}>
                                         {paso}
                                     </span>
                                 </div>

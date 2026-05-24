@@ -17,19 +17,16 @@ import {
 } from '@/Components/ui/AlertDialog'
 import { Alert, AlertDescription } from '@/Components/ui/Alert'
 import { formatearPrecio } from '@/lib/utils'
-import type { ProductoData, CantidadData } from '../edit'
+import type { ProductoData, CantidadData } from '../Edit'
 
 interface Props {
     producto?: ProductoData
 }
 
 const IVA_OPCIONES = [
-    { value: '0',    label: '0% — Exento' },
-    { value: '5',    label: '5%' },
-    { value: '10.5', label: '10.5%' },
-    { value: '16',   label: '16%' },
-    { value: '19',   label: '19%' },
-    { value: '21',   label: '21%' },
+    { value: '0',  label: '0% — Exento' },
+    { value: '5',  label: '5% — Canasta básica' },
+    { value: '19', label: '19% — Tarifa general' },
 ]
 
 const BADGE_SUGERENCIAS = ['Más popular', 'Mejor precio', 'Más vendido', 'Oferta especial']
@@ -100,13 +97,16 @@ export default function TabPrecio({ producto }: Props) {
     }
 
     const calcularPreviewFila = (fila: FilaCantidad) => {
-        const base    = parseFloat(data.precio_base) || 0
+        // El descuento se calcula contra el precio final (base + IVA) — que es
+        // lo que el cliente realmente paga. Si la oferta de bundle cuesta menos
+        // que cant × precio_final, ese es el ahorro real percibido.
+        const referencia = precioFinal
         const bundle  = parseFloat(String(fila.precio_bundle)) || 0
         const cant    = fila.cantidad || 1
-        if (!bundle || !base || !cant) return null
+        if (!bundle || !referencia || !cant) return null
 
         const porUd  = bundle / cant
-        const ahorro = base > 0 ? ((1 - bundle / (base * cant)) * 100) : 0
+        const ahorro = referencia > 0 ? ((1 - bundle / (referencia * cant)) * 100) : 0
         return { porUd, ahorro }
     }
 

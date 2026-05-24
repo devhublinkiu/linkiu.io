@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -18,7 +18,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX_STATS = 3
+const MAX_STATS = HOOK_LIMITS.GANCHO_STATS
 
 export default function ModalGanchoPromesa({ open, onClose, productoId, config }: Props) {
     const [dolor,       setDolor]       = useState((config?.dolor       as string) ?? '')
@@ -50,16 +50,14 @@ export default function ModalGanchoPromesa({ open, onClose, productoId, config }
 
     function guardar() {
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'gancho_promesa' }),
-            { config: { dolor, promesa, descripcion, stats: stats.filter(s => s.valor.trim()) } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'gancho_promesa',
+            config:  { dolor, promesa, descripcion, stats: stats.filter(s => s.valor.trim()) },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -72,7 +70,7 @@ export default function ModalGanchoPromesa({ open, onClose, productoId, config }
 
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
                     <div className="space-y-1.5">
-                        <Label>Frase de dolor <span className="text-slate-400">(opcional)</span></Label>
+                        <Label>Frase de dolor <span className="text-slate-500">(opcional)</span></Label>
                         <Textarea rows={2} value={dolor} onChange={e => setDolor(e.target.value)}
                             placeholder="¿Cansado de gastar $80.000 en el salón cada mes?"
                         />
@@ -84,14 +82,14 @@ export default function ModalGanchoPromesa({ open, onClose, productoId, config }
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label>Descripción <span className="text-slate-400">(opcional)</span></Label>
+                        <Label>Descripción <span className="text-slate-500">(opcional)</span></Label>
                         <Textarea rows={2} value={descripcion} onChange={e => setDescripcion(e.target.value)}
                             placeholder="Un párrafo corto que refuerza la promesa."
                         />
                     </div>
 
                     <div className="border-t border-slate-100 pt-4">
-                        <p className="text-xs font-medium text-slate-700 mb-3">Stats <span className="text-slate-400">(máx. {MAX_STATS})</span></p>
+                        <p className="text-xs font-medium text-slate-700 mb-3">Stats <span className="text-slate-500">(máx. {MAX_STATS})</span></p>
                         <div className="space-y-3">
                             {stats.map((s, i) => (
                                 <div key={i} className="rounded-lg border border-slate-200 p-3 space-y-2">

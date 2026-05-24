@@ -2,13 +2,20 @@ import { type ReactNode, useEffect } from 'react'
 import { Head, Link, usePage } from '@inertiajs/react'
 import { CheckCircle2Icon, PackageIcon } from 'lucide-react'
 import WebLayout from '@/Layouts/WebLayout'
-import { trackFb } from '@/lib/usePixel'
+import { trackFb, trackGoogleAdsConversion } from '@/lib/usePixel'
 
 interface Props {
-    codigo: string
-    nombre: string
-    email: string
-    total: number
+    codigo:        string
+    acceso_token:  string
+    nombre:        string
+    email:         string
+    total:         number
+}
+
+interface SharedPixelProps {
+    google_ads_id:             string | null
+    google_ads_purchase_label: string | null
+    [key: string]: unknown
 }
 
 function formatPrecio(n: number) {
@@ -16,7 +23,8 @@ function formatPrecio(n: number) {
 }
 
 function OrdenConfirmacion() {
-    const { codigo, nombre, email, total } = usePage<Props>().props
+    const { codigo, acceso_token, nombre, email, total } = usePage<Props>().props
+    const { google_ads_id, google_ads_purchase_label } = usePage<SharedPixelProps>().props
 
     useEffect(() => {
         trackFb('Purchase', {
@@ -24,6 +32,14 @@ function OrdenConfirmacion() {
             currency: 'COP',
             order_id: codigo,
         })
+
+        if (google_ads_id && google_ads_purchase_label) {
+            trackGoogleAdsConversion(`${google_ads_id}/${google_ads_purchase_label}`, {
+                value:          total,
+                currency:       'COP',
+                transaction_id: codigo,
+            })
+        }
     }, [])
 
     return (
@@ -63,7 +79,7 @@ function OrdenConfirmacion() {
 
                         <div className="flex flex-col gap-3">
                             <Link
-                                href={route('orden.seguimiento', codigo)}
+                                href={route('orden.seguimiento', { order: acceso_token })}
                                 className="w-full bg-slate-900 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-colors duration-200 text-sm flex items-center justify-center gap-2"
                             >
                                 <PackageIcon className="w-4 h-4" />

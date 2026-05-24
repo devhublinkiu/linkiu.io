@@ -25,6 +25,7 @@ export interface MpResultado {
     status: 'approved' | 'pending' | 'pending_challenge' | 'rejected'
     status_detail: string
     codigo?: string
+    acceso_token?: string
     nombre?: string
     email?: string
     total?: number

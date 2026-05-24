@@ -8,7 +8,7 @@ import {
     AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
     AlertDialogHeader, AlertDialogTitle,
 } from '@/Components/ui/AlertDialog'
-import type { ProductoData, ImagenData } from '../edit'
+import type { ProductoData, ImagenData } from '../Edit'
 
 interface Props {
     producto?: ProductoData

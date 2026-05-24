@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Actions\Cuenta\ActualizarPerfilCliente;
+use App\Actions\Cuenta\CambiarPassword;
 use App\Http\Controllers\Controller;
+use App\Rules\TelefonoMovilCO;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class CuentaController extends Controller
@@ -14,16 +16,17 @@ class CuentaController extends Controller
         $client = auth('client')->user();
 
         $ordenes = $client->orders()
-            ->select('id', 'codigo', 'estado', 'total', 'metodo_pago', 'created_at')
+            ->select('id', 'codigo', 'acceso_token', 'estado', 'total', 'metodo_pago', 'created_at')
             ->latest()
-            ->get()
-            ->map(fn ($o) => [
-                'id'          => $o->id,
-                'codigo'      => $o->codigo,
-                'estado'      => $o->estado,
-                'total'       => $o->total,
-                'metodo_pago' => $o->metodo_pago,
-                'created_at'  => $o->created_at->format('d/m/Y H:i'),
+            ->paginate(10)
+            ->through(fn ($o) => [
+                'id'           => $o->id,
+                'codigo'       => $o->codigo,
+                'acceso_token' => $o->acceso_token,
+                'estado'       => $o->estado,
+                'total'        => $o->total,
+                'metodo_pago'  => $o->metodo_pago,
+                'created_at'   => $o->created_at->format('d/m/Y H:i'),
             ]);
 
         return Inertia::render('clients/cuenta/Pedidos', [
@@ -45,17 +48,17 @@ class CuentaController extends Controller
         ]);
     }
 
-    public function updatePerfil(Request $request)
+    public function updatePerfil(Request $request, ActualizarPerfilCliente $action)
     {
-        $request->validate([
+        $datos = $request->validate([
             'nombre'   => 'required|string|max:100',
             'apellido' => 'required|string|max:100',
-            'telefono' => 'required|string|max:30',
+            'telefono' => ['required', 'string', 'max:30', new TelefonoMovilCO],
         ]);
 
-        auth('client')->user()->update($request->only('nombre', 'apellido', 'telefono'));
+        $action->execute(auth('client')->user(), $datos);
 
-        return back();
+        return back()->with('status', 'Perfil actualizado.');
     }
 
     public function seguridad()
@@ -63,21 +66,19 @@ class CuentaController extends Controller
         return Inertia::render('clients/cuenta/Seguridad');
     }
 
-    public function updatePassword(Request $request)
+    public function updatePassword(Request $request, CambiarPassword $action)
     {
         $request->validate([
             'password_actual' => 'required',
             'password_nueva'  => 'required|string|min:8|confirmed',
         ]);
 
-        $client = auth('client')->user();
+        $ok = $action->execute(auth('client')->user(), $request->password_actual, $request->password_nueva);
 
-        if (! Hash::check($request->password_actual, $client->password)) {
+        if (! $ok) {
             return back()->withErrors(['password_actual' => 'La contraseña actual es incorrecta.']);
         }
 
-        $client->update(['password' => $request->password_nueva]);
-
-        return back();
+        return back()->with('status', 'Contraseña actualizada.');
     }
 }

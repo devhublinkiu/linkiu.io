@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { usePage } from '@inertiajs/react'
 import Sidebar from '@/Components/admin/sidebar'
 import Navbar, { Breadcrumb } from '@/Components/admin/navbar'
 import { Toaster } from '@/Components/ui/Sonner'
@@ -11,6 +12,9 @@ interface Props {
 }
 
 export default function AdminLayout({ children, titulo, breadcrumbs, logoUrl }: Props) {
+    const { build } = usePage<{ build?: { logo_admin?: string | null } }>().props
+    const logoResuelto = logoUrl ?? build?.logo_admin ?? null
+
     const [collapsed, setCollapsed]   = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -23,7 +27,7 @@ export default function AdminLayout({ children, titulo, breadcrumbs, logoUrl }: 
                 <Sidebar
                     collapsed={collapsed}
                     onToggleCollapse={() => setCollapsed(v => !v)}
-                    logoUrl={logoUrl}
+                    logoUrl={logoResuelto}
                 />
             </aside>
 
@@ -38,7 +42,7 @@ export default function AdminLayout({ children, titulo, breadcrumbs, logoUrl }: 
                         <Sidebar
                             collapsed={false}
                             onToggleCollapse={() => setMobileOpen(false)}
-                            logoUrl={logoUrl}
+                            logoUrl={logoResuelto}
                         />
                     </aside>
                 </div>

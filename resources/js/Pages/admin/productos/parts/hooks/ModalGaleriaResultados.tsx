@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { ImageIcon, Trash2 } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -17,7 +17,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX = 10
+const MAX = HOOK_LIMITS.GALERIA_IMAGENES
 
 export default function ModalGaleriaResultados({ open, onClose, productoId, config }: Props) {
     const [titulo,    setTitulo]    = useState((config?.titulo as string) ?? '')
@@ -55,11 +55,18 @@ export default function ModalGaleriaResultados({ open, onClose, productoId, conf
     }
 
     async function eliminar(item: ImagenItem) {
+        // UI optimista con rollback en caso de fallo del DELETE.
+        const snapshot = imagenes
         setImagenes(prev => prev.filter(i => i.ruta !== item.ruta))
-        await axios.delete(
-            route('admin.productos.hooks.imagenes.destroy', { producto: productoId, hook: 'galeria_resultados' }),
-            { data: { ruta: item.ruta } },
-        ).catch(() => toast.error('Error al eliminar la imagen'))
+        try {
+            await axios.delete(
+                route('admin.productos.hooks.imagenes.destroy', { producto: productoId, hook: 'galeria_resultados' }),
+                { data: { ruta: item.ruta } },
+            )
+        } catch {
+            setImagenes(snapshot)
+            toast.error('Error al eliminar la imagen')
+        }
     }
 
     function onChangeInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -70,16 +77,14 @@ export default function ModalGaleriaResultados({ open, onClose, productoId, conf
 
     function guardar() {
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'galeria_resultados' }),
-            { config: { titulo: titulo.trim() || undefined, imagenes } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'galeria_resultados',
+            config:  { titulo: titulo.trim() || undefined, imagenes },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -92,7 +97,7 @@ export default function ModalGaleriaResultados({ open, onClose, productoId, conf
 
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
                     <div className="space-y-1.5">
-                        <Label>Título <span className="text-slate-400">(opcional)</span></Label>
+                        <Label>Título <span className="text-slate-500">(opcional)</span></Label>
                         <Input
                             placeholder="Resultados reales"
                             value={titulo}
@@ -124,7 +129,7 @@ export default function ModalGaleriaResultados({ open, onClose, productoId, conf
                             type="button"
                             disabled={subiendo}
                             onClick={() => !subiendo && inputRef.current?.click()}
-                            className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-400 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="flex h-24 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-slate-200 bg-slate-50/50 text-slate-500 transition-colors duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {subiendo
                                 ? <div className="size-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />

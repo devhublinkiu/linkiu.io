@@ -2,21 +2,24 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Clientes\UpdateCliente;
 use App\Http\Controllers\Controller;
-use App\Mail\AdminEmailClienteMail;
+use App\Jobs\EnviarEmailAdminAClienteJob;
 use App\Models\Client;
 use App\Models\Order;
+use App\Support\CsvStreamExport;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\ClientesExport;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ClientsController extends Controller
 {
     public function index(Request $request)
     {
+        abort_if(! auth()->user()->can('clientes.ver'), 403);
+
         $sortBy  = in_array($request->sortBy, ['orders_count', 'orders_sum_total', 'created_at']) ? $request->sortBy : 'created_at';
         $sortDir = $request->sortDir === 'asc' ? 'asc' : 'desc';
 
@@ -56,11 +59,6 @@ class ClientsController extends Controller
 
         $clientes = $query->paginate(25)->withQueryString();
 
-        $clientes->getCollection()->transform(function ($c) {
-            $c->tiene_cuenta = ! is_null($c->getRawOriginal('password'));
-            return $c;
-        });
-
         $totalConCuenta  = Client::whereNotNull('password')->count();
         $totalRecaudado  = Order::sum('total');
 
@@ -78,23 +76,39 @@ class ClientsController extends Controller
 
     public function show(Client $client)
     {
-        $client->loadCount('orders')->loadSum('orders', 'total');
+        abort_if(! auth()->user()->can('clientes.ver'), 403);
+
+        // Agregados pesados (count, sum, JOIN producto_top) cacheados 15min.
+        // OrderObserver invalida la key en cualquier saved/deleted del
+        // cliente, así que el cache nunca queda mostrando datos viejos
+        // tras un cambio real.
+        $stats = Cache::remember(Client::cacheKeyStats($client->id), 900, function () use ($client) {
+            $productoTop = $client->orders()
+                ->join('order_items', 'orders.id', '=', 'order_items.order_id')
+                ->select(
+                    'order_items.producto_nombre',
+                    'order_items.producto_imagen',
+                    DB::raw('SUM(order_items.cantidad) as total_cantidad')
+                )
+                ->groupBy('order_items.producto_nombre', 'order_items.producto_imagen')
+                ->orderByDesc('total_cantidad')
+                ->first();
+
+            return [
+                'total_ordenes' => $client->orders()->count(),
+                'total_gastado' => (int) $client->orders()->sum('total'),
+                'producto_top'  => $productoTop ? [
+                    'nombre'   => $productoTop->producto_nombre,
+                    'imagen'   => $productoTop->producto_imagen,
+                    'cantidad' => (int) $productoTop->total_cantidad,
+                ] : null,
+            ];
+        });
 
         $ordenes = $client->orders()
             ->select('id', 'codigo', 'estado', 'total', 'metodo_pago', 'created_at')
             ->latest()
             ->get();
-
-        $productoTop = $client->orders()
-            ->join('order_items', 'orders.id', '=', 'order_items.order_id')
-            ->select(
-                'order_items.producto_nombre',
-                'order_items.producto_imagen',
-                DB::raw('SUM(order_items.cantidad) as total_cantidad')
-            )
-            ->groupBy('order_items.producto_nombre', 'order_items.producto_imagen')
-            ->orderByDesc('total_cantidad')
-            ->first();
 
         return Inertia::render('admin/clientes/Show', [
             'cliente' => [
@@ -103,15 +117,11 @@ class ClientsController extends Controller
                 'apellido'      => $client->apellido,
                 'email'         => $client->email,
                 'telefono'      => $client->telefono,
-                'tiene_cuenta'  => ! is_null($client->password),
+                'tiene_cuenta'  => $client->tiene_cuenta,
                 'created_at'    => $client->created_at->format('d/m/Y'),
-                'total_ordenes' => $client->orders_count,
-                'total_gastado' => $client->orders_sum_total ?? 0,
-                'producto_top'  => $productoTop ? [
-                    'nombre'   => $productoTop->producto_nombre,
-                    'imagen'   => $productoTop->producto_imagen,
-                    'cantidad' => (int) $productoTop->total_cantidad,
-                ] : null,
+                'total_ordenes' => $stats['total_ordenes'],
+                'total_gastado' => $stats['total_gastado'],
+                'producto_top'  => $stats['producto_top'],
             ],
             'ordenes' => $ordenes->map(fn ($o) => [
                 'id'          => $o->id,
@@ -124,35 +134,70 @@ class ClientsController extends Controller
         ]);
     }
 
-    public function update(Request $request, Client $client)
+    public function update(Request $request, Client $client, UpdateCliente $action)
     {
-        $request->validate([
+        abort_if(! auth()->user()->can('clientes.editar'), 403);
+
+        $datos = $request->validate([
             'nombre'   => 'required|string|max:100',
             'apellido' => 'required|string|max:100',
             'telefono' => 'required|string|max:30',
         ]);
 
-        $client->update($request->only('nombre', 'apellido', 'telefono'));
+        $action->execute($client, $datos);
 
-        return back();
+        return back()->with('status', 'Cliente actualizado.');
     }
 
-    public function export()
+    /**
+     * Exporta los clientes a CSV (UTF-8 con BOM). Stream con chunk(500)
+     * para soportar bases grandes sin agotar memoria.
+     */
+    public function export(): StreamedResponse
     {
-        return Excel::download(new ClientesExport, 'clientes-' . now()->format('Y-m-d') . '.xlsx');
+        abort_if(! auth()->user()->can('clientes.ver'), 403);
+
+        $query = Client::withCount('orders')
+            ->withSum('orders', 'total')
+            ->latest();
+
+        $filename = 'clientes-' . now()->format('Y-m-d-His') . '.csv';
+
+        $headings = [
+            'ID', 'Nombre', 'Apellido', 'Email', 'Teléfono',
+            'Tipo', '# Pedidos', 'Total gastado', 'Registrado',
+        ];
+
+        return CsvStreamExport::stream($filename, $headings, function (callable $write) use ($query) {
+            $query->chunk(500, function ($clientes) use ($write) {
+                foreach ($clientes as $cliente) {
+                    $write([
+                        $cliente->id,
+                        $cliente->nombre,
+                        $cliente->apellido,
+                        $cliente->email,
+                        $cliente->telefono,
+                        $cliente->tiene_cuenta ? 'Con cuenta' : 'Invitado',
+                        $cliente->orders_count,
+                        $cliente->orders_sum_total ?? 0,
+                        $cliente->created_at->format('d/m/Y'),
+                    ]);
+                }
+            });
+        });
     }
 
     public function sendEmail(Request $request, Client $client)
     {
+        abort_if(! auth()->user()->can('clientes.editar'), 403);
+
         $request->validate([
             'asunto'   => 'required|string|max:200',
             'mensaje'  => 'required|string|max:5000',
         ]);
 
-        Mail::to($client->email)->send(
-            new AdminEmailClienteMail($client, $request->asunto, $request->mensaje)
-        );
+        EnviarEmailAdminAClienteJob::dispatch($client, $request->asunto, $request->mensaje);
 
-        return back();
+        return back()->with('status', 'Email encolado para envío.');
     }
 }

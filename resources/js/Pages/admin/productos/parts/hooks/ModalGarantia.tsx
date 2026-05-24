@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
+import { postHookConfig } from '@/lib/hooks'
 import { Button } from '@/Components/ui/Button'
 import { Label } from '@/Components/ui/Label'
 import { Textarea } from '@/Components/ui/Textarea'
@@ -33,16 +33,14 @@ export default function ModalGarantia({ open, onClose, productoId, config }: Pro
 
     function guardar() {
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'garantia' }),
-            { config: { titulo, descripcion, icono } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'garantia',
+            config:  { titulo, descripcion, icono },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (

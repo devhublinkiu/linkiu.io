@@ -1,14 +1,25 @@
 import { type ReactNode } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
-import { ShoppingCart, Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Search, ShoppingCart } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
+import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
-import StatusBadge from './parts/StatusBadge'
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/Components/ui/Table'
+import {
+    Pagination, PaginationContent, PaginationEllipsis, PaginationItem,
+} from '@/Components/ui/Pagination'
+import {
+    Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle,
+} from '@/Components/ui/Empty'
+import { rangoPaginacion } from '@/lib/utils'
+import StatusBadge, { type Estado } from './parts/StatusBadge'
 
 interface OrdenResumen {
     id: number
     codigo: string
-    estado: string
+    estado: Estado
     nombre: string
     apellido: string
     email: string
@@ -19,29 +30,29 @@ interface OrdenResumen {
 }
 
 interface Paginado {
-    data: OrdenResumen[]
+    data:         OrdenResumen[]
     current_page: number
-    last_page: number
-    per_page: number
-    total: number
-    links: { url: string | null; label: string; active: boolean }[]
+    last_page:    number
+    per_page:     number
+    total:        number
+    links:        { url: string | null; label: string; active: boolean }[]
 }
 
 interface Props {
-    ordenes: Paginado
-    filtroEstado: string
-    filtroQ: string
+    ordenes:         Paginado
+    filtroEstado:    string
+    filtroQ:         string
     totalPendientes: number
 }
 
 const ESTADOS = [
-    { value: '',           label: 'Todas' },
-    { value: 'pendiente',  label: 'Pendientes' },
+    { value: '',           label: 'Todas'       },
+    { value: 'pendiente',  label: 'Pendientes'  },
     { value: 'confirmado', label: 'Confirmadas' },
-    { value: 'preparando', label: 'Preparando' },
-    { value: 'enviado',    label: 'Enviadas' },
-    { value: 'entregado',  label: 'Entregadas' },
-    { value: 'cancelado',  label: 'Canceladas' },
+    { value: 'preparando', label: 'Preparando'  },
+    { value: 'enviado',    label: 'Enviadas'    },
+    { value: 'entregado',  label: 'Entregadas'  },
+    { value: 'cancelado',  label: 'Canceladas'  },
 ]
 
 function formatPrecio(n: number) {
@@ -66,6 +77,14 @@ function OrdenesList() {
         router.get(route('admin.ordenes.index'), { estado: filtroEstado, q }, { preserveState: true, replace: true })
     }
 
+    function irAPagina(page: number) {
+        router.get(route('admin.ordenes.index'), { estado: filtroEstado, q: filtroQ, page }, { preserveState: true, replace: true })
+    }
+
+    const paginas = rangoPaginacion(ordenes.current_page, ordenes.last_page)
+    const sinOrdenes    = ordenes.total === 0 && !filtroEstado && !filtroQ
+    const sinResultados = ordenes.data.length === 0 && !sinOrdenes
+
     return (
         <>
             <Head title="Órdenes" />
@@ -78,22 +97,29 @@ function OrdenesList() {
                     </div>
                     <div>
                         <h1 className="text-lg font-bold text-slate-900">Órdenes</h1>
-                        <p className="text-xs text-slate-400">{ordenes.total} en total · {totalPendientes} pendientes</p>
+                        <p className="text-xs text-slate-500">{ordenes.total} en total · {totalPendientes} pendientes</p>
                     </div>
                 </div>
 
-                {/* Búsqueda */}
-                <form onSubmit={buscar} className="flex items-center gap-2">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <Input
-                            name="q"
-                            defaultValue={filtroQ}
-                            placeholder="Código, nombre, email…"
-                            className="pl-9 w-64"
-                        />
-                    </div>
-                </form>
+                <div className="flex items-center gap-2">
+                    <form onSubmit={buscar}>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                            <Input
+                                name="q"
+                                defaultValue={filtroQ}
+                                placeholder="Código, nombre, email…"
+                                className="pl-9 w-64"
+                            />
+                        </div>
+                    </form>
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={route('admin.ordenes.export', { estado: filtroEstado || undefined, q: filtroQ || undefined })}>
+                            <Download className="w-3.5 h-3.5" />
+                            Exportar
+                        </a>
+                    </Button>
+                </div>
             </div>
 
             {/* Tabs de estado */}
@@ -113,69 +139,110 @@ function OrdenesList() {
                 ))}
             </div>
 
-            {/* Tabla */}
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                {ordenes.data.length === 0 ? (
-                    <div className="py-16 text-center">
-                        <ShoppingCart className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-                        <p className="text-sm text-slate-400">No hay órdenes{filtroEstado ? ` con estado "${filtroEstado}"` : ''}.</p>
-                    </div>
-                ) : (
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50">
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Código</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Cliente</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 hidden md:table-cell">Ciudad</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 hidden lg:table-cell">Pago</th>
-                                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500">Total</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Estado</th>
-                                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 hidden sm:table-cell">Fecha</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
+            {/* Tabla o Empty */}
+            {sinOrdenes ? (
+                <Empty className="border border-dashed border-slate-200 bg-white">
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon"><ShoppingCart /></EmptyMedia>
+                        <EmptyTitle>Aún no hay órdenes</EmptyTitle>
+                        <EmptyDescription>
+                            Cuando un cliente complete una compra, aparecerá aquí.
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
+            ) : sinResultados ? (
+                <Empty className="border border-dashed border-slate-200 bg-white">
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon"><Search /></EmptyMedia>
+                        <EmptyTitle>Sin resultados</EmptyTitle>
+                        <EmptyDescription>
+                            No hay órdenes{filtroEstado ? ` con estado "${filtroEstado}"` : ''}{filtroQ ? ` para "${filtroQ}"` : ''}.
+                        </EmptyDescription>
+                    </EmptyHeader>
+                </Empty>
+            ) : (
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Código</TableHead>
+                                <TableHead>Cliente</TableHead>
+                                <TableHead className="hidden md:table-cell">Ciudad</TableHead>
+                                <TableHead className="hidden lg:table-cell">Pago</TableHead>
+                                <TableHead className="text-right">Total</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="hidden sm:table-cell">Fecha</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
                             {ordenes.data.map(orden => (
-                                <tr
+                                <TableRow
                                     key={orden.id}
-                                    className="hover:bg-slate-50 transition-colors duration-200 cursor-pointer"
+                                    className="cursor-pointer"
                                     onClick={() => router.visit(route('admin.ordenes.show', orden.id))}
                                 >
-                                    <td className="px-4 py-3 font-mono text-xs font-bold text-slate-900">{orden.codigo}</td>
-                                    <td className="px-4 py-3">
+                                    <TableCell className="font-mono text-xs font-bold text-slate-900">{orden.codigo}</TableCell>
+                                    <TableCell>
                                         <p className="font-medium text-slate-900">{orden.nombre} {orden.apellido}</p>
-                                        <p className="text-xs text-slate-400">{orden.email}</p>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-600 hidden md:table-cell">{orden.ciudad}</td>
-                                    <td className="px-4 py-3 text-slate-600 capitalize hidden lg:table-cell">{orden.metodo_pago.replace('_', ' ')}</td>
-                                    <td className="px-4 py-3 text-right font-bold text-slate-900">{formatPrecio(orden.total)}</td>
-                                    <td className="px-4 py-3">
-                                        <StatusBadge estado={orden.estado as any} />
-                                    </td>
-                                    <td className="px-4 py-3 text-xs text-slate-400 hidden sm:table-cell">{formatFecha(orden.created_at)}</td>
-                                </tr>
+                                        <p className="text-xs text-slate-500">{orden.email}</p>
+                                    </TableCell>
+                                    <TableCell className="text-slate-600 hidden md:table-cell">{orden.ciudad}</TableCell>
+                                    <TableCell className="text-slate-600 capitalize hidden lg:table-cell">{orden.metodo_pago.replace('_', ' ')}</TableCell>
+                                    <TableCell className="text-right font-bold text-slate-900">{formatPrecio(orden.total)}</TableCell>
+                                    <TableCell>
+                                        <StatusBadge estado={orden.estado} />
+                                    </TableCell>
+                                    <TableCell className="text-xs text-slate-500 hidden sm:table-cell">{formatFecha(orden.created_at)}</TableCell>
+                                </TableRow>
                             ))}
-                        </tbody>
-                    </table>
-                )}
-            </div>
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
 
             {/* Paginación */}
             {ordenes.last_page > 1 && (
-                <div className="flex items-center justify-center gap-1 mt-4">
-                    {ordenes.links.map((link, i) => (
-                        <button
-                            key={i}
-                            disabled={!link.url}
-                            onClick={() => link.url && router.visit(link.url)}
-                            dangerouslySetInnerHTML={{ __html: link.label }}
-                            className={`px-3 py-1.5 text-xs rounded-lg border transition-colors duration-200 ${
-                                link.active
-                                    ? 'bg-slate-900 text-white border-slate-900'
-                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed'
-                            }`}
-                        />
-                    ))}
-                </div>
+                <Pagination className="mt-4">
+                    <PaginationContent>
+                        <PaginationItem>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={ordenes.current_page === 1}
+                                onClick={() => irAPagina(ordenes.current_page - 1)}
+                                aria-label="Página anterior"
+                            >
+                                <ChevronLeft className="size-4" />
+                            </Button>
+                        </PaginationItem>
+                        {paginas.map((p, i) => (
+                            <PaginationItem key={`${p}-${i}`}>
+                                {p === 'ellipsis' ? (
+                                    <PaginationEllipsis />
+                                ) : (
+                                    <Button
+                                        variant={p === ordenes.current_page ? 'outline' : 'ghost'}
+                                        size="icon"
+                                        onClick={() => irAPagina(p)}
+                                    >
+                                        {p}
+                                    </Button>
+                                )}
+                            </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={ordenes.current_page === ordenes.last_page}
+                                onClick={() => irAPagina(ordenes.current_page + 1)}
+                                aria-label="Página siguiente"
+                            >
+                                <ChevronRight className="size-4" />
+                            </Button>
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
             )}
         </>
     )

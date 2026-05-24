@@ -27,11 +27,19 @@ class ProductoHookImagenesController extends Controller
     {
         abort_unless(in_array($hook, self::HOOKS_CON_IMAGENES), 404);
 
-        $ruta = $request->input('ruta', '');
+        $request->validate([
+            'ruta' => ['required', 'string', 'regex:/^productos\/\d+\/hooks\/[a-z_]+\/[a-f0-9\-]+\.webp$/i'],
+        ]);
 
-        if ($ruta && str_starts_with($ruta, "productos/{$producto->id}/hooks/{$hook}/")) {
-            Storage::disk('s3')->delete($ruta);
-        }
+        $ruta = $request->string('ruta');
+
+        // Defense in depth: la ruta debe pertenecer a este producto + hook específico.
+        abort_unless(
+            str_starts_with($ruta, "productos/{$producto->id}/hooks/{$hook}/"),
+            403,
+        );
+
+        Storage::disk('s3')->delete($ruta);
 
         return response()->json(['ok' => true]);
     }

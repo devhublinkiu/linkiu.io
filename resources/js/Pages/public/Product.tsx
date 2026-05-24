@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Head } from '@inertiajs/react'
 import WebLayout from '@/Layouts/WebLayout'
 import { useProductTracker } from '@/lib/useProductTracker'
 import Gallery, { type ImagenProducto } from '@/Components/public/product/gallery'
@@ -19,8 +20,8 @@ import SellosConfianza from '@/Components/public/product/sellos-confianza'
 import UrgenciaStock from '@/Components/public/product/urgencia-stock'
 import StickyBar from '@/Components/public/product/sticky-bar'
 import ResenasVivas from '@/Components/public/product/resenas-vivas'
-import PixelDebug from '@/Components/public/product/pixel-debug'
 import { trackFb } from '@/lib/usePixel'
+import { usePage } from '@inertiajs/react'
 
 export interface HookEntry {
     key:    string
@@ -70,6 +71,9 @@ const ORDEN_DEFAULT = [
 interface Props {
     producto_id:      number | null
     nombre:           string | null
+    slug:             string | null
+    sku:              string | null
+    descripcion:      string | null
     unidad:           string | null
     hooks:            HookEntry[]
     layout_orden:     string[] | null
@@ -80,9 +84,11 @@ interface Props {
     cantidades:       CantidadPublica[]
 }
 
-function Product({ producto_id = null, nombre = null, unidad = null, hooks = [], layout_orden = null, precio_base = null, imagen_principal = null, imagenes = [], grupos = [], cantidades = [] }: Props) {
-    const [precioActivo, setPrecioActivo] = useState(89900)
+function Product({ producto_id = null, nombre = null, slug = null, sku = null, descripcion = null, unidad = null, hooks = [], layout_orden = null, precio_base = null, imagen_principal = null, imagenes = [], grupos = [], cantidades = [] }: Props) {
+    const [precioActivo, setPrecioActivo] = useState<number>(precio_base ?? 0)
     const ctaRef = useRef<HTMLButtonElement>(null)
+    const { build } = usePage<{ build?: { fomo_enabled?: boolean; nombre_tienda?: string } }>().props
+    const nombreTienda = build?.nombre_tienda || 'Mi tienda'
 
     useProductTracker(producto_id)
 
@@ -94,7 +100,16 @@ function Product({ producto_id = null, nombre = null, unidad = null, hooks = [],
             value:        precio_base ?? 0,
             currency:     'COP',
         })
-    }, [])
+
+        if (build?.fomo_enabled && producto_id) {
+            const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? ''
+            fetch('/api/fomo-view', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                body:    JSON.stringify({ producto_id }),
+            }).catch(() => {})
+        }
+    }, [producto_id])
 
     function hook(key: string) {
         return hooks.find(h => h.key === key)
@@ -102,9 +117,52 @@ function Product({ producto_id = null, nombre = null, unidad = null, hooks = [],
 
     const resenasClientes = hook('resenas_clientes')
 
+    // ── SEO: meta tags + JSON-LD schema.org/Product ──────────────────────────
+    const tituloPagina   = nombre ? `${nombre} | ${nombreTienda}` : nombreTienda
+    const descripcionSeo = (descripcion || '').slice(0, 160)
+
+    const aggregateRating = (() => {
+        const items = (resenasClientes?.config as { items?: { estrellas?: number }[] } | undefined)?.items
+        if (!items?.length) return null
+        const validos  = items.filter(i => typeof i.estrellas === 'number')
+        if (!validos.length) return null
+        const promedio = validos.reduce((sum, i) => sum + (i.estrellas ?? 0), 0) / validos.length
+        return { ratingValue: promedio.toFixed(1), reviewCount: validos.length }
+    })()
+
+    const jsonLd: Record<string, unknown> = {
+        '@context':    'https://schema.org/',
+        '@type':       'Product',
+        name:          nombre,
+        description:   descripcion,
+        sku,
+        brand:         { '@type': 'Brand', name: nombreTienda },
+        ...(imagen_principal ? { image: imagen_principal } : {}),
+        ...(precio_base ? {
+            offers: {
+                '@type':         'Offer',
+                price:           precio_base,
+                priceCurrency:   'COP',
+                availability:    'https://schema.org/InStock',
+                ...(slug ? { url: `${typeof window !== 'undefined' ? window.location.origin : ''}/productos/${slug}` } : {}),
+            },
+        } : {}),
+        ...(aggregateRating ? {
+            aggregateRating: {
+                '@type':       'AggregateRating',
+                ratingValue:   aggregateRating.ratingValue,
+                reviewCount:   aggregateRating.reviewCount,
+            },
+        } : {}),
+    }
+
     const orden = layout_orden
         ? [...layout_orden.filter(k => ORDEN_DEFAULT.includes(k)), ...ORDEN_DEFAULT.filter(k => !layout_orden.includes(k))]
         : ORDEN_DEFAULT
+
+    function BloqueProducto({ children, padY = 'py-10', padX = 'px-0' }: { children: React.ReactNode; padY?: string; padX?: string }) {
+        return <div className={`${padX} md:px-10 ${padY} bg-slate-50`}>{children}</div>
+    }
 
     function renderBloque(key: string) {
         const h = hook(key)
@@ -115,29 +173,29 @@ function Product({ producto_id = null, nombre = null, unidad = null, hooks = [],
             case 'slider_imagenes':
                 return <SliderImagenes key={key} config={h.config} />
             case 'tabla_comparativa':
-                return <div key={key} className="px-4 md:px-10 py-10 bg-slate-50"><TablaComparativa config={h.config} /></div>
+                return <BloqueProducto key={key} padX="px-4"><TablaComparativa config={h.config} /></BloqueProducto>
             case 'comparacion_visual':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><AntesDespues config={h.config} /></div>
+                return <BloqueProducto key={key}><AntesDespues config={h.config} /></BloqueProducto>
             case 'ficha_tecnica':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><FichaTecnica config={h.config} /></div>
+                return <BloqueProducto key={key}><FichaTecnica config={h.config} /></BloqueProducto>
             case 'caracteristicas_destacadas':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><CaracteristicasDestacadas config={h.config} /></div>
+                return <BloqueProducto key={key}><CaracteristicasDestacadas config={h.config} /></BloqueProducto>
             case 'como_funciona':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><ComoFunciona config={h.config} /></div>
+                return <BloqueProducto key={key}><ComoFunciona config={h.config} /></BloqueProducto>
             case 'resenas_clientes':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><ResenasClientes config={h.config} /></div>
+                return <BloqueProducto key={key}><ResenasClientes config={h.config} /></BloqueProducto>
             case 'galeria_resultados':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><GaleriaResultados config={h.config} /></div>
+                return <BloqueProducto key={key}><GaleriaResultados config={h.config} /></BloqueProducto>
             case 'garantia':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><Garantia config={h.config} /></div>
+                return <BloqueProducto key={key}><Garantia config={h.config} /></BloqueProducto>
             case 'preguntas_frecuentes':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><FaqProducto config={h.config} /></div>
+                return <BloqueProducto key={key}><FaqProducto config={h.config} /></BloqueProducto>
             case 'urgencia_stock':
-                return <div key={key} className="px-0 md:px-10 py-6 bg-slate-50"><UrgenciaStock config={h.config} /></div>
+                return <BloqueProducto key={key} padY="py-6"><UrgenciaStock config={h.config} /></BloqueProducto>
             case 'que_incluye':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><QueIncluye config={h.config} /></div>
+                return <BloqueProducto key={key}><QueIncluye config={h.config} /></BloqueProducto>
             case 'sellos_confianza':
-                return <div key={key} className="px-0 md:px-10 py-10 bg-slate-50"><SellosConfianza config={h.config} /></div>
+                return <BloqueProducto key={key}><SellosConfianza config={h.config} /></BloqueProducto>
             default:
                 return null
         }
@@ -145,6 +203,31 @@ function Product({ producto_id = null, nombre = null, unidad = null, hooks = [],
 
     return (
         <>
+            <Head>
+                <title>{tituloPagina}</title>
+                {descripcionSeo && <meta name="description" content={descripcionSeo} />}
+
+                {/* Open Graph */}
+                <meta property="og:type"        content="product" />
+                <meta property="og:title"       content={tituloPagina} />
+                {descripcionSeo && <meta property="og:description" content={descripcionSeo} />}
+                {imagen_principal && <meta property="og:image" content={imagen_principal} />}
+                <meta property="og:site_name"   content={nombreTienda} />
+
+                {/* Twitter Card */}
+                <meta name="twitter:card"  content="summary_large_image" />
+                <meta name="twitter:title" content={tituloPagina} />
+                {descripcionSeo && <meta name="twitter:description" content={descripcionSeo} />}
+                {imagen_principal && <meta name="twitter:image" content={imagen_principal} />}
+
+                {/* JSON-LD schema.org/Product */}
+                {producto_id && (
+                    <script type="application/ld+json">
+                        {JSON.stringify(jsonLd)}
+                    </script>
+                )}
+            </Head>
+
             <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
                 <div className="grid grid-cols-1 md:grid-cols-2">
 
@@ -185,7 +268,6 @@ function Product({ producto_id = null, nombre = null, unidad = null, hooks = [],
             </div>
 
             <StickyBar ctaRef={ctaRef} precio={precioActivo} />
-            <PixelDebug />
         </>
     )
 }

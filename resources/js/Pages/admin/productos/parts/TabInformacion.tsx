@@ -8,7 +8,7 @@ import { Label } from '@/Components/ui/Label'
 import { Textarea } from '@/Components/ui/Textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/Select'
 import { Switch } from '@/Components/ui/Switch'
-import type { ProductoData } from '../edit'
+import type { ProductoData } from '../Edit'
 
 interface Categoria {
     id: number
@@ -90,14 +90,14 @@ export default function TabInformacion({ categorias, producto }: Props) {
                             onChange={e => setData('slug', e.target.value)}
                             placeholder="savia-cubre-canas"
                         />
-                        <p className="text-xs text-slate-400">URL del producto: /productos/{data.slug || '...'}</p>
+                        <p className="text-xs text-slate-500">URL del producto: /productos/{data.slug || '...'}</p>
                         {errors.slug && <p className="text-xs text-red-500">{errors.slug}</p>}
                     </div>
 
                     {/* Descripción */}
                     <div className="space-y-1.5">
                         <Label htmlFor="prod-desc">
-                            Descripción <span className="text-xs text-slate-400">(opcional)</span>
+                            Descripción <span className="text-xs text-slate-500">(opcional)</span>
                         </Label>
                         <Textarea
                             id="prod-desc"
@@ -106,7 +106,7 @@ export default function TabInformacion({ categorias, producto }: Props) {
                             placeholder="Descripción corta del producto..."
                             rows={5}
                         />
-                        <p className="text-xs text-slate-400">{data.descripcion.length}/500</p>
+                        <p className="text-xs text-slate-500">{data.descripcion.length}/500</p>
                         {errors.descripcion && <p className="text-xs text-red-500">{errors.descripcion}</p>}
                     </div>
 
@@ -139,7 +139,7 @@ export default function TabInformacion({ categorias, producto }: Props) {
                     {/* SKU */}
                     <div className="space-y-1.5">
                         <Label htmlFor="prod-sku">
-                            SKU / Código externo <span className="text-xs text-slate-400">(opcional)</span>
+                            SKU / Código externo <span className="text-xs text-slate-500">(opcional)</span>
                         </Label>
                         <Input
                             id="prod-sku"
@@ -154,7 +154,7 @@ export default function TabInformacion({ categorias, producto }: Props) {
                     <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
                         <Label htmlFor="prod-status" className="cursor-pointer">
                             Estado
-                            <span className="ml-2 text-xs text-slate-400">
+                            <span className="ml-2 text-xs text-slate-500">
                                 {data.status === 'activo' ? 'Activo — visible en la tienda' : 'Borrador — no visible'}
                             </span>
                         </Label>

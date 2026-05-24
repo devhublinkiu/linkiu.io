@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { Plus, Trash2 } from 'lucide-react'
+import { HOOK_LIMITS, postHookConfig } from '@/lib/hooks'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 
@@ -14,7 +14,7 @@ interface Props {
     config:     Record<string, unknown> | null
 }
 
-const MAX_FILAS = 6
+const MAX_FILAS = HOOK_LIMITS.TABLA_FILAS
 
 export default function ModalTablaComparativa({ open, onClose, productoId, config }: Props) {
     const [titulo,    setTitulo]    = useState((config?.titulo    as string)   ?? 'Comparativa')
@@ -57,16 +57,14 @@ export default function ModalTablaComparativa({ open, onClose, productoId, confi
     function guardar() {
         const validas = filas.filter(f => f.caracteristica.trim())
         setGuardando(true)
-        router.post(
-            route('admin.productos.hooks.config', { producto: productoId, hook: 'tabla_comparativa' }),
-            { config: { titulo, subtitulo, columnas, filas: validas } } as any,
-            {
-                preserveScroll: true,
-                onSuccess: () => { toast.success('Hook guardado'); onClose() },
-                onError:   () => toast.error('Error al guardar'),
-                onFinish:  () => setGuardando(false),
-            },
-        )
+        postHookConfig({
+            productoId,
+            hookKey: 'tabla_comparativa',
+            config:  { titulo, subtitulo, columnas, filas: validas },
+            onSuccess: () => onClose(),
+            onError:   () => toast.error('Error al guardar'),
+            onFinish:  () => setGuardando(false),
+        })
     }
 
     return (
@@ -86,9 +84,9 @@ export default function ModalTablaComparativa({ open, onClose, productoId, confi
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-slate-700 mb-1">Descripción <span className="text-slate-400">(opcional)</span></label>
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Descripción <span className="text-slate-500">(opcional)</span></label>
                             <input type="text" value={subtitulo} onChange={e => setSubtitulo(e.target.value)} placeholder="Opcional"
-                                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                className="w-full h-9 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
                             />
                         </div>
                     </div>
@@ -109,12 +107,12 @@ export default function ModalTablaComparativa({ open, onClose, productoId, confi
                         {filas.map((fila, fi) => (
                             <div key={fi} className="flex gap-2 items-center">
                                 <input type="text" placeholder="Característica" value={fila.caracteristica} onChange={e => actualizarCaract(fi, e.target.value)}
-                                    className="flex-1 h-8 rounded border border-slate-200 bg-white px-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                    className="flex-1 h-8 rounded border border-slate-200 bg-white px-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
                                 />
                                 {fila.valores.map((v, vi) => (
                                     <input key={vi} type="text" placeholder={vi === 0 ? 'Nuestro' : 'Rival'} value={typeof v === 'boolean' ? (v ? 'si' : 'no') : (v ?? '')}
                                         onChange={e => actualizarValor(fi, vi, e.target.value)}
-                                        className="w-20 h-8 rounded border border-slate-200 bg-white px-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-400 focus:outline-none"
+                                        className="w-20 h-8 rounded border border-slate-200 bg-white px-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-slate-400 focus:outline-none"
                                     />
                                 ))}
                                 <button type="button" onClick={() => setFilas(prev => prev.filter((_, idx) => idx !== fi))}

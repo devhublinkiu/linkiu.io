@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Productos\EliminarProducto;
 use App\Actions\Productos\SaveProductoInfo;
 use App\Actions\Productos\SaveProductoPrecio;
 use App\Actions\Productos\SyncProductoCantidades;
@@ -11,112 +12,114 @@ use App\Http\Requests\Productos\StoreProductoInfoRequest;
 use App\Http\Requests\Productos\UpdateProductoPrecioRequest;
 use App\Models\Category;
 use App\Models\OrderItem;
-use App\Models\ProductView;
 use App\Models\Producto;
-use Illuminate\Support\Carbon;
+use App\Support\Producto\SnapshotsRepository;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ProductosController extends Controller
 {
-    public function index()
+    public function index(Request $request, SnapshotsRepository $snapshots)
     {
-        $hoy      = Carbon::today();
-        $hace7    = $hoy->copy()->subDays(7);
-        $hace14   = $hoy->copy()->subDays(14);
+        abort_if(! auth()->user()->can('productos.ver'), 403);
 
-        // Subquery: total vendidos (todos los tiempos)
-        $vendidosTotal = OrderItem::selectRaw('SUM(cantidad)')
+        $busqueda = (string) $request->input('busqueda', '');
+        $filtro   = (string) $request->input('filtro', '');
+
+        // Solo `vendidos_total` se calcula aquí porque alimenta una columna
+        // independiente de performance. Los agregados de temperatura/score
+        // los provee el SnapshotsRepository (cacheado 1h).
+        $vendidosTotal = OrderItem::selectRaw('COALESCE(SUM(cantidad), 0)')
             ->whereColumn('producto_id', 'productos.id');
 
-        // Subquery: vendidos Ãºltimos 7 dÃ­as
-        $vendidos7d = OrderItem::selectRaw('COALESCE(SUM(cantidad), 0)')
-            ->whereColumn('producto_id', 'productos.id')
-            ->where('created_at', '>=', $hace7);
+        $query = Producto::with(['imagenPrincipal', 'categoria', 'hooks' => fn ($q) => $q->where('activo', true)])
+            ->addSelect(['vendidos_total' => $vendidosTotal])
+            ->orderByDesc('created_at');
 
-        // Subquery: vendidos semana anterior (dÃ­as 8-14)
-        $vendidos7dAnterior = OrderItem::selectRaw('COALESCE(SUM(cantidad), 0)')
-            ->whereColumn('producto_id', 'productos.id')
-            ->whereBetween('created_at', [$hace14, $hace7]);
-
-        // Subquery: vistas Ãºltimos 7 dÃ­as
-        $vistas7d = ProductView::selectRaw('COALESCE(SUM(visitas), 0)')
-            ->whereColumn('producto_id', 'productos.id')
-            ->where('fecha', '>=', $hace7);
-
-        // Subquery: scroll promedio Ãºltimos 7 dÃ­as
-        $scrollPromedio = ProductView::selectRaw(
-            'CASE WHEN SUM(scroll_depth_count) > 0 THEN ROUND(SUM(scroll_depth_sum) * 1.0 / SUM(scroll_depth_count)) ELSE 0 END'
-        )
-            ->whereColumn('producto_id', 'productos.id')
-            ->where('fecha', '>=', $hace7);
-
-        $productos = Producto::with(['imagenPrincipal', 'categoria', 'hooks' => fn ($q) => $q->where('activo', true)])
-            ->addSelect([
-                'vendidos_total'       => $vendidosTotal,
-                'ventas_7d'            => $vendidos7d,
-                'ventas_7d_anterior'   => $vendidos7dAnterior,
-                'vistas_7d'            => $vistas7d,
-                'scroll_promedio'      => $scrollPromedio,
-            ])
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn ($p) => [
-                'id'            => $p->id,
-                'nombre'        => $p->nombre,
-                'slug'          => $p->slug,
-                'sku'           => $p->sku,
-                'status'        => $p->status,
-                'precio_base'   => $p->precio_base,
-                'imagen'        => $p->imagenPrincipal?->url,
-                'hooks_activos' => $p->hooks->count(),
-                'categoria'     => $p->categoria?->name,
-                'vendidos'       => (int) ($p->vendidos_total ?? 0),
-                'ventas_7d'      => (int) ($p->ventas_7d ?? 0),
-                'vistas_7d'      => (int) ($p->vistas_7d ?? 0),
-                'scroll_promedio'=> (int) ($p->scroll_promedio ?? 0),
-                'temperatura'    => $this->calcularTemperatura(
-                    (int) ($p->ventas_7d ?? 0),
-                    (int) ($p->vistas_7d ?? 0),
-                    (int) ($p->scroll_promedio ?? 0),
-                ),
-                'tendencia'      => $this->calcularTendencia(
-                    (int) ($p->ventas_7d ?? 0),
-                    (int) ($p->ventas_7d_anterior ?? 0),
-                ),
-            ]);
-
-        return Inertia::render('admin/productos/Index', compact('productos'));
-    }
-
-    private function calcularTemperatura(int $ventas7d, int $vistas7d, int $scrollPromedio): int
-    {
-        $ventasScore = min($ventas7d / 20, 1.0) * 100;
-        $vistasScore = min($vistas7d / 200, 1.0) * 100;
-
-        return (int) round($ventasScore * 0.5 + $vistasScore * 0.3 + $scrollPromedio * 0.2);
-    }
-
-    private function calcularTendencia(int $ventas7d, int $ventas7dAnterior): array
-    {
-        if ($ventas7dAnterior === 0 && $ventas7d === 0) {
-            return ['direccion' => 'neutral', 'pct' => 0];
-        }
-        if ($ventas7dAnterior === 0) {
-            return ['direccion' => 'up', 'pct' => 100];
+        if ($busqueda) {
+            $query->where(function ($q) use ($busqueda) {
+                $q->where('nombre', 'like', "%{$busqueda}%")
+                  ->orWhere('sku', 'like', "%{$busqueda}%");
+            });
         }
 
-        $pct = round((($ventas7d - $ventas7dAnterior) / $ventas7dAnterior) * 100);
+        if ($filtro && $filtro !== 'todos') {
+            $query->where('status', $filtro);
+        }
 
+        $snapshotsPorId = $snapshots->todos();
+
+        // Snapshot vacío para productos en borrador (no entran al catálogo
+        // activo del repository) — el frontend espera el shape igual.
+        $snapshotVacio = $this->snapshotVacio();
+
+        $productos = $query->paginate(20)->through(function ($p) use ($snapshotsPorId, $snapshotVacio) {
+            $snap = $snapshotsPorId[$p->id] ?? $snapshotVacio;
+
+            return [
+                'id'              => $p->id,
+                'nombre'          => $p->nombre,
+                'slug'            => $p->slug,
+                'sku'             => $p->sku,
+                'status'          => $p->status,
+                'precio_base'     => $p->precio_base,
+                'imagen'          => $p->imagenPrincipal?->url,
+                'hooks_activos'   => $p->hooks->count(),
+                'categoria'       => $p->categoria?->name,
+                'vendidos'        => (int) ($p->vendidos_total ?? 0),
+                'ventas_7d'       => $snap['debug']['ventas_7d'],
+                'vistas_7d'       => $snap['debug']['vistas_7d'],
+                'scroll_promedio' => $snap['debug']['scroll_promedio'],
+                'temperatura'     => $snap['temperatura'],
+                'tendencia'       => [
+                    'direccion' => $snap['tendencia']['direccion'] === 'sin_dato'
+                        ? 'neutral'
+                        : $snap['tendencia']['direccion'],
+                    'pct'       => $snap['tendencia']['pct'],
+                ],
+                'score'           => $snap['score'],
+                'senal'           => $snap['senal'],
+                'performance_debug' => $snap['debug'],
+            ];
+        });
+
+        return Inertia::render('admin/productos/Index', [
+            'productos' => $productos,
+            'filtros'   => ['busqueda' => $busqueda, 'filtro' => $filtro ?: 'todos'],
+        ]);
+    }
+
+    /**
+     * Producto en borrador o recién creado (antes de regenerar cache)
+     * no aparece en el snapshot del catálogo activo. Le damos un shape
+     * con valores neutros para que el frontend no rompa.
+     */
+    private function snapshotVacio(): array
+    {
         return [
-            'direccion' => $pct > 0 ? 'up' : ($pct < 0 ? 'down' : 'neutral'),
-            'pct'       => abs($pct),
+            'score'       => 0,
+            'temperatura' => 0,
+            'tendencia'   => ['direccion' => 'neutral', 'pct' => 0],
+            'senal'       => null,
+            'debug'       => [
+                'ventas_7d'       => 0,
+                'vistas_7d'       => 0,
+                'vistas_30d'      => 0,
+                'ventas_total'    => 0,
+                'scroll_promedio' => 0,
+                'conversion_rate' => 0,
+                'p75_ventas_7d'   => 0,
+                'p75_vistas_7d'   => 0,
+                'dias_creacion'   => 0,
+                'catalogo_pequeno' => true,
+            ],
         ];
     }
 
     public function create()
     {
-        return Inertia::render('admin/productos/create', [
+        return Inertia::render('admin/productos/Create', [
             'categorias' => $this->categoriasParaSelect(),
         ]);
     }
@@ -127,14 +130,14 @@ class ProductosController extends Controller
 
         return redirect()
             ->route('admin.productos.edit', $producto)
-            ->with('status', 'InformaciÃ³n guardada correctamente.');
+            ->with('status', 'Información guardada correctamente.');
     }
 
     public function edit(Producto $producto)
     {
         $producto->load(['cantidades', 'imagenes', 'variableGrupos.items', 'hooks']);
 
-        return Inertia::render('admin/productos/edit', [
+        return Inertia::render('admin/productos/Edit', [
             'producto'   => [
                 'id'             => $producto->id,
                 'nombre'         => $producto->nombre,
@@ -193,7 +196,7 @@ class ProductosController extends Controller
     {
         $action->execute($request->validated(), $producto);
 
-        return back()->with('status', 'InformaciÃ³n actualizada correctamente.');
+        return back()->with('status', 'Información actualizada correctamente.');
     }
 
     public function updatePrecio(UpdateProductoPrecioRequest $request, Producto $producto, SaveProductoPrecio $precioAction, SyncProductoCantidades $cantidadesAction)
@@ -205,9 +208,9 @@ class ProductosController extends Controller
         return back()->with('status', 'Precio actualizado.');
     }
 
-    public function destroy(Producto $producto)
+    public function destroy(Producto $producto, EliminarProducto $action)
     {
-        $producto->delete();
+        $action->execute($producto);
 
         return redirect()->route('admin.productos.index')->with('status', 'Producto eliminado.');
     }

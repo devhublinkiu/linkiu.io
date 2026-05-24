@@ -1,6 +1,7 @@
-import { FormEventHandler, useState } from 'react'
-import { Head, useForm } from '@inertiajs/react'
+import { FormEventHandler, useEffect, useState } from 'react'
+import { Head, Link, useForm, usePage } from '@inertiajs/react'
 import { Eye, EyeOff } from 'lucide-react'
+import { toast } from 'sonner'
 import PublicLayout from '@/Layouts/PublicLayout'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -12,6 +13,12 @@ interface Props {
 }
 
 export default function ClientLogin({ errors }: Props) {
+    const { props } = usePage<{ flash?: { status?: string } }>()
+
+    useEffect(() => {
+        if (props.flash?.status) toast.success(props.flash.status)
+    }, [props.flash?.status])
+
     const { data, setData, post, processing } = useForm({
         email:    '',
         password: '',
@@ -65,7 +72,7 @@ export default function ClientLogin({ errors }: Props) {
                         <button
                             type="button"
                             onClick={() => setMostrarPassword(!mostrarPassword)}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors duration-200"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 transition-colors duration-200"
                             tabIndex={-1}
                         >
                             {mostrarPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -82,14 +89,12 @@ export default function ClientLogin({ errors }: Props) {
                         />
                         <span className="text-sm text-slate-600">Recordar sesión</span>
                     </label>
-                    <a
-                        href="https://wa.me/573001234567"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <Link
+                        href={route('cuenta.forgot-password')}
                         className="text-sm text-slate-500 hover:text-slate-800 transition-colors duration-200"
                     >
                         ¿Olvidaste tu contraseña?
-                    </a>
+                    </Link>
                 </div>
 
                 <Button type="submit" className="h-9 w-full" disabled={processing}>
@@ -97,7 +102,7 @@ export default function ClientLogin({ errors }: Props) {
                 </Button>
             </form>
 
-            <p className="mt-6 text-center text-xs text-slate-400">
+            <p className="mt-6 text-center text-xs text-slate-500">
                 ¿No tienes cuenta? Crea una al realizar tu próximo pedido.
             </p>
         </PublicLayout>

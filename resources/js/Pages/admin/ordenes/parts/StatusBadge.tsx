@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-type Estado = 'pendiente' | 'confirmado' | 'preparando' | 'enviado' | 'entregado' | 'cancelado'
+export type Estado = 'pendiente' | 'confirmado' | 'preparando' | 'enviado' | 'entregado' | 'cancelado'
 
 const CONFIG: Record<Estado, { label: string; className: string }> = {
     pendiente:  { label: 'Pendiente',   className: 'bg-slate-100 text-slate-600' },

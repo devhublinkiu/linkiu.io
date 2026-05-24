@@ -172,11 +172,8 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase,
 
             <div>
                 <h1 className="text-4xl font-bold text-slate-900 tracking-tight leading-tight">
-                    SAVIA Cubre Canas
+                    {nombre}
                 </h1>
-                <p className="mt-2 text-sm text-slate-500">
-                    Coloración sin amoníaco · Sin peróxido · Kit completo
-                </p>
             </div>
 
             {/* Sin bundles: selector global encima de cantidades */}
