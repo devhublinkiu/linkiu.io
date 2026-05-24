@@ -1,16 +1,16 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { Store, User, KeyRound, Phone } from 'lucide-react'
+import { User, KeyRound } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
+import { Label } from '@/Components/ui/Label'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
 
 interface Props {
-    nombre:          string
-    email:           string
-    tienda_telefono: string | null
+    nombre: string
+    email:  string
 }
 
 interface SharedProps {
@@ -18,19 +18,15 @@ interface SharedProps {
     flash: { status?: string }
 }
 
-export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
+export default function PerfilIndex({ nombre, email }: Props) {
     const { props } = usePage<SharedProps>()
     const puede = (p: string) => props.auth.permissions.includes('*') || props.auth.permissions.includes(p)
-    const puedeEditar       = puede('perfil.editar')
-    const puedeEditarTienda = puede('perfil.editar-tienda')
+    const puedeEditar = puede('perfil.editar')
 
     const [personal, setPersonal] = useState({ name: nombre })
     const [pass, setPass]         = useState({ password_actual: '', password: '', password_confirmation: '' })
     const [errPass, setErrPass]   = useState<string | null>(null)
     const [guardandoPersonal, setGuardandoPersonal] = useState(false)
-
-    const [tienda, setTienda]                     = useState({ tienda_telefono: tienda_telefono ?? '' })
-    const [guardandoTienda, setGuardandoTienda]   = useState(false)
 
     useEffect(() => {
         if (props.flash?.status) toast.success(props.flash.status)
@@ -43,19 +39,18 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
             preserveScroll: true,
             onSuccess: () => setPass({ password_actual: '', password: '', password_confirmation: '' }),
             onError: (errors) => {
-                if (errors.password_actual) setErrPass(errors.password_actual)
-                else toast.error('Error al guardar los datos personales')
+                const errPassActual = errors.password_actual as string | undefined
+                if (errPassActual) {
+                    // Retener los campos password para que el usuario corrija sin re-escribir todo
+                    setErrPass(errPassActual)
+                } else {
+                    // Cualquier otro error (name, password.confirmed, throttle 429): limpiar
+                    // password fields — minimiza tiempo de password sensible en memoria/DOM
+                    setPass({ password_actual: '', password: '', password_confirmation: '' })
+                    toast.error('Error al guardar los datos personales')
+                }
             },
             onFinish: () => setGuardandoPersonal(false),
-        })
-    }
-
-    function guardarTienda() {
-        setGuardandoTienda(true)
-        router.post(route('admin.perfil.tienda'), tienda, {
-            preserveScroll: true,
-            onError: () => toast.error('Error al guardar los datos de la tienda'),
-            onFinish: () => setGuardandoTienda(false),
         })
     }
 
@@ -73,7 +68,7 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
                         </div>
                         <div>
                             <h1 className="text-lg font-semibold text-slate-900">Mi perfil</h1>
-                            <p className="text-xs text-slate-500">Administra tus datos personales y la información de contacto de la tienda.</p>
+                            <p className="text-xs text-slate-500">Administra tus datos personales y tu acceso.</p>
                         </div>
                     </div>
 
@@ -91,7 +86,7 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
 
                         <div className="space-y-4">
                             <div className="space-y-1.5">
-                                <label htmlFor="name" className="text-xs font-medium text-slate-700">Nombre</label>
+                                <Label htmlFor="name">Nombre</Label>
                                 <Input
                                     id="name"
                                     value={personal.name}
@@ -102,9 +97,9 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label className="text-xs font-medium text-slate-700">Correo electrónico</label>
-                                <Input value={email} disabled className="text-slate-400" />
-                                <p className="text-[11px] text-slate-400">El correo no se puede cambiar desde aquí.</p>
+                                <Label>Correo electrónico</Label>
+                                <Input value={email} disabled className="text-slate-500" />
+                                <p className="text-xs text-slate-500">El correo no se puede cambiar desde aquí.</p>
                             </div>
                         </div>
 
@@ -116,7 +111,7 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
                             </div>
 
                             <div className="space-y-1.5">
-                                <label htmlFor="password_actual" className="text-xs font-medium text-slate-700">Contraseña actual</label>
+                                <Label htmlFor="password_actual">Contraseña actual</Label>
                                 <Input
                                     id="password_actual"
                                     type="password"
@@ -124,14 +119,14 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
                                     onChange={e => { setPass(f => ({ ...f, password_actual: e.target.value })); setErrPass(null) }}
                                     placeholder="••••••••"
                                     disabled={!puedeEditar}
-                                    className={errPass ? 'border-red-400 focus-visible:ring-red-200' : ''}
+                                    className={errPass ? 'border-red-500 focus-visible:ring-red-200' : ''}
                                 />
-                                {errPass && <p className="text-[11px] text-red-500">{errPass}</p>}
+                                {errPass && <p className="text-xs text-red-500">{errPass}</p>}
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
-                                    <label htmlFor="password" className="text-xs font-medium text-slate-700">Nueva contraseña</label>
+                                    <Label htmlFor="password">Nueva contraseña</Label>
                                     <Input
                                         id="password"
                                         type="password"
@@ -142,7 +137,7 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
                                     />
                                 </div>
                                 <div className="space-y-1.5">
-                                    <label htmlFor="password_confirmation" className="text-xs font-medium text-slate-700">Confirmar contraseña</label>
+                                    <Label htmlFor="password_confirmation">Confirmar contraseña</Label>
                                     <Input
                                         id="password_confirmation"
                                         type="password"
@@ -153,7 +148,7 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
                                     />
                                 </div>
                             </div>
-                            <p className="text-[11px] text-slate-400">Déjalo vacío si no deseas cambiar la contraseña.</p>
+                            <p className="text-xs text-slate-500">Déjalo vacío si no deseas cambiar la contraseña.</p>
                         </div>
 
                         <div className="flex justify-end pt-2 border-t border-slate-100">
@@ -166,49 +161,6 @@ export default function PerfilIndex({ nombre, email, tienda_telefono }: Props) {
                                     </span>
                                 </TooltipTrigger>
                                 {!puedeEditar && <TooltipContent>No tienes permiso para editar</TooltipContent>}
-                            </Tooltip>
-                        </div>
-                    </div>
-
-                    {/* Datos de la tienda */}
-                    <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-5">
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
-                                <Store className="w-4 h-4 text-slate-500" />
-                            </div>
-                            <div>
-                                <h2 className="text-sm font-semibold text-slate-900">Datos de la tienda</h2>
-                                <p className="text-xs text-slate-500">Información de contacto que ven los clientes en las notificaciones de WhatsApp.</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label htmlFor="tienda_telefono" className="text-xs font-medium text-slate-700 flex items-center gap-1.5">
-                                <Phone className="w-4 h-4 text-slate-400" />
-                                Teléfono de contacto
-                            </label>
-                            <Input
-                                id="tienda_telefono"
-                                type="tel"
-                                value={tienda.tienda_telefono}
-                                onChange={e => setTienda(f => ({ ...f, tienda_telefono: e.target.value }))}
-                                placeholder="Ej: 3001234567"
-                                disabled={!puedeEditarTienda}
-                                className="max-w-xs"
-                            />
-                            <p className="text-[11px] text-slate-400">Sin código de país. Ej: 3233332112</p>
-                        </div>
-
-                        <div className="flex justify-end pt-2 border-t border-slate-100">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span>
-                                        <Button onClick={guardarTienda} disabled={guardandoTienda || !puedeEditarTienda}>
-                                            {guardandoTienda ? 'Guardando…' : 'Guardar datos de la tienda'}
-                                        </Button>
-                                    </span>
-                                </TooltipTrigger>
-                                {!puedeEditarTienda && <TooltipContent>No tienes permiso para editar los datos de la tienda</TooltipContent>}
                             </Tooltip>
                         </div>
                     </div>
