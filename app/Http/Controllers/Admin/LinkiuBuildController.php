@@ -437,9 +437,9 @@ class LinkiuBuildController extends Controller
     {
         abort_if(! auth()->user()->can('linkiubuild.editar'), 403);
 
-        $request->validate(['imagen' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120']]);
+        $request->validate(['imagen' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:10240']]);
 
-        return response()->json($action->execute($request->file('imagen'), 'banners', 1920));
+        return response()->json($action->execute($request->file('imagen'), 'banners', 2400));
     }
 
     public function destroyBannerImagen(Request $request, EliminarImagenBuild $action): JsonResponse

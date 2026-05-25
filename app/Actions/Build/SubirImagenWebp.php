@@ -33,7 +33,7 @@ class SubirImagenWebp
 
         $webp = $manager->decode($archivo)
             ->scaleDown(width: $anchoMax)
-            ->encode(new WebpEncoder(quality: 85));
+            ->encode(new WebpEncoder(quality: 92));
 
         $ruta = $carpeta . '/' . Str::uuid() . '.webp';
 
