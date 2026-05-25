@@ -69,14 +69,14 @@ export default function Banners() {
     // LinkiuBuild → Inicio → Banners y este placeholder desaparece.
     if (items.length === 0) {
         return (
-            <section className="relative w-full overflow-hidden" style={{ height: 'clamp(280px, 32vw, 500px)' }}>
+            <section className="relative w-full overflow-hidden" style={{ height: 'clamp(280px, 52vw, 500px)' }}>
                 <PlaceholderImage label="Banner principal" iconSize="lg" className="rounded-none border-0 border-y border-dashed" />
             </section>
         )
     }
 
     function Slide({ item }: { item: BannerItem }) {
-        const img = <img src={item.url} alt="" className="w-full h-full object-cover" draggable={false} />
+        const img = <img src={item.url} alt="" className="w-full h-auto object-cover" draggable={false} />
         if (item.link) {
             return (
                 <a href={item.link} className="block w-full h-full">
@@ -88,7 +88,7 @@ export default function Banners() {
     }
 
     return (
-        <section className="relative w-full overflow-hidden bg-slate-100" style={{ height: 'clamp(280px, 32vw, 500px)' }}
+        <section className="relative w-full overflow-hidden bg-slate-100" style={{ height: 'clamp(280px, 52vw, 500px)' }}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
         >
