@@ -69,7 +69,7 @@ export default function Banners() {
     // LinkiuBuild → Inicio → Banners y este placeholder desaparece.
     if (items.length === 0) {
         return (
-            <section className="relative w-full overflow-hidden" style={{ aspectRatio: '3/1' }}>
+            <section className="relative w-full overflow-hidden" style={{ height: 'clamp(280px, 32vw, 500px)' }}>
                 <PlaceholderImage label="Banner principal" iconSize="lg" className="rounded-none border-0 border-y border-dashed" />
             </section>
         )
@@ -88,7 +88,7 @@ export default function Banners() {
     }
 
     return (
-        <section className="relative w-full overflow-hidden bg-slate-100" style={{ aspectRatio: '3/1' }}
+        <section className="relative w-full overflow-hidden bg-slate-100" style={{ height: 'clamp(280px, 32vw, 500px)' }}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
         >
