@@ -119,6 +119,16 @@ class HookConfigValidator
             'pasos.*.titulo'        => 'required|string|max:'.self::MAX_TITULO_CORTO,
             'pasos.*.descripcion'   => 'nullable|string|max:'.self::MAX_TEXTO_MEDIANO,
         ],
+        'boton_compra' => [
+            'texto'             => 'nullable|string|max:30',
+            'emoji'             => 'nullable|string|max:8',
+            'mostrar_total'     => 'nullable|boolean',
+            'estilo_fondo'      => 'nullable|in:solido,gradiente',
+            'color_fondo'       => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'color_fondo_2'     => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'color_texto'       => 'nullable|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'aplicar_a_sticky'  => 'nullable|boolean',
+        ],
         'resenas_clientes' => [
             'titulo'                => 'nullable|string|max:'.self::MAX_TITULO_CORTO,
             'resenas'               => 'array|max:'.self::MAX_RESENAS,

@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
+import BotonCompra, { type BotonCompraConfig } from '@/Components/public/product/boton-compra'
 
 type Props = {
-    ctaRef: React.RefObject<HTMLButtonElement | null>
-    precio: number
+    ctaRef:             React.RefObject<HTMLButtonElement | null>
+    precio:             number
+    botonCompraConfig?: BotonCompraConfig | null
+    botonCompraActivo?: boolean
 }
 
 function formatPrecio(n: number) {
     return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n)
 }
 
-export default function StickyBar({ ctaRef, precio }: Props) {
+export default function StickyBar({ ctaRef, precio, botonCompraConfig = null, botonCompraActivo = false }: Props) {
     const [visible, setVisible] = useState(false)
 
     useEffect(() => {
@@ -30,12 +33,14 @@ export default function StickyBar({ ctaRef, precio }: Props) {
             visible ? 'translate-y-0' : 'translate-y-full'
         )}>
             <div className="md:pl-6">
-                <button
+                <BotonCompra
+                    config={botonCompraConfig}
+                    activo={botonCompraActivo}
+                    precio={precio}
+                    formatPrecio={formatPrecio}
                     onClick={() => ctaRef.current?.click()}
-                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-base font-bold py-3.5 rounded-lg transition-all duration-200 ease-in-out animate-cta-pulse"
-                >
-                    🛒 Comprar ahora — {formatPrecio(precio)}
-                </button>
+                    sticky
+                />
             </div>
         </div>
     )

@@ -17,7 +17,6 @@ import FaqProducto from '@/Components/public/product/faq'
 import SliderImagenes from '@/Components/public/product/slider-imagenes'
 import QueIncluye from '@/Components/public/product/que-incluye'
 import SellosConfianza from '@/Components/public/product/sellos-confianza'
-import UrgenciaStock from '@/Components/public/product/urgencia-stock'
 import StickyBar from '@/Components/public/product/sticky-bar'
 import ResenasVivas from '@/Components/public/product/resenas-vivas'
 import { trackFb } from '@/lib/usePixel'
@@ -256,6 +255,8 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                                 cantidades={cantidades}
                                 unidad={unidad ?? 'Unidad'}
                                 urgenciaStockConfig={hook('urgencia_stock')?.config ?? null}
+                                botonCompraConfig={hook('boton_compra')?.config ?? null}
+                                botonCompraActivo={!!hook('boton_compra')}
                             />
                         </div>
 
@@ -265,7 +266,12 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                 </div>
             </div>
 
-            <StickyBar ctaRef={ctaRef} precio={precioActivo} />
+            <StickyBar
+                ctaRef={ctaRef}
+                precio={precioActivo}
+                botonCompraConfig={hook('boton_compra')?.config ?? null}
+                botonCompraActivo={!!hook('boton_compra')}
+            />
         </>
     )
 }

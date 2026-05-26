@@ -9,6 +9,7 @@ import SelectorVariables from './parts/SelectorVariables'
 import SelectorVariablesPorUnidad from './parts/SelectorVariablesPorUnidad'
 import SelectorCantidades, { type CantidadPublica, type OpcionCantidad } from './parts/SelectorCantidades'
 import UrgenciaStock from '@/Components/public/product/urgencia-stock'
+import BotonCompra, { type BotonCompraConfig } from '@/Components/public/product/boton-compra'
 
 type Props = {
     ctaRef:               React.RefObject<HTMLButtonElement | null>
@@ -21,6 +22,8 @@ type Props = {
     cantidades:           CantidadPublica[]
     unidad:               string
     urgenciaStockConfig?: Record<string, unknown> | null
+    botonCompraConfig?:   BotonCompraConfig | null
+    botonCompraActivo?:   boolean
 }
 
 function formatPrecio(n: number) {
@@ -31,7 +34,7 @@ function pluralizar(palabra: string): string {
     return /[aeiouáéíóú]$/i.test(palabra) ? `${palabra}s` : `${palabra}es`
 }
 
-export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase, imagenPrincipal, grupos, cantidades, unidad, urgenciaStockConfig = null }: Props) {
+export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase, imagenPrincipal, grupos, cantidades, unidad, urgenciaStockConfig = null, botonCompraConfig = null, botonCompraActivo = false }: Props) {
     const { items, addItem, replaceItem } = useCart()
 
     const tieneBundles = cantidades.length > 0
@@ -214,13 +217,14 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase,
             )}
 
             <div className="flex flex-col gap-3">
-                <button
+                <BotonCompra
                     ref={ctaRef}
+                    config={botonCompraConfig}
+                    activo={botonCompraActivo}
+                    precio={cantidadActiva?.precio_bundle ?? null}
+                    formatPrecio={formatPrecio}
                     onClick={() => agregarAlCarrito(true)}
-                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-base font-bold py-4 rounded-lg transition-all duration-200 ease-in-out"
-                >
-                    Comprar ahora — {cantidadActiva ? formatPrecio(cantidadActiva.precio_bundle) : '—'}
-                </button>
+                />
                 <button
                     onClick={() => agregarAlCarrito()}
                     className={cn(

@@ -17,6 +17,7 @@ import ModalGarantia          from './hooks/ModalGarantia'
 import ModalFaq               from './hooks/ModalFaq'
 import ModalBadgeProducto     from './hooks/ModalBadgeProducto'
 import ModalUrgenciaStock     from './hooks/ModalUrgenciaStock'
+import ModalBotonCompra       from './hooks/ModalBotonCompra'
 import type { ProductoData, HookCatalogItem, HookData } from '../Edit'
 
 interface HookModalProps {
@@ -48,6 +49,7 @@ const MODAL_MAP: Partial<Record<string, ComponentType<HookModalProps>>> = {
     preguntas_frecuentes:       ModalFaq,
     badge_producto:             ModalBadgeProducto,
     urgencia_stock:             ModalUrgenciaStock,
+    boton_compra:               ModalBotonCompra,
 }
 
 interface Props {

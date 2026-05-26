@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, usePage } from '@inertiajs/react'
-import { ChevronDownIcon, XIcon, UserIcon } from 'lucide-react'
+import { ChevronDownIcon, XIcon, UserIcon, PackageOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface NavConfig {
@@ -13,15 +13,34 @@ interface NavConfig {
     contacto_visible: boolean
 }
 
+interface NavProducto {
+    id:                  number
+    nombre:              string
+    slug:                string
+    precio_base:         number | null
+    precio_comparacion:  number | null
+    imagen:              string | null
+}
+
+interface NavCategoria { id: number; name: string; slug: string }
+
 interface MobileMenuProps {
     open:            boolean
     onClose:         () => void
     clienteLogueado: boolean
 }
 
+const COLORES_CAT = ['bg-amber-400', 'bg-emerald-500', 'bg-blue-400', 'bg-violet-400', 'bg-orange-400', 'bg-rose-400', 'bg-slate-400']
+
+function formatPrecio(n: number) {
+    return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n)
+}
+
 export default function MobileMenu({ open, onClose, clienteLogueado }: MobileMenuProps) {
-    const { build } = usePage<{
-        build?: { logo_tienda?: string | null; nav?: NavConfig }
+    const { build, nav_productos, nav_categorias } = usePage<{
+        build?:          { logo_tienda?: string | null; nav?: NavConfig }
+        nav_productos:   NavProducto[]
+        nav_categorias:  NavCategoria[]
     }>().props
 
     const nav     = build?.nav
@@ -97,6 +116,77 @@ export default function MobileMenu({ open, onClose, clienteLogueado }: MobileMen
                                 productosAbierto && 'rotate-180',
                             )} />
                         </button>
+
+                        {productosAbierto && (
+                            <div className="pl-2 pr-1 pt-1 pb-2 flex flex-col gap-3">
+
+                                {/* Lista de productos */}
+                                <div className="flex flex-col gap-1.5">
+                                    {nav_productos.length === 0 && (
+                                        <p className="text-xs text-slate-400 px-2 py-2">Sin productos disponibles.</p>
+                                    )}
+                                    {nav_productos.map(p => (
+                                        <Link
+                                            key={p.id}
+                                            href={`/productos/${p.slug}`}
+                                            onClick={onClose}
+                                            className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors duration-200 ease-in-out"
+                                        >
+                                            <div className="w-10 h-10 rounded-lg bg-slate-100 shrink-0 overflow-hidden flex items-center justify-center">
+                                                {p.imagen ? (
+                                                    <img src={p.imagen} alt={p.nombre} className="size-full object-cover" />
+                                                ) : (
+                                                    <PackageOpen className="w-5 h-5 text-slate-300" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-slate-900 truncate">{p.nombre}</p>
+                                                <div className="flex items-baseline gap-1.5">
+                                                    <span className="text-xs font-bold text-slate-900">
+                                                        {p.precio_base ? formatPrecio(p.precio_base) : '—'}
+                                                    </span>
+                                                    {p.precio_comparacion && (
+                                                        <span className="text-[10px] text-slate-400 line-through">
+                                                            {formatPrecio(p.precio_comparacion)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+
+                                {/* Categorías */}
+                                {nav_categorias.length > 0 && (
+                                    <div className="border-t border-slate-100 pt-3">
+                                        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 mb-1.5">Categorías</p>
+                                        <div className="flex flex-col gap-0.5">
+                                            {nav_categorias.map((cat, i) => (
+                                                <Link
+                                                    key={cat.id}
+                                                    href={`/productos/${cat.slug}`}
+                                                    onClick={onClose}
+                                                    className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors duration-200 ease-in-out"
+                                                >
+                                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${COLORES_CAT[i % COLORES_CAT.length]}`} />
+                                                    <span className="text-sm text-slate-600 font-medium">{cat.name}</span>
+                                                </Link>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Ver todos */}
+                                <Link
+                                    href="/productos"
+                                    onClick={onClose}
+                                    className="text-xs font-semibold text-slate-500 hover:text-slate-900 px-2 py-1 transition-colors duration-200"
+                                >
+                                    Ver todos los productos →
+                                </Link>
+
+                            </div>
+                        )}
                     </div>
 
                     {linksSimples.map(link => (

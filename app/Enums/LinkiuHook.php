@@ -20,6 +20,7 @@ enum LinkiuHook: string
     case GaleriaResultados   = 'galeria_resultados';
     case Garantia            = 'garantia';
     case PreguntasFrecuentes = 'preguntas_frecuentes';
+    case BotonCompra         = 'boton_compra';
 
     // Vista card
     case OfertaRelampago     = 'oferta_relampago';
@@ -44,6 +45,7 @@ enum LinkiuHook: string
             self::GaleriaResultados        => 'Galería de resultados',
             self::Garantia                 => 'Garantía',
             self::PreguntasFrecuentes      => 'Preguntas frecuentes',
+            self::BotonCompra              => 'Botón de compra',
             self::OfertaRelampago          => 'Oferta relámpago',
             self::BadgeProducto            => 'Badge de producto',
             self::RatingsCard              => 'Ratings en card',
@@ -78,6 +80,7 @@ enum LinkiuHook: string
             self::GaleriaResultados        => 'Slider 9:16 de fotos de resultados reales, chats y testimonios visuales.',
             self::Garantia                 => 'Bloque de garantía con título, descripción y botón.',
             self::PreguntasFrecuentes      => 'Acordeón de preguntas y respuestas. Máx. 10.',
+            self::BotonCompra              => 'Personaliza el botón principal: texto, emoji, colores sólido o gradiente, mostrar total.',
             self::OfertaRelampago          => 'Strip naranja con countdown en la card del producto.',
             self::BadgeProducto            => 'Chip de texto sobre la imagen de la card.',
             self::RatingsCard              => 'Estrellas y conteo en la card, tomado de Reseñas de clientes.',
