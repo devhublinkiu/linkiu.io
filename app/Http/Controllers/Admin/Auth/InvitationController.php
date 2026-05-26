@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Auth;
 
 use App\Actions\Auth\ActivateInvitation;
 use App\Http\Controllers\Controller;
+use App\Models\UserInvitation;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -11,16 +12,16 @@ class InvitationController extends Controller
 {
     public function mostrar(string $token)
     {
-        $datos = cache()->get("invitation_{$token}");
+        $invitacion = UserInvitation::where('token', $token)->first();
 
-        if (! $datos) {
+        if (! $invitacion || ! $invitacion->valida()) {
             return Inertia::render('auth/AcceptInvitation', ['tokenValido' => false]);
         }
 
         return Inertia::render('auth/AcceptInvitation', [
             'tokenValido' => true,
             'token'       => $token,
-            'email'       => $datos['email'],
+            'email'       => $invitacion->email,
         ]);
     }
 
