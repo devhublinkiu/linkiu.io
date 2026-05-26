@@ -82,8 +82,17 @@ function ContactForm({ campos }: { campos: CampoFormItem[] }) {
         e.preventDefault()
         post(route('contacto.enviar'), {
             preserveScroll: true,
-            onSuccess: () => { setEnviado(true); reset(); trackFb('Lead') },
-            onError:   () => toast.error('Error al enviar el mensaje'),
+            onSuccess: () => {
+                setEnviado(true)
+                // Lead enriquecido con datos del form para mejor matching.
+                trackFb('Lead', {}, {
+                    email:      data.correo  || undefined,
+                    phone:      data.celular || undefined,
+                    first_name: data.nombre  || undefined,
+                })
+                reset()
+            },
+            onError: () => toast.error('Error al enviar el mensaje'),
         })
     }
 

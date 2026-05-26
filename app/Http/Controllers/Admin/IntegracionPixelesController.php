@@ -22,7 +22,9 @@ class IntegracionPixelesController extends Controller
         return Inertia::render('admin/integraciones/Pixeles', [
             'pixeles' => [
                 'fb_pixel_id'               => Integracion::get('fb_pixel_id'),
-                'fb_test_event_code'        => Integracion::get('fb_test_event_code'),
+                // El token jamás se devuelve en claro. Solo el flag de presencia,
+                // para que la UI muestre placeholder masked si ya está guardado.
+                'fb_access_token_presente'  => ! empty(Integracion::get('fb_access_token')),
                 'google_ads_id'             => Integracion::get('google_ads_id'),
                 'google_ads_purchase_label' => Integracion::get('google_ads_purchase_label'),
             ],

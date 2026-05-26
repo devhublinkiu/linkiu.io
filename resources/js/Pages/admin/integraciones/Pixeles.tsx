@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { AlertTriangle, Crosshair, ExternalLink, FlaskConical, Bug, Copy, Check } from 'lucide-react'
+import axios from 'axios'
+import { Crosshair, ExternalLink, FlaskConical, Bug, Copy, Check, Zap, CheckCircle2, XCircle } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
-import { Alert, AlertDescription, AlertTitle } from '@/Components/ui/Alert'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
 import { Label } from '@/Components/ui/Label'
@@ -13,7 +13,7 @@ import GoogleLogo from '@/Components/icons/GoogleLogo'
 
 interface Pixeles {
     fb_pixel_id:               string | null
-    fb_test_event_code:        string | null
+    fb_access_token_presente:  boolean
     google_ads_id:             string | null
     google_ads_purchase_label: string | null
 }
@@ -22,6 +22,9 @@ interface Props {
     pixeles:    Pixeles
     probar_url: string | null
 }
+
+// Sentinel: si el form lo envía, el backend mantiene el token actual sin reescribirlo.
+const TOKEN_NO_CAMBIAR = '***'
 
 function CopyChip({ texto }: { texto: string }) {
     const [copiado, setCopiado] = useState(false)
@@ -65,22 +68,47 @@ export default function PixelesADS({ pixeles, probar_url }: Props) {
 
     const [form, setForm] = useState({
         fb_pixel_id:               pixeles.fb_pixel_id               ?? '',
-        fb_test_event_code:        pixeles.fb_test_event_code        ?? '',
+        fb_access_token:           pixeles.fb_access_token_presente ? TOKEN_NO_CAMBIAR : '',
         google_ads_id:             pixeles.google_ads_id             ?? '',
         google_ads_purchase_label: pixeles.google_ads_purchase_label ?? '',
     })
     const [guardando, setGuardando] = useState(false)
-
-    // Modo prueba activo: bloquea silenciosamente las conversiones en producción.
-    const modoPruebaActivo = !!form.fb_test_event_code.trim()
+    const [probando,  setProbando]  = useState(false)
+    const [resultadoPrueba, setResultadoPrueba] = useState<{ ok: boolean; mensaje: string; test_code?: string } | null>(null)
 
     function guardar() {
         setGuardando(true)
         router.post(route('admin.integraciones.pixeles.update'), form, {
             preserveScroll: true,
+            onSuccess: () => {
+                // Reset del campo a sentinel después de guardar — refleja estado actual.
+                if (form.fb_access_token && form.fb_access_token !== TOKEN_NO_CAMBIAR) {
+                    setForm(f => ({ ...f, fb_access_token: TOKEN_NO_CAMBIAR }))
+                }
+            },
             onError:   () => toast.error('Error al guardar los pixeles'),
             onFinish:  () => setGuardando(false),
         })
+    }
+
+    async function probarConexion() {
+        setProbando(true)
+        setResultadoPrueba(null)
+        try {
+            const res = await axios.post<{ ok: boolean; mensaje: string; test_code?: string }>(
+                route('meta.probar'),
+            )
+            setResultadoPrueba(res.data)
+            if (res.data.ok) toast.success(res.data.mensaje)
+            else toast.error(res.data.mensaje)
+        } catch (err) {
+            const mensaje = (err as { response?: { data?: { mensaje?: string } } }).response?.data?.mensaje
+                ?? 'Error al contactar a Meta'
+            setResultadoPrueba({ ok: false, mensaje })
+            toast.error(mensaje)
+        } finally {
+            setProbando(false)
+        }
     }
 
     return (
@@ -100,27 +128,17 @@ export default function PixelesADS({ pixeles, probar_url }: Props) {
                         </div>
                     </div>
 
-                    {modoPruebaActivo && (
-                        <Alert variant="warning">
-                            <AlertTriangle />
-                            <AlertTitle>Modo de prueba activo</AlertTitle>
-                            <AlertDescription>
-                                Los eventos van marcados como TEST y <strong>no se registran en Meta Ads Manager</strong>. Vacía el campo "Código de prueba" antes de salir a producción.
-                            </AlertDescription>
-                        </Alert>
-                    )}
-
                     <div className="grid grid-cols-2 gap-4">
 
-                    {/* Meta Pixel */}
+                    {/* Meta Pixel + CAPI */}
                     <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-5">
                         <div className="flex items-start gap-4">
                             <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
                                 <MetaLogo className="w-5 h-5" />
                             </div>
                             <div>
-                                <h3 className="text-sm font-semibold text-slate-900">Meta Pixel (Facebook)</h3>
-                                <p className="text-xs text-slate-500 mt-0.5">Rastrea visitas, añadir al carrito y compras desde Facebook e Instagram Ads.</p>
+                                <h3 className="text-sm font-semibold text-slate-900">Meta Pixel + Conversions API</h3>
+                                <p className="text-xs text-slate-500 mt-0.5">Pixel del browser + envío server-side. Meta deduplica con event ID.</p>
                             </div>
                         </div>
 
@@ -137,24 +155,66 @@ export default function PixelesADS({ pixeles, probar_url }: Props) {
                             <p className="text-[11px] text-slate-500">Solo números. Encuéntralo en Meta Events Manager.</p>
                         </div>
 
-                        <div className="space-y-1.5 pt-4 border-t border-slate-100">
-                            <div className="flex items-center gap-2 mb-2">
-                                <FlaskConical className="w-3.5 h-3.5 text-amber-500" />
-                                <Label htmlFor="fb_test_event_code">
-                                    Código de prueba <span className="text-slate-500 font-normal">(Test Events)</span>
-                                </Label>
-                            </div>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="fb_access_token">Access Token (CAPI)</Label>
                             <Input
-                                id="fb_test_event_code"
-                                value={form.fb_test_event_code}
-                                onChange={e => setForm(f => ({ ...f, fb_test_event_code: e.target.value }))}
-                                placeholder="TEST12345"
+                                id="fb_access_token"
+                                type="password"
+                                value={form.fb_access_token}
+                                onChange={e => setForm(f => ({ ...f, fb_access_token: e.target.value }))}
+                                onFocus={e => {
+                                    // Si está el sentinel, vaciar al primer focus para que escriba uno nuevo.
+                                    if (e.target.value === TOKEN_NO_CAMBIAR) setForm(f => ({ ...f, fb_access_token: '' }))
+                                }}
+                                onBlur={e => {
+                                    // Si lo dejó vacío y antes tenía token, restaurar el sentinel.
+                                    if (e.target.value === '' && pixeles.fb_access_token_presente) {
+                                        setForm(f => ({ ...f, fb_access_token: TOKEN_NO_CAMBIAR }))
+                                    }
+                                }}
+                                placeholder={pixeles.fb_access_token_presente ? '••• guardado' : 'EAAB...'}
                                 disabled={!puedeEditar}
                                 className="font-mono text-sm"
                             />
                             <p className="text-[11px] text-slate-500">
-                                Permite ver eventos en tiempo real en Meta sin contaminar datos reales. Déjalo vacío en producción.
+                                System User Access Token de Meta. Genéralo en Business Settings → System Users.
+                                Se guarda cifrado y nunca se muestra de vuelta.
                             </p>
+                        </div>
+
+                        <div className="space-y-2 pt-4 border-t border-slate-100">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={probarConexion}
+                                disabled={probando || !puedeEditar || !pixeles.fb_pixel_id || !pixeles.fb_access_token_presente}
+                                className="w-full"
+                            >
+                                <Zap className="w-3.5 h-3.5" />
+                                {probando ? 'Probando…' : 'Probar conexión con Meta'}
+                            </Button>
+                            {!pixeles.fb_pixel_id || !pixeles.fb_access_token_presente
+                                ? <p className="text-[11px] text-slate-400">Guarda Pixel ID + Access Token antes de probar.</p>
+                                : <p className="text-[11px] text-slate-500">Envía un evento de prueba a "Test Events" en Events Manager.</p>}
+
+                            {resultadoPrueba && (
+                                <div className={`flex items-start gap-2 rounded-md border p-3 ${resultadoPrueba.ok ? 'border-emerald-200 bg-emerald-50' : 'border-red-200 bg-red-50'}`}>
+                                    {resultadoPrueba.ok
+                                        ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                        : <XCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                    }
+                                    <div className="flex-1 min-w-0">
+                                        <p className={`text-xs font-medium ${resultadoPrueba.ok ? 'text-emerald-700' : 'text-red-700'}`}>
+                                            {resultadoPrueba.mensaje}
+                                        </p>
+                                        {resultadoPrueba.test_code && (
+                                            <p className="text-[11px] text-slate-500 mt-1 font-mono">
+                                                Code: {resultadoPrueba.test_code}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <a

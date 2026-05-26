@@ -98,6 +98,14 @@ Route::post('/track/product-view', [ProductViewsController::class, 'track'])->na
 Route::get('/api/fomo',  [FomoController::class, 'index']  )->name('fomo.index');
 Route::post('/api/fomo-view', [FomoController::class, 'logView'])->name('fomo.log-view');
 
+// Meta Conversions API — bridge browser → server
+Route::post('/api/meta/event', [\App\Http\Controllers\Api\MetaEventsController::class, 'dispatch'])
+    ->middleware('throttle:120,1')
+    ->name('meta.event');
+Route::post('/api/meta/probar-conexion', [\App\Http\Controllers\Api\MetaEventsController::class, 'probarConexion'])
+    ->middleware(['auth', 'throttle:10,1'])
+    ->name('meta.probar');
+
 // MercadoPago
 Route::post('/api/mp/pagar',        [MercadoPagoController::class, 'pagar']   )->name('mp.pagar')->middleware('throttle:mp-pagar');
 Route::get('/mp/resultado',         [MercadoPagoController::class, 'callback'])->name('mp.callback');

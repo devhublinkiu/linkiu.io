@@ -9,6 +9,7 @@ interface Props {
     acceso_token:  string
     nombre:        string
     email:         string
+    telefono?:     string | null
     total:         number
 }
 
@@ -23,14 +24,24 @@ function formatPrecio(n: number) {
 }
 
 function OrdenConfirmacion() {
-    const { codigo, acceso_token, nombre, email, total } = usePage<Props>().props
+    const { codigo, acceso_token, nombre, email, telefono, total } = usePage<Props>().props
     const { google_ads_id, google_ads_purchase_label } = usePage<SharedPixelProps>().props
 
     useEffect(() => {
+        // Purchase es el evento crítico para Ads — enriquecemos con email/phone
+        // del comprador para mejor Event Match Quality (EMQ) en Meta.
+        const [first_name, ...resto] = (nombre ?? '').trim().split(/\s+/)
+        const last_name = resto.join(' ') || undefined
+
         trackFb('Purchase', {
             value:    total,
             currency: 'COP',
             order_id: codigo,
+        }, {
+            email,
+            phone:      telefono ?? undefined,
+            first_name: first_name || undefined,
+            last_name,
         })
 
         if (google_ads_id && google_ads_purchase_label) {

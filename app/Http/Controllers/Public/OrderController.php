@@ -20,6 +20,7 @@ class OrderController extends Controller
             'acceso_token' => $orden->acceso_token,
             'nombre'       => $orden->nombre,
             'email'        => $orden->email,
+            'telefono'     => $orden->telefono,
             'total'        => $orden->total,
         ]);
     }
@@ -31,6 +32,7 @@ class OrderController extends Controller
             'acceso_token' => $order->acceso_token,
             'nombre'       => $order->nombre,
             'email'        => $order->email,
+            'telefono'     => $order->telefono,
             'total'        => $order->total,
         ]);
     }
