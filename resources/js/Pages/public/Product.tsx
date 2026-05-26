@@ -52,7 +52,6 @@ export interface VariableGrupo {
 }
 
 const ORDEN_DEFAULT = [
-    'urgencia_stock',
     'gancho_promesa',
     'slider_imagenes',
     'que_incluye',
@@ -190,8 +189,6 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                 return <BloqueProducto key={key}><Garantia config={h.config} /></BloqueProducto>
             case 'preguntas_frecuentes':
                 return <BloqueProducto key={key}><FaqProducto config={h.config} /></BloqueProducto>
-            case 'urgencia_stock':
-                return <BloqueProducto key={key} padY="py-6"><UrgenciaStock config={h.config} /></BloqueProducto>
             case 'que_incluye':
                 return <BloqueProducto key={key}><QueIncluye config={h.config} /></BloqueProducto>
             case 'sellos_confianza':
@@ -258,6 +255,7 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                                 grupos={grupos}
                                 cantidades={cantidades}
                                 unidad={unidad ?? 'Unidad'}
+                                urgenciaStockConfig={hook('urgencia_stock')?.config ?? null}
                             />
                         </div>
 

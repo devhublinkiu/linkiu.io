@@ -7,7 +7,7 @@ type Props = {
 }
 
 function formatPrecio(n: number) {
-    return '$' + n.toLocaleString('es-CO')
+    return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n)
 }
 
 export default function StickyBar({ ctaRef, precio }: Props) {

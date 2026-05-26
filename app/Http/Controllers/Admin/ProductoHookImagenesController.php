@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductoHookImagenesController extends Controller
 {
-    private const HOOKS_CON_IMAGENES = ['slider_imagenes', 'comparacion_visual', 'galeria_resultados'];
+    private const HOOKS_CON_IMAGENES = ['slider_imagenes', 'comparacion_visual', 'galeria_resultados', 'resenas_clientes'];
 
     public function store(Request $request, Producto $producto, string $hook, SubirProductoHookImagen $action)
     {

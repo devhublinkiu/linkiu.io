@@ -8,17 +8,19 @@ import { trackFb } from '@/lib/usePixel'
 import SelectorVariables from './parts/SelectorVariables'
 import SelectorVariablesPorUnidad from './parts/SelectorVariablesPorUnidad'
 import SelectorCantidades, { type CantidadPublica, type OpcionCantidad } from './parts/SelectorCantidades'
+import UrgenciaStock from '@/Components/public/product/urgencia-stock'
 
 type Props = {
-    ctaRef:          React.RefObject<HTMLButtonElement | null>
-    onPrecio:        (precio: number) => void
-    productoId?:     number
-    nombre:          string
-    precioBase:      number | null
-    imagenPrincipal: string | null
-    grupos:          VariableGrupo[]
-    cantidades:      CantidadPublica[]
-    unidad:          string
+    ctaRef:               React.RefObject<HTMLButtonElement | null>
+    onPrecio:             (precio: number) => void
+    productoId?:          number
+    nombre:               string
+    precioBase:           number | null
+    imagenPrincipal:      string | null
+    grupos:               VariableGrupo[]
+    cantidades:           CantidadPublica[]
+    unidad:               string
+    urgenciaStockConfig?: Record<string, unknown> | null
 }
 
 function formatPrecio(n: number) {
@@ -29,7 +31,7 @@ function pluralizar(palabra: string): string {
     return /[aeiouáéíóú]$/i.test(palabra) ? `${palabra}s` : `${palabra}es`
 }
 
-export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase, imagenPrincipal, grupos, cantidades, unidad }: Props) {
+export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase, imagenPrincipal, grupos, cantidades, unidad, urgenciaStockConfig = null }: Props) {
     const { items, addItem, replaceItem } = useCart()
 
     const tieneBundles = cantidades.length > 0
@@ -193,6 +195,10 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase,
                 imagenPrincipal={imagenPrincipal}
                 onSeleccionar={seleccionarCantidad}
             />
+
+            {urgenciaStockConfig && (
+                <UrgenciaStock config={urgenciaStockConfig} />
+            )}
 
             {/* Con bundles: selector por unidad debajo de cantidades */}
             {tieneBundles && grupos.length > 0 && (

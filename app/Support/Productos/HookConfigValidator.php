@@ -126,6 +126,8 @@ class HookConfigValidator
             'resenas.*.ciudad'      => 'nullable|string|max:50',
             'resenas.*.estrellas'   => 'required|integer|min:1|max:5',
             'resenas.*.comentario'  => 'required|string|max:'.self::MAX_TEXTO_LARGO,
+            'resenas.*.foto_url'    => 'nullable|string|max:'.self::MAX_RUTA_LENGTH,
+            'resenas.*.foto_ruta'   => 'nullable|string|max:'.self::MAX_RUTA_LENGTH,
         ],
         'galeria_resultados' => [
             'titulo'           => 'nullable|string|max:'.self::MAX_TITULO_CORTO,

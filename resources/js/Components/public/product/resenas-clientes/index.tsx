@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { StarIcon, ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-interface Resena { nombre: string; ciudad: string; estrellas: number; comentario: string }
+interface Resena { nombre: string; ciudad: string; estrellas: number; comentario: string; foto_url?: string }
 
 interface Props {
     config: Record<string, unknown>
@@ -73,15 +73,19 @@ export default function ResenasClientes({ config }: Props) {
             {/* Slider */}
             <div className="overflow-hidden">
                 <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${activo * 100}%)` }}>
-                    {resenas.map(({ nombre, ciudad, estrellas, comentario }, i) => {
+                    {resenas.map(({ nombre, ciudad, estrellas, comentario, foto_url }, i) => {
                         const iniciales = nombre.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
                         return (
                             <div key={i} className="w-full shrink-0 bg-white rounded-xl border border-slate-100 p-6 flex flex-col gap-5" style={{ minWidth: '100%' }}>
                                 <div className="flex items-start justify-between gap-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="bg-emerald-500 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
-                                            <span className="text-white text-xs font-bold">{iniciales}</span>
-                                        </div>
+                                        {foto_url ? (
+                                            <img src={foto_url} alt={nombre} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                                        ) : (
+                                            <div className="bg-emerald-500 w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+                                                <span className="text-white text-xs font-bold">{iniciales}</span>
+                                            </div>
+                                        )}
                                         <div>
                                             <p className="text-sm font-semibold text-slate-900">{nombre}</p>
                                             {ciudad && <p className="text-xs text-slate-500">{ciudad}</p>}
