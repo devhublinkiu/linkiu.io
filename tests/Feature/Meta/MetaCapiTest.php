@@ -2,12 +2,12 @@
 
 namespace Tests\Feature\Meta;
 
+use App\Actions\Meta\EnviarEventoMeta;
 use App\Jobs\EnviarEventoMetaJob;
 use App\Models\Integracion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class MetaCapiTest extends TestCase
@@ -77,14 +77,23 @@ class MetaCapiTest extends TestCase
         $res->assertStatus(422)->assertJsonFragment(['ok' => false]);
     }
 
-    public function test_probar_conexion_dispara_request_a_meta(): void
+    public function test_probar_conexion_dispara_action_meta(): void
     {
         Integracion::set('fb_pixel_id', '1234567890');
         Integracion::set('fb_access_token', 'EAATest123');
 
-        Http::fake([
-            'graph.facebook.com/*' => Http::response(['events_received' => 1], 200),
-        ]);
+        // Mock del action — el SDK oficial usa cURL directo y no se puede
+        // interceptar con Http::fake. Mockeamos el action para verificar
+        // que se invoca con los parámetros correctos.
+        $this->mock(EnviarEventoMeta::class, function ($mock) {
+            $mock->shouldReceive('execute')
+                ->once()
+                ->withArgs(function ($eventName, $eventId, $eventTime, $url, $userData, $customData, $testCode) {
+                    return $eventName === 'Lead'
+                        && str_starts_with((string) $testCode, 'TEST_');
+                })
+                ->andReturn(true);
+        });
 
         $user = User::factory()->create();
         $user->givePermissionTo('integraciones.editar');
@@ -93,7 +102,6 @@ class MetaCapiTest extends TestCase
 
         $res->assertOk()->assertJson(['ok' => true]);
         $this->assertStringStartsWith('TEST_', $res->json('test_code'));
-        Http::assertSent(fn ($req) => str_contains($req->url(), '/1234567890/events'));
     }
 
     private function payloadValido(): array

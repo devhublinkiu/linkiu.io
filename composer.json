@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.3",
         "ably/ably-php": "*",
+        "facebook/php-business-sdk": "*",
         "inertiajs/inertia-laravel": "^2.0",
         "intervention/image": "^4.0",
         "laravel/framework": "^13.0",

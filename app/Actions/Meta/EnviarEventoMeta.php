@@ -3,26 +3,29 @@
 namespace App\Actions\Meta;
 
 use App\Models\Integracion;
-use Illuminate\Support\Facades\Http;
+use FacebookAds\Api;
+use FacebookAds\Object\ServerSide\CustomData;
+use FacebookAds\Object\ServerSide\Event;
+use FacebookAds\Object\ServerSide\EventRequest;
+use FacebookAds\Object\ServerSide\UserData;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Cliente síncrono de Conversions API de Meta.
+ * Cliente síncrono de Conversions API de Meta — implementado con el Business SDK
+ * oficial (facebook/php-business-sdk).
  *
- * Espera datos ya enriquecidos (user_data hasheado + ip/ua/cookies del server).
- * Si falta pixel_id o access_token, no hace nada (el caller no debería invocar
- * en ese caso, pero defendemos).
+ * Espera datos PII ya hasheados SHA-256 (lo hace el controller para no exponer
+ * texto plano en la cola serializada). El SDK detecta el hash y NO lo re-hashea.
  *
  * Se invoca SIEMPRE desde el job — nunca en el request principal — para no
  * bloquear UX si Meta tarda en responder o se cae.
  *
- * Ref: https://developers.facebook.com/docs/marketing-api/conversions-api/using-the-api
+ * Ref:
+ * - https://developers.facebook.com/docs/marketing-api/conversions-api
+ * - https://github.com/facebook/facebook-php-business-sdk
  */
 class EnviarEventoMeta
 {
-    private const GRAPH_VERSION = 'v21.0';
-    private const TIMEOUT       = 8;   // segundos
-
     public function execute(
         string $eventName,
         string $eventId,
@@ -39,48 +42,76 @@ class EnviarEventoMeta
             return false;
         }
 
-        $payload = [
-            'data' => [[
-                'event_name'        => $eventName,
-                'event_id'          => $eventId,
-                'event_time'        => $eventTime,
-                'event_source_url'  => $eventSourceUrl,
-                'action_source'     => 'website',
-                'user_data'         => array_filter($userData, fn ($v) => $v !== null && $v !== ''),
-                'custom_data'       => array_filter($customData, fn ($v) => $v !== null && $v !== ''),
-            ]],
-        ];
-
-        if ($testEventCode) {
-            $payload['test_event_code'] = $testEventCode;
-        }
-
         try {
-            $response = Http::timeout(self::TIMEOUT)
-                ->retry(2, 500, throw: false)
-                ->withToken($token)
-                ->post(
-                    sprintf('https://graph.facebook.com/%s/%s/events', self::GRAPH_VERSION, $pixelId),
-                    $payload,
-                );
+            Api::init(null, null, $token);
 
-            if ($response->successful()) {
-                return true;
+            $userDataObj = $this->construirUserData($userData);
+            $customDataObj = $this->construirCustomData($customData);
+
+            $event = (new Event())
+                ->setEventName($eventName)
+                ->setEventId($eventId)
+                ->setEventTime($eventTime)
+                ->setEventSourceUrl($eventSourceUrl)
+                ->setActionSource('website')
+                ->setUserData($userDataObj)
+                ->setCustomData($customDataObj);
+
+            $request = (new EventRequest($pixelId))
+                ->setEvents([$event]);
+
+            if ($testEventCode) {
+                $request->setTestEventCode($testEventCode);
             }
 
-            // Log warning con detalle pero sin tumbar la app.
-            Log::warning('Meta CAPI respondió con error', [
-                'event'  => $eventName,
-                'status' => $response->status(),
-                'body'   => $response->json() ?? $response->body(),
-            ]);
-            return false;
+            $response = $request->execute();
+
+            // El SDK lanza excepción en HTTP error, así que si llegamos acá es 2xx.
+            // events_received > 0 confirma que Meta lo procesó.
+            return $response->getEventsReceived() > 0;
         } catch (\Throwable $e) {
-            Log::error('Meta CAPI excepción', [
+            Log::warning('Meta CAPI falló', [
                 'event'   => $eventName,
                 'message' => $e->getMessage(),
             ]);
             return false;
         }
+    }
+
+    /**
+     * Setea los campos de UserData usando los setters que aceptan valores ya
+     * hasheados (`setEmails`, `setPhones`, etc.). El SDK guarda el array tal
+     * cual sin re-hashear cuando detecta formato SHA-256.
+     */
+    private function construirUserData(array $data): UserData
+    {
+        $u = new UserData();
+
+        if (! empty($data['em'])) $u->setEmails([$data['em']]);
+        if (! empty($data['ph'])) $u->setPhones([$data['ph']]);
+        if (! empty($data['fn'])) $u->setFirstNames([$data['fn']]);
+        if (! empty($data['ln'])) $u->setLastNames([$data['ln']]);
+        if (! empty($data['external_id'])) $u->setExternalIds([$data['external_id']]);
+        if (! empty($data['client_ip_address'])) $u->setClientIpAddress($data['client_ip_address']);
+        if (! empty($data['client_user_agent'])) $u->setClientUserAgent($data['client_user_agent']);
+        if (! empty($data['fbp'])) $u->setFbp($data['fbp']);
+        if (! empty($data['fbc'])) $u->setFbc($data['fbc']);
+
+        return $u;
+    }
+
+    private function construirCustomData(array $data): CustomData
+    {
+        $c = new CustomData();
+
+        if (isset($data['value']))        $c->setValue((float) $data['value']);
+        if (! empty($data['currency']))   $c->setCurrency($data['currency']);
+        if (! empty($data['content_ids']))  $c->setContentIds(array_values($data['content_ids']));
+        if (! empty($data['content_name'])) $c->setContentName($data['content_name']);
+        if (! empty($data['content_type'])) $c->setContentType($data['content_type']);
+        if (isset($data['num_items']))    $c->setNumItems((int) $data['num_items']);
+        if (! empty($data['order_id']))   $c->setOrderId($data['order_id']);
+
+        return $c;
     }
 }
