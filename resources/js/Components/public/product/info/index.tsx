@@ -16,6 +16,7 @@ type Props = {
     onPrecio:             (precio: number) => void
     productoId?:          number
     nombre:               string
+    descripcion?:         string | null
     precioBase:           number | null
     imagenPrincipal:      string | null
     grupos:               VariableGrupo[]
@@ -34,7 +35,7 @@ function pluralizar(palabra: string): string {
     return /[aeiouáéíóú]$/i.test(palabra) ? `${palabra}s` : `${palabra}es`
 }
 
-export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase, imagenPrincipal, grupos, cantidades, unidad, urgenciaStockConfig = null, botonCompraConfig = null, botonCompraActivo = false }: Props) {
+export default function Info({ ctaRef, onPrecio, productoId, nombre, descripcion = null, precioBase, imagenPrincipal, grupos, cantidades, unidad, urgenciaStockConfig = null, botonCompraConfig = null, botonCompraActivo = false }: Props) {
     const { items, addItem, replaceItem } = useCart()
 
     const tieneBundles = cantidades.length > 0
@@ -60,7 +61,8 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase,
     const defaultSeleccion: Record<number, VariableItem> = {}
 
     const [seleccionados, setSeleccionados]   = useState<Record<number, VariableItem>[]>([defaultSeleccion])
-    const [cantidadActiva, setCantidadActiva] = useState<OpcionCantidad | null>(() => opciones[0] ?? null)
+    // Si hay una opción marcada como destacada, arranca seleccionada por defecto.
+    const [cantidadActiva, setCantidadActiva] = useState<OpcionCantidad | null>(() => opciones.find(o => o.destacado) ?? opciones[0] ?? null)
     const [cartBump, setCartBump]             = useState(false)
     const [interactuado, setInteractuado]     = useState(false)
     const [shake, setShake]                   = useState(false)
@@ -175,10 +177,16 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, precioBase,
     return (
         <div className="flex flex-col gap-6">
 
-            <div>
+            <div className="space-y-3">
                 <h1 className="text-4xl font-bold text-slate-900 tracking-tight leading-tight">
                     {nombre}
                 </h1>
+                {descripcion && (
+                    <div
+                        className="prose prose-sm max-w-none text-slate-600 prose-headings:text-slate-900 prose-headings:font-bold prose-p:leading-relaxed prose-ul:my-2 prose-li:my-0"
+                        dangerouslySetInnerHTML={{ __html: descripcion }}
+                    />
+                )}
             </div>
 
             {/* Sin bundles: selector global encima de cantidades */}

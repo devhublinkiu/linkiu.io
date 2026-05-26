@@ -117,7 +117,9 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
 
     // ── SEO: meta tags + JSON-LD schema.org/Product ──────────────────────────
     const tituloPagina   = nombre ? `${nombre} | ${nombreTienda}` : nombreTienda
-    const descripcionSeo = (descripcion || '').slice(0, 160)
+    // La descripción ahora puede ser HTML; para meta tags se necesita texto plano.
+    const descripcionPlano = (descripcion || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+    const descripcionSeo   = descripcionPlano.slice(0, 160)
 
     const aggregateRating = (() => {
         const items = (resenasClientes?.config as { items?: { estrellas?: number }[] } | undefined)?.items
@@ -132,7 +134,7 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
         '@context':    'https://schema.org/',
         '@type':       'Product',
         name:          nombre,
-        description:   descripcion,
+        description:   descripcionPlano || null,
         sku,
         brand:         { '@type': 'Brand', name: nombreTienda },
         ...(imagen_principal ? { image: imagen_principal } : {}),
@@ -249,6 +251,7 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                                 onPrecio={setPrecioActivo}
                                 productoId={producto_id ?? undefined}
                                 nombre={nombre ?? ''}
+                                descripcion={descripcion}
                                 precioBase={precio_base}
                                 imagenPrincipal={imagen_principal}
                                 grupos={grupos}

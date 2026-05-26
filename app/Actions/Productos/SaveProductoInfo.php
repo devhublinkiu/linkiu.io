@@ -4,6 +4,7 @@ namespace App\Actions\Productos;
 
 use App\Models\Producto;
 use Illuminate\Support\Str;
+use Mews\Purifier\Facades\Purifier;
 use RuntimeException;
 
 class SaveProductoInfo
@@ -13,6 +14,12 @@ class SaveProductoInfo
     public function execute(array $datos, ?Producto $producto = null): Producto
     {
         $datos['sku'] = $datos['sku'] ?: $this->generarSku();
+
+        // La descripción ahora es HTML enriquecido (RichTextEditor). Saneamos con
+        // HTMLPurifier para permitir solo etiquetas básicas y bloquear XSS.
+        if (! empty($datos['descripcion'])) {
+            $datos['descripcion'] = Purifier::clean($datos['descripcion']);
+        }
 
         if ($producto) {
             $producto->update($datos);

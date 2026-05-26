@@ -18,7 +18,7 @@ class StoreProductoInfoRequest extends FormRequest
         return [
             'nombre'      => ['required', 'string', 'max:200'],
             'slug'        => ['required', 'string', 'max:220', "unique:productos,slug,{$productoId}", 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
-            'descripcion' => ['nullable', 'string', 'max:500'],
+            'descripcion' => ['nullable', 'string', 'max:10000'],
             'category_id' => ['required', 'exists:categories,id'],
             'sku'         => ['nullable', 'string', 'max:100', "unique:productos,sku,{$productoId}"],
             'status'      => ['required', 'in:borrador,activo'],

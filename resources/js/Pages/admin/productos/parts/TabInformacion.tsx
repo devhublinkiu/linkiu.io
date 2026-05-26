@@ -5,9 +5,9 @@ import { FormEventHandler } from 'react'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
 import { Label } from '@/Components/ui/Label'
-import { Textarea } from '@/Components/ui/Textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/Select'
 import { Switch } from '@/Components/ui/Switch'
+import RichTextEditor from '@/Components/ui/RichTextEditor'
 import type { ProductoData } from '../Edit'
 
 interface Categoria {
@@ -64,12 +64,10 @@ export default function TabInformacion({ categorias, producto }: Props) {
 
     return (
         <form onSubmit={submit}>
-            <div className="grid grid-cols-1 gap-x-10 gap-y-5 lg:grid-cols-2">
+            <div className="space-y-5">
 
-                {/* Columna izquierda */}
-                <div className="space-y-5">
-
-                    {/* Nombre */}
+                {/* Fila 1: Nombre | SKU */}
+                <div className="grid grid-cols-1 gap-x-10 gap-y-5 lg:grid-cols-2">
                     <div className="space-y-1.5">
                         <Label htmlFor="prod-nombre">Nombre del producto <span className="text-red-500">*</span></Label>
                         <Input
@@ -81,41 +79,35 @@ export default function TabInformacion({ categorias, producto }: Props) {
                         {errors.nombre && <p className="text-xs text-red-500">{errors.nombre}</p>}
                     </div>
 
-                    {/* Slug */}
                     <div className="space-y-1.5">
-                        <Label htmlFor="prod-slug">Slug <span className="text-red-500">*</span></Label>
-                        <Input
-                            id="prod-slug"
-                            value={data.slug}
-                            onChange={e => setData('slug', e.target.value)}
-                            placeholder="savia-cubre-canas"
-                        />
-                        <p className="text-xs text-slate-500">URL del producto: /productos/{data.slug || '...'}</p>
-                        {errors.slug && <p className="text-xs text-red-500">{errors.slug}</p>}
-                    </div>
-
-                    {/* Descripción */}
-                    <div className="space-y-1.5">
-                        <Label htmlFor="prod-desc">
-                            Descripción <span className="text-xs text-slate-500">(opcional)</span>
+                        <Label htmlFor="prod-sku">
+                            SKU / Código externo <span className="text-xs text-slate-500">(opcional)</span>
                         </Label>
-                        <Textarea
-                            id="prod-desc"
-                            value={data.descripcion}
-                            onChange={e => setData('descripcion', e.target.value)}
-                            placeholder="Descripción corta del producto..."
-                            rows={5}
+                        <Input
+                            id="prod-sku"
+                            value={data.sku}
+                            onChange={e => setData('sku', e.target.value)}
+                            placeholder="Se genera automáticamente"
                         />
-                        <p className="text-xs text-slate-500">{data.descripcion.length}/500</p>
-                        {errors.descripcion && <p className="text-xs text-red-500">{errors.descripcion}</p>}
+                        {errors.sku && <p className="text-xs text-red-500">{errors.sku}</p>}
                     </div>
-
                 </div>
 
-                {/* Columna derecha */}
-                <div className="space-y-5">
+                {/* Fila 2: Slug full width */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="prod-slug">Slug <span className="text-red-500">*</span></Label>
+                    <Input
+                        id="prod-slug"
+                        value={data.slug}
+                        onChange={e => setData('slug', e.target.value)}
+                        placeholder="savia-cubre-canas"
+                    />
+                    <p className="text-xs text-slate-500">URL del producto: /productos/{data.slug || '...'}</p>
+                    {errors.slug && <p className="text-xs text-red-500">{errors.slug}</p>}
+                </div>
 
-                    {/* Categoría */}
+                {/* Fila 3: Categoría | Estado */}
+                <div className="grid grid-cols-1 gap-x-10 gap-y-5 lg:grid-cols-2">
                     <div className="space-y-1.5">
                         <Label>Categoría <span className="text-red-500">*</span></Label>
                         <Select
@@ -136,35 +128,32 @@ export default function TabInformacion({ categorias, producto }: Props) {
                         {errors.category_id && <p className="text-xs text-red-500">{errors.category_id}</p>}
                     </div>
 
-                    {/* SKU */}
                     <div className="space-y-1.5">
-                        <Label htmlFor="prod-sku">
-                            SKU / Código externo <span className="text-xs text-slate-500">(opcional)</span>
-                        </Label>
-                        <Input
-                            id="prod-sku"
-                            value={data.sku}
-                            onChange={e => setData('sku', e.target.value)}
-                            placeholder="Se genera automáticamente"
-                        />
-                        {errors.sku && <p className="text-xs text-red-500">{errors.sku}</p>}
-                    </div>
-
-                    {/* Estado */}
-                    <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
-                        <Label htmlFor="prod-status" className="cursor-pointer">
-                            Estado
-                            <span className="ml-2 text-xs text-slate-500">
+                        <Label>Estado</Label>
+                        <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 h-9">
+                            <span className="text-xs text-slate-500">
                                 {data.status === 'activo' ? 'Activo — visible en la tienda' : 'Borrador — no visible'}
                             </span>
-                        </Label>
-                        <Switch
-                            id="prod-status"
-                            checked={data.status === 'activo'}
-                            onCheckedChange={v => setData('status', v ? 'activo' : 'borrador')}
-                        />
+                            <Switch
+                                id="prod-status"
+                                checked={data.status === 'activo'}
+                                onCheckedChange={v => setData('status', v ? 'activo' : 'borrador')}
+                            />
+                        </div>
                     </div>
+                </div>
 
+                {/* Fila 4: Descripción full width */}
+                <div className="space-y-1.5">
+                    <Label htmlFor="prod-desc">
+                        Descripción <span className="text-xs text-slate-500">(opcional)</span>
+                    </Label>
+                    <RichTextEditor
+                        value={data.descripcion}
+                        onChange={html => setData('descripcion', html)}
+                        placeholder="Descripción del producto..."
+                    />
+                    {errors.descripcion && <p className="text-xs text-red-500">{errors.descripcion}</p>}
                 </div>
 
             </div>
