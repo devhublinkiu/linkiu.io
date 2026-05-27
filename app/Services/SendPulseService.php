@@ -31,6 +31,32 @@ class SendPulseService
         ]);
     }
 
+    /**
+     * Notifica al dueño/admin de la tienda que llegó un pedido nuevo.
+     * Envía al teléfono configurado en LinkiuBuild → Theme → SEO. Si no hay
+     * teléfono configurado, no-op silencioso (devuelve false).
+     */
+    public function notificarOrdenAlDueno(Order $orden): bool
+    {
+        $telefonoDueno = BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', ''));
+        $nombreTienda  = BuildConfig::get('build_seo_nombre_tienda',   config('app.name', 'Tu tienda'));
+
+        if (! $telefonoDueno) {
+            Log::info('SendPulseService: sin teléfono de dueño configurado, se omite notificación al merchant.');
+            return false;
+        }
+
+        return $this->enviarPlantilla($telefonoDueno, 'new_order_merchant_v1', [
+            $nombreTienda,
+            $orden->codigo,
+            $orden->nombre . ' ' . ($orden->apellido ?? ''),
+            $orden->telefono,
+            $orden->ciudad ?? '—',
+            number_format($orden->total, 0, ',', '.'),
+            url('/admin/ordenes'),
+        ]);
+    }
+
     public function notificarCambioEstado(Order $orden): bool
     {
         $url           = url("/orden/{$orden->acceso_token}");

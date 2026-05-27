@@ -296,6 +296,47 @@ FOOTER: Tu tienda · Powered by Linkiu
 
 ---
 
+### Plantilla 7 — `new_order_merchant_v1` _(notificación al dueño/admin)_
+**Categoría:** UTILITY | **Idioma:** es | **Prioridad:** Alta
+
+A diferencia de las otras plantillas, esta NO va al cliente sino al **dueño de la tienda** (teléfono configurado en LinkiuBuild → Theme → SEO).
+
+```
+HEADER (texto): Nuevo pedido recibido
+
+BODY:
+Hola, llegó un nuevo pedido a tu tienda *{{1}}*.
+
+Código: *{{2}}*
+Cliente: {{3}}
+Teléfono: {{4}}
+Ciudad: {{5}}
+Total: {{6}} COP
+
+Gestiona el pedido desde tu panel:
+{{7}}
+
+Revisa los detalles y prepárate para el envío.
+
+FOOTER: Linkiu · Notificación automática
+```
+
+| Variable | Valor |
+|---|---|
+| `{{1}}` | Nombre de la tienda (`build_seo_nombre_tienda`) |
+| `{{2}}` | Código (LNK-XXXXX) |
+| `{{3}}` | Nombre + apellido del cliente |
+| `{{4}}` | Teléfono del cliente |
+| `{{5}}` | Ciudad de entrega |
+| `{{6}}` | Total formateado SIN `$` (ej: `89.900`) — Meta rechaza `${{6}}` |
+| `{{7}}` | URL al admin de órdenes (ej: `https://tienda.com/admin/ordenes`) |
+
+**Notas:**
+- Si no hay teléfono configurado en `build_seo_telefono_tienda`, el envío se omite silenciosamente con log info.
+- Se dispara desde `app/Jobs/NotificarOrdenCreada.php` al mismo tiempo que la del cliente.
+
+---
+
 ## Notas de implementación
 
 - Registrar plantillas en **SendPulse → WhatsApp Business → Plantillas** antes del primer uso.

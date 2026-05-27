@@ -56,5 +56,11 @@ class NotificarOrdenCreada implements ShouldQueue
         } catch (\Exception $e) {
             Log::error('Job NotificarOrdenCreada SendPulse: ' . $e->getMessage());
         }
+
+        try {
+            $sendPulse->notificarOrdenAlDueno($this->orden);
+        } catch (\Exception $e) {
+            Log::error('Job NotificarOrdenCreada SendPulse (dueño): ' . $e->getMessage());
+        }
     }
 }
