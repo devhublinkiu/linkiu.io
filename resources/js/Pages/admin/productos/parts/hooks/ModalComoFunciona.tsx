@@ -47,14 +47,26 @@ export default function ModalComoFunciona({ open, onClose, productoId, config }:
     }
 
     function guardar() {
-        const validos = pasos.filter(p => p.titulo.trim())
+        // Limpiamos espacios y descartamos pasos sin título. Aseguramos shape
+        // limpio que coincide con las reglas del backend (nada de undefined).
+        const validos = pasos
+            .map(p => ({ titulo: p.titulo.trim(), descripcion: (p.descripcion ?? '').trim() }))
+            .filter(p => p.titulo.length > 0)
+
         setGuardando(true)
         postHookConfig({
             productoId,
             hookKey: 'como_funciona',
-            config:  { titulo, descripcion, pasos: validos },
+            config:  {
+                titulo:      titulo.trim() || 'Cómo funciona',
+                descripcion: descripcion.trim(),
+                pasos:       validos,
+            },
             onSuccess: () => onClose(),
-            onError:   () => toast.error('Error al guardar'),
+            onError:   (errors) => {
+                const primer = errors ? Object.values(errors)[0] : null
+                toast.error(typeof primer === 'string' ? primer : 'Error al guardar')
+            },
             onFinish:  () => setGuardando(false),
         })
     }

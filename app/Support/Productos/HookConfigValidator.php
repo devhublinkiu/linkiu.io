@@ -113,11 +113,11 @@ class HookConfigValidator
             'items.*.descripcion'   => 'nullable|string|max:'.self::MAX_TEXTO_MEDIANO,
         ],
         'como_funciona' => [
-            'titulo'                => 'required|string|max:'.self::MAX_TITULO_CORTO,
-            'descripcion'           => 'nullable|string|max:'.self::MAX_TEXTO_MEDIANO,
+            'titulo'                => 'required|string|max:120',
+            'descripcion'           => 'nullable|string|max:500',
             'pasos'                 => 'array|max:'.self::MAX_COMO_FUNCIONA_PASOS,
-            'pasos.*.titulo'        => 'required|string|max:'.self::MAX_TITULO_CORTO,
-            'pasos.*.descripcion'   => 'nullable|string|max:'.self::MAX_TEXTO_MEDIANO,
+            'pasos.*.titulo'        => 'required|string|max:120',
+            'pasos.*.descripcion'   => 'nullable|string|max:500',
         ],
         'boton_compra' => [
             'texto'             => 'nullable|string|max:30',
@@ -171,13 +171,18 @@ class HookConfigValidator
      * Mensajes personalizados en español para errores comunes.
      */
     private const MENSAJES = [
-        '*.required'   => 'Este campo es obligatorio.',
-        '*.string'     => 'Debe ser un texto.',
-        '*.array'      => 'Debe ser una lista.',
-        '*.integer'    => 'Debe ser un número entero.',
-        '*.max'        => 'Excede el tamaño máximo permitido.',
-        '*.min'        => 'No alcanza el mínimo requerido.',
-        'color.regex'  => 'El color debe ser un código hex válido (ej. #10B981).',
+        '*.required'    => 'Este campo es obligatorio.',
+        '*.string'      => 'Debe ser un texto.',
+        '*.array'       => 'Debe ser una lista.',
+        '*.integer'     => 'Debe ser un número entero.',
+        // Laravel resuelve `max` con subtipo (max.string, max.numeric, max.array).
+        // Cubrimos cada uno explícito para no devolver la clave literal sin traducir.
+        '*.max.string'  => 'Excede el tamaño máximo permitido.',
+        '*.max.numeric' => 'Excede el valor máximo permitido.',
+        '*.max.array'   => 'Excede la cantidad máxima de elementos.',
+        '*.min.string'  => 'No alcanza el mínimo requerido.',
+        '*.min.numeric' => 'No alcanza el valor mínimo requerido.',
+        'color.regex'   => 'El color debe ser un código hex válido (ej. #10B981).',
     ];
 
     /**
