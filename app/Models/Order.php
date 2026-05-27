@@ -62,7 +62,10 @@ class Order extends Model
         // no lo setee explícitamente.
         static::creating(function (Order $order) {
             if (empty($order->acceso_token)) {
-                $order->acceso_token = Str::random(40);
+                // 16 chars: ~95 bits de entropía — más que suficiente para acceso
+                // por link no público sin descuidar seguridad. Antes era 40
+                // (overkill) y la URL salía muy larga en WhatsApp.
+                $order->acceso_token = Str::random(16);
             }
         });
 
