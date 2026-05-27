@@ -22,10 +22,6 @@ export default function FichaTecnica({ config }: Props) {
 
             {specs.length > 0 && (
                 <div className="rounded-xl overflow-hidden border border-emerald-100 mb-4">
-                    <div className="bg-emerald-500 px-5 py-3 flex items-center gap-2">
-                        <CheckIcon className="w-4 h-4 text-white" strokeWidth={2.5} />
-                        <p className="text-sm font-bold text-white tracking-wide">ESPECIFICACIONES</p>
-                    </div>
                     <div className="bg-emerald-50 divide-y divide-emerald-100">
                         {specs.map(({ nombre, valor }) => (
                             <div key={nombre} className="flex items-center gap-4 px-5 py-4">
@@ -44,10 +40,6 @@ export default function FichaTecnica({ config }: Props) {
 
             {sinLista.length > 0 && (
                 <div className="rounded-xl overflow-hidden border border-slate-200">
-                    <div className="bg-slate-800 px-5 py-3 flex items-center gap-2">
-                        <XIcon className="w-4 h-4 text-slate-300" strokeWidth={2.5} />
-                        <p className="text-sm font-bold text-slate-200 tracking-wide">LIBRE DE</p>
-                    </div>
                     <div className="bg-white px-5 py-4">
                         <div className="flex flex-wrap gap-2">
                             {sinLista.map(item => (
