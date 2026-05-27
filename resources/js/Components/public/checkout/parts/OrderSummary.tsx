@@ -136,6 +136,12 @@ function MejorarPromo({ item }: { item: CartItem }) {
     )
 }
 
+interface MetodoPagoItem {
+    clave:       string
+    nombre:      string
+    config?:     { recargo?: number | null } & Record<string, unknown>
+}
+
 interface Props {
     onConfirmar: () => void
     enviando?: boolean
@@ -143,14 +149,25 @@ interface Props {
     zonasEnvio: ZonaEnvio[]
     ciudad: string
     metodoPago?: string
+    metodos?: MetodoPagoItem[]
     ocultarBoton?: boolean
 }
 
-export default function OrderSummary({ onConfirmar, enviando = false, recargo = 0, zonasEnvio, ciudad, metodoPago = '', ocultarBoton = false }: Props) {
+export default function OrderSummary({ onConfirmar, enviando = false, recargo = 0, zonasEnvio, ciudad, metodoPago = '', metodos = [], ocultarBoton = false }: Props) {
     const { items, removeItem, updateQuantity, total } = useCart()
 
     const envio = calcularEnvio(zonasEnvio, ciudad, total)
     const totalFinal = total + (envio ?? 0) + recargo
+
+    // Banner-descuento: si contraentrega tiene recargo configurado y hay métodos
+    // alternativos (pago adelantado), invitamos al cliente a ahorrarse el recargo.
+    const contraentrega   = metodos.find(m => m.clave === 'contraentrega')
+    const recargoConfig   = Number(contraentrega?.config?.recargo ?? 0)
+    const adelantados     = metodos.filter(m => m.clave !== 'contraentrega' && m.clave !== '')
+    const mostrarPromoAdelanto =
+        recargoConfig > 0
+        && adelantados.length > 0
+        && metodoPago === 'contraentrega'
 
     return (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden sticky top-24">
@@ -244,6 +261,17 @@ export default function OrderSummary({ onConfirmar, enviando = false, recargo = 
                     <p className="text-[10px] text-slate-400 -mt-1">* No incluye el costo de envío</p>
                 )}
             </div>
+
+            {mostrarPromoAdelanto && (
+                <div className="mx-5 mb-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 border border-emerald-200 p-3.5">
+                    <p className="text-xs font-bold text-emerald-700 leading-snug">
+                        🔥 ¡Recibe bono de {formatPrecio(recargoConfig)}!
+                    </p>
+                    <p className="text-[11px] text-emerald-700/80 mt-1 leading-relaxed">
+                       <strong>Paga con {adelantados.map(a => a.nombre).join(' o ')}</strong> y recibe un bono de descuento.
+                    </p>
+                </div>
+            )}
 
             {/* CTA */}
             {!ocultarBoton && <div className="px-5 pb-5">

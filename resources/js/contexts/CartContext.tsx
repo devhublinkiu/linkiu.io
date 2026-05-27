@@ -43,18 +43,55 @@ const CartContext = createContext<CartContextType>({
 })
 
 /**
+ * Convierte a número aceptando string numérico ("47600.00") — el backend
+ * serializa decimales de MySQL como string en JSON. Retorna null si no
+ * es parseable.
+ */
+function aNumero(v: unknown): number | null {
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+    if (typeof v === 'string' && v.trim() !== '') {
+        const n = Number(v)
+        return Number.isFinite(n) ? n : null
+    }
+    return null
+}
+
+/**
  * Verifica que un item de localStorage tenga el shape esperado de CartItem.
  * Protege contra basura: items truncados, schemas viejos, JSON manipulado.
+ *
+ * Acepta precio como number o string numérico (Laravel devuelve decimales
+ * como string en JSON).
  */
 function esItemValido(x: unknown): x is CartItem {
     if (!x || typeof x !== 'object') return false
     const i = x as Record<string, unknown>
+    const precio = aNumero(i.precio)
     return typeof i.id       === 'string'
         && typeof i.nombre   === 'string' && i.nombre.length > 0
-        && typeof i.precio   === 'number' && Number.isFinite(i.precio) && i.precio >= 0
+        && precio !== null && precio >= 0
         && typeof i.cantidad === 'number' && Number.isInteger(i.cantidad) && i.cantidad > 0
         && typeof i.imagen   === 'string'
         && typeof i.label    === 'string'
+}
+
+/**
+ * Normaliza un item ya validado: precio y precios de opciones quedan como
+ * number aunque vinieran como string en localStorage. Garantiza que el
+ * state interno siempre sea number puro.
+ */
+function normalizarItem(item: CartItem): CartItem {
+    return {
+        ...item,
+        precio: aNumero(item.precio) ?? 0,
+        opciones: Array.isArray(item.opciones)
+            ? item.opciones.map(o => ({
+                ...o,
+                precio:      aNumero(o.precio)      ?? 0,
+                ahorroMonto: aNumero(o.ahorroMonto),
+            }))
+            : item.opciones,
+    }
 }
 
 /**
@@ -63,6 +100,7 @@ function esItemValido(x: unknown): x is CartItem {
  * no acumular basura indefinidamente entre cargas.
  */
 function cargarCarrito(): CartItem[] {
+    if (typeof window === 'undefined') return []
     try {
         const guardado = localStorage.getItem('carrito')
         if (!guardado) return []
@@ -73,11 +111,11 @@ function cargarCarrito(): CartItem[] {
             return []
         }
 
-        const validos = parsed.filter(esItemValido)
+        const validos = parsed.filter(esItemValido).map(normalizarItem)
 
-        // Si filtramos algo, re-persistir el carrito limpio para no acumular
-        // basura entre cargas y mantener localStorage liviano.
-        if (validos.length !== parsed.length) {
+        // Si filtramos algo o normalizamos precios string→number, re-persistir
+        // el carrito limpio para no acumular basura entre cargas.
+        if (validos.length !== parsed.length || JSON.stringify(validos) !== JSON.stringify(parsed)) {
             localStorage.setItem('carrito', JSON.stringify(validos))
         }
 
@@ -90,11 +128,21 @@ function cargarCarrito(): CartItem[] {
 }
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-    const [items, setItems] = useState<CartItem[]>(cargarCarrito)
+    // En SSR localStorage no existe — arrancamos vacío y rehidratamos en client.
+    // Sin el flag `hidratado`, el primer useEffect post-mount escribiría
+    // `[]` a localStorage ANTES de leer lo guardado, borrando el carrito.
+    const [items, setItems]         = useState<CartItem[]>([])
+    const [hidratado, setHidratado] = useState(false)
 
     useEffect(() => {
+        setItems(cargarCarrito())
+        setHidratado(true)
+    }, [])
+
+    useEffect(() => {
+        if (!hidratado) return
         localStorage.setItem('carrito', JSON.stringify(items))
-    }, [items])
+    }, [items, hidratado])
 
     function addItem(item: Omit<CartItem, 'id'>) {
         setItems(prev => {

@@ -182,7 +182,10 @@ export default function ProductSpotlight() {
                         <div>
                             <h3 className="text-3xl font-bold text-slate-900 tracking-tight">{p.nombre}</h3>
                             {p.descripcion && (
-                                <p className="text-slate-500 mt-2 leading-relaxed">{p.descripcion}</p>
+                                <div
+                                    className="prose prose-sm max-w-none text-slate-500 mt-2 prose-headings:text-slate-900 prose-p:leading-relaxed prose-ul:my-2 prose-li:my-0"
+                                    dangerouslySetInnerHTML={{ __html: p.descripcion }}
+                                />
                             )}
                         </div>
 

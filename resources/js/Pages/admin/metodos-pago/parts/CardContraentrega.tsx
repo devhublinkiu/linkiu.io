@@ -73,6 +73,9 @@ export default function CardContraentrega({ metodo, puedeEditar, onToggle }: Pro
                     <p className="text-xs text-slate-500">
                         Costo adicional visible al cliente al seleccionar contraentrega. Déjalo en 0 si no aplica.
                     </p>
+                    <p className="text-xs text-emerald-600 font-medium">
+                        💡 Tip: agrega un valor al recargo. Te ayudará a impulsar ventas con pago adelantado.
+                    </p>
                 </div>
                 <div className="flex justify-end">
                     <Tooltip>

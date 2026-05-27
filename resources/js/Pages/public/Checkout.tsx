@@ -91,6 +91,64 @@ function Checkout() {
     const [intentoEnviar,        setIntentoEnviar]        = useState(false)
     const [mpPendiente,          setMpPendiente]          = useState(false)
 
+    // ── Persistencia en localStorage ─────────────────────────────────────────
+    // Restauramos el formulario al montar (sobrevive a F5 / cierre de pestaña).
+    // NO persistimos comprobante (File no serializable) ni contraseñas (seguridad).
+    // El flag `formHidratado` evita que el writer borre el storage en SSR/hydration
+    // antes de que el reader lo haya leído.
+    const [formHidratado, setFormHidratado] = useState(false)
+
+    useEffect(() => {
+        const raw = typeof window === 'undefined' ? null : localStorage.getItem('checkout_form_v1')
+        if (!raw) { setFormHidratado(true); return }
+        try {
+            const saved = JSON.parse(raw)
+            if (typeof saved !== 'object' || saved === null) { setFormHidratado(true); return }
+
+            setForm(prev => ({
+                nombre:      typeof saved.nombre      === 'string' ? saved.nombre      : prev.nombre,
+                apellido:    typeof saved.apellido    === 'string' ? saved.apellido    : prev.apellido,
+                email:       typeof saved.email       === 'string' ? saved.email       : prev.email,
+                telefono:    typeof saved.telefono    === 'string' ? saved.telefono    : prev.telefono,
+                direccion:   typeof saved.direccion   === 'string' ? saved.direccion   : prev.direccion,
+                apartamento: typeof saved.apartamento === 'string' ? saved.apartamento : prev.apartamento,
+                notas:       typeof saved.notas       === 'string' ? saved.notas       : prev.notas,
+            }))
+            if (typeof saved.departamento === 'string') setDepartamento(saved.departamento)
+            if (typeof saved.ciudad       === 'string') setCiudad(saved.ciudad)
+            if (typeof saved.metodoPago   === 'string' && metodos.some(m => m.clave === saved.metodoPago)) {
+                setMetodoPago(saved.metodoPago)
+            }
+            if (typeof saved.crearCuenta === 'boolean') setCrearCuenta(saved.crearCuenta)
+        } catch {
+            localStorage.removeItem('checkout_form_v1')
+        } finally {
+            setFormHidratado(true)
+        }
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Guarda en cada cambio relevante. Excluye contraseñas y comprobante.
+    useEffect(() => {
+        if (!formHidratado || typeof window === 'undefined') return
+        localStorage.setItem('checkout_form_v1', JSON.stringify({
+            nombre:      form.nombre,
+            apellido:    form.apellido,
+            email:       form.email,
+            telefono:    form.telefono,
+            direccion:   form.direccion,
+            apartamento: form.apartamento,
+            notas:       form.notas,
+            departamento,
+            ciudad,
+            metodoPago,
+            crearCuenta,
+        }))
+    }, [form, departamento, ciudad, metodoPago, crearCuenta, formHidratado])
+
+    function limpiarFormPersistido() {
+        if (typeof window !== 'undefined') localStorage.removeItem('checkout_form_v1')
+    }
+
     // Cuando el cliente hace login desde el checkout, sync form + dirección predeterminada
     useEffect(() => {
         if (!auth?.client) return
@@ -121,6 +179,7 @@ function Checkout() {
 
     function manejarResultadoMp(resultado: MpResultado) {
         clearCart()
+        limpiarFormPersistido()
 
         if (resultado.status === 'approved') {
             router.visit(route('orden.confirmacion', { order: resultado.acceso_token }))
@@ -238,7 +297,7 @@ function Checkout() {
         })
 
         router.post(route('orden.store'), payload, {
-            onSuccess: () => clearCart(),
+            onSuccess: () => { clearCart(); limpiarFormPersistido() },
             onError:   (errors) => {
                 const primer = Object.values(errors)[0]
                 toast.error(primer ?? 'Error al procesar el pedido')
@@ -374,6 +433,7 @@ function Checkout() {
                             zonasEnvio={zonas_envio}
                             ciudad={ciudad}
                             metodoPago={metodoPago}
+                            metodos={metodos}
                             ocultarBoton={metodoPago === 'mercadopago'}
                         />
 

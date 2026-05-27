@@ -60,9 +60,15 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, descripcion
 
     const defaultSeleccion: Record<number, VariableItem> = {}
 
-    const [seleccionados, setSeleccionados]   = useState<Record<number, VariableItem>[]>([defaultSeleccion])
-    // Si hay una opción marcada como destacada, arranca seleccionada por defecto.
-    const [cantidadActiva, setCantidadActiva] = useState<OpcionCantidad | null>(() => opciones.find(o => o.destacado) ?? opciones[0] ?? null)
+    // Opción inicial: la destacada si existe, si no la primera. Aplica también
+    // al length inicial de `seleccionados` para que rendericen tantos selectores
+    // como unidades tenga el bundle destacado.
+    const cantidadInicial = opciones.find(o => o.destacado) ?? opciones[0] ?? null
+
+    const [seleccionados, setSeleccionados]   = useState<Record<number, VariableItem>[]>(
+        () => Array.from({ length: Math.max(1, cantidadInicial?.cantidad ?? 1) }, () => ({ ...defaultSeleccion }))
+    )
+    const [cantidadActiva, setCantidadActiva] = useState<OpcionCantidad | null>(() => cantidadInicial)
     const [cartBump, setCartBump]             = useState(false)
     const [interactuado, setInteractuado]     = useState(false)
     const [shake, setShake]                   = useState(false)

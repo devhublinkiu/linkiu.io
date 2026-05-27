@@ -79,9 +79,9 @@ export default function AnnouncementBar() {
     const bgColor   = resolverColor(ticker?.color_bg   ?? 'primario')
     const textColor = resolverColor(ticker?.color_text ?? 'blanco')
 
-    const [idx,     setIdx]     = useState(0)
-    const [visible, setVisible] = useState(true)
-    const [now,     setNow]     = useState(Date.now())
+    const [idx, setIdx]               = useState(0)
+    const [animar, setAnimar]         = useState(true)
+    const [now, setNow]               = useState(Date.now())
 
     useEffect(() => {
         const t = setInterval(() => setNow(Date.now()), 1000)
@@ -91,42 +91,51 @@ export default function AnnouncementBar() {
     useEffect(() => {
         if (anuncios.length <= 1) return
         const t = setInterval(() => {
-            setVisible(false)
-            setTimeout(() => {
-                setIdx(i => (i + 1) % anuncios.length)
-                setVisible(true)
-            }, 300)
+            setAnimar(true)
+            setIdx(i => i + 1)
         }, interval * 1000)
         return () => clearInterval(t)
     }, [anuncios.length, interval])
 
+    // Loop infinito: cuando llegamos al clon (anuncios.length), esperamos a que
+    // termine la transición y volvemos a idx=0 sin animar — visualmente queda
+    // en el mismo lugar (clon === original) pero el contador se reinicia.
+    useEffect(() => {
+        if (anuncios.length <= 1 || idx !== anuncios.length) return
+        const t = setTimeout(() => {
+            setAnimar(false)
+            setIdx(0)
+            // Re-habilitar animación en el siguiente frame para que el próximo tick anime suave.
+            requestAnimationFrame(() => requestAnimationFrame(() => setAnimar(true)))
+        }, 500) // = duration-500
+        return () => clearTimeout(t)
+    }, [idx, anuncios.length])
+
     if (anuncios.length === 0) return null
 
-    const ann = anuncios[idx % anuncios.length]
+    // Slides + clon del primero al final para crear el efecto loop infinito.
+    const slides = anuncios.length > 1 ? [...anuncios, anuncios[0]] : anuncios
+
+    // translateY se refiere a la altura del propio elemento (la columna apilada),
+    // no a la del viewport. Por eso dividimos 100% entre la cantidad de slides
+    // para avanzar UNO solo en cada tick.
+    const offsetPct = slides.length > 0 ? (idx * 100) / slides.length : 0
 
     return (
-        <div className="sticky top-0 z-50 overflow-hidden" style={{ backgroundColor: bgColor, color: textColor }}>
-
-            {/* Desktop — estático y centrado */}
-            <div className={cn(
-                'hidden sm:flex items-center justify-center gap-2.5 px-4 py-2.5 text-sm transition-opacity duration-300',
-                visible ? 'opacity-100' : 'opacity-0',
-            )}>
-                <ContenidoBar ann={ann} now={now} />
-            </div>
-
-            {/* Móvil — marquee continuo */}
-            <div className="sm:hidden py-2.5">
-                <div className="flex animate-marquee whitespace-nowrap text-sm">
-                    <span className="inline-flex items-center gap-2.5 px-6">
+        <div className="sticky top-0 z-50 overflow-hidden h-10" style={{ backgroundColor: bgColor, color: textColor }}>
+            <div
+                className={cn('flex flex-col', animar && 'transition-transform duration-500 ease-in-out')}
+                style={{ transform: `translateY(-${offsetPct}%)` }}
+            >
+                {slides.map((ann, i) => (
+                    <div
+                        key={`${ann.id}-${i}`}
+                        className="h-10 flex items-center justify-center gap-2.5 px-4 text-sm shrink-0"
+                    >
                         <ContenidoBar ann={ann} now={now} />
-                    </span>
-                    <span className="inline-flex items-center gap-2.5 px-6" aria-hidden>
-                        <ContenidoBar ann={ann} now={now} />
-                    </span>
-                </div>
+                    </div>
+                ))}
             </div>
-
         </div>
     )
 }
