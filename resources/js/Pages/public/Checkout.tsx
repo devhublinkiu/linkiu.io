@@ -8,6 +8,7 @@ import CustomerForm, { type FormDatos, type DireccionGuardada } from '@/Componen
 import PaymentMethods, { type MetodoPagoPublico } from '@/Components/public/checkout/parts/PaymentMethods'
 import OrderSummary from '@/Components/public/checkout/parts/OrderSummary'
 import PaymentBrick, { type MpResultado } from '@/Components/public/checkout/parts/PaymentBrick'
+import BoldButton from '@/Components/public/checkout/parts/BoldButton'
 import { useCart } from '@/contexts/CartContext'
 import { trackFb } from '@/lib/usePixel'
 
@@ -60,12 +61,18 @@ function Checkout() {
 
     useEffect(() => {
         if (items.length === 0) return
+        // Idempotencia por sesión: si ya disparamos InitiateCheckout esta sesión,
+        // no lo repetimos en refreshes ni segundas visitas al checkout. Se limpia
+        // al completar la compra (limpiarFormPersistido también limpia este flag).
+        if (typeof window !== 'undefined' && sessionStorage.getItem('ic_dispatched')) return
+
         trackFb('InitiateCheckout', {
             content_ids: items.map(i => i.id),
             num_items:   items.reduce((acc, i) => acc + i.cantidad, 0),
             value:       total,
             currency:    'COP',
         })
+        if (typeof window !== 'undefined') sessionStorage.setItem('ic_dispatched', '1')
     }, [])
 
     const [form, setForm] = useState<FormDatos>({
@@ -146,7 +153,11 @@ function Checkout() {
     }, [form, departamento, ciudad, metodoPago, crearCuenta, formHidratado])
 
     function limpiarFormPersistido() {
-        if (typeof window !== 'undefined') localStorage.removeItem('checkout_form_v1')
+        if (typeof window === 'undefined') return
+        localStorage.removeItem('checkout_form_v1')
+        // También liberamos el flag de InitiateCheckout para que un nuevo
+        // carrito en esta misma pestaña vuelva a disparar el evento.
+        sessionStorage.removeItem('ic_dispatched')
     }
 
     // Cuando el cliente hace login desde el checkout, sync form + dirección predeterminada
@@ -342,11 +353,11 @@ function Checkout() {
             </section>
 
             {/* Contenido */}
-            <section className="bg-slate-50 py-10 min-h-[70vh]">
+            <section className="bg-slate-50 py-10 min-h-[70vh] overflow-x-hidden">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6">
                     <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
 
-                        <div className="flex flex-col gap-6">
+                        <div className="flex flex-col gap-6 min-w-0">
                             {!clienteLogueado && <LoginOption />}
 
                             <div className="bg-white border border-slate-200 rounded-2xl p-6">
@@ -424,6 +435,32 @@ function Checkout() {
                                     Tu orden fue registrada. Completa el pago para confirmarla.
                                 </div>
                             )}
+
+                            {/* Botón Bold — abre el modal embebido del SDK al click */}
+                            {metodoPago === 'bold' && (
+                                <div className="bg-white border border-slate-200 rounded-2xl p-6">
+                                    <BoldButton
+                                        orderData={{
+                                            form,
+                                            departamento,
+                                            ciudad,
+                                            subtotal:    Math.round(total),
+                                            costoEnvio:  Math.round(costoEnvio),
+                                            recargo:     Math.round(recargo),
+                                            total:       Math.round(total + costoEnvio + recargo),
+                                            items:       items.map(i => ({
+                                                producto_id: i.productoId,
+                                                nombre:      i.nombre,
+                                                imagen:      i.imagen ?? '',
+                                                label:       i.label ?? '',
+                                                cantidad:    Math.round(Number(i.cantidad)),
+                                                precio:      Math.round(Number(i.precio)),
+                                            })),
+                                        }}
+                                        onError={msg => toast.error(msg)}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <OrderSummary
@@ -434,7 +471,7 @@ function Checkout() {
                             ciudad={ciudad}
                             metodoPago={metodoPago}
                             metodos={metodos}
-                            ocultarBoton={metodoPago === 'mercadopago'}
+                            ocultarBoton={metodoPago === 'mercadopago' || metodoPago === 'bold'}
                         />
 
                     </div>

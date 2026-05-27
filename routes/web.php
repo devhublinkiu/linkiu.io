@@ -111,6 +111,13 @@ Route::post('/api/mp/pagar',        [MercadoPagoController::class, 'pagar']   )-
 Route::get('/mp/resultado',         [MercadoPagoController::class, 'callback'])->name('mp.callback');
 Route::post('/webhooks/mercadopago',[MercadoPagoController::class, 'webhook'] )->name('mp.webhook');
 
+// Bold (Colombia) — checkout embebido
+Route::post('/api/bold/iniciar', [\App\Http\Controllers\BoldController::class, 'iniciar'])
+    ->middleware('throttle:30,1')
+    ->name('bold.iniciar');
+Route::post('/webhooks/bold', [\App\Http\Controllers\BoldController::class, 'webhook'])
+    ->name('bold.webhook');
+
 Route::get('/productos',                   [PublicProductosController::class, 'index'])    ->name('productos');
 Route::get('/productos/categoria/{slug}',  [PublicProductosController::class, 'categoria'])->name('productos.categoria');
 Route::get('/productos/{slug}',            [PublicProductosController::class, 'show'])     ->name('producto.show');

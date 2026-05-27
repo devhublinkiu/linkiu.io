@@ -20,6 +20,7 @@ interface Props {
     setForm:     (updater: (prev: MercadoPagoFormState) => MercadoPagoFormState) => void
     puedeEditar: boolean
     webhookUrl:  string
+    embedded?:   boolean
 }
 
 /**
@@ -28,12 +29,20 @@ interface Props {
  *
  * `webhookUrl` viene del backend (no `window.location.origin`) para
  * compatibilidad con SSR.
+ *
+ * Con `embedded={true}` se renderiza sin contenedor ni header — para usarse
+ * dentro de un Sheet que ya provee esos elementos.
  */
-export function MercadoPagoCard({ form, setForm, puedeEditar, webhookUrl }: Props) {
-    return (
-        <div className="rounded-lg border border-slate-200 bg-white p-6 space-y-6">
+export function MercadoPagoCard({ form, setForm, puedeEditar, webhookUrl, embedded = false }: Props) {
+    const containerCls = embedded
+        ? 'space-y-6'
+        : 'rounded-lg border border-slate-200 bg-white p-6 space-y-6'
 
-            {/* Header */}
+    return (
+        <div className={containerCls}>
+
+            {/* Header — oculto cuando está embebido en un Sheet */}
+            {!embedded && (
             <div className="flex items-start gap-4">
                 <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
                     <CreditCard className="size-4 text-slate-500" />
@@ -50,6 +59,7 @@ export function MercadoPagoCard({ form, setForm, puedeEditar, webhookUrl }: Prop
                     </p>
                 </div>
             </div>
+            )}
 
             {/* Toggle modo activo */}
             <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 border border-slate-200">
@@ -83,8 +93,8 @@ export function MercadoPagoCard({ form, setForm, puedeEditar, webhookUrl }: Prop
                 </div>
             </div>
 
-            {/* Dos columnas: prueba y producción */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Credenciales — una sola columna para mejor lectura */}
+            <div className="grid grid-cols-1 gap-4">
                 <CredencialesColumn
                     titulo="Credenciales de prueba"
                     icono={FlaskConical}

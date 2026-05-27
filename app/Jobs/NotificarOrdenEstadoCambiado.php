@@ -39,19 +39,19 @@ class NotificarOrdenEstadoCambiado implements ShouldQueue
                 'numero_guia'    => $this->orden->numero_guia,
                 'transportadora' => $this->orden->transportadora,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenEstadoCambiado Ably: ' . $e->getMessage());
         }
 
         try {
             Mail::to($this->orden->email)->send(new OrdenEstadoCambiadoMail($this->orden));
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenEstadoCambiado Mail: ' . $e->getMessage());
         }
 
         try {
             $sendPulse->notificarCambioEstado($this->orden);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenEstadoCambiado SendPulse: ' . $e->getMessage());
         }
     }

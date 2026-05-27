@@ -3,20 +3,27 @@ import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { CreditCard } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
-import { Button } from '@/Components/ui/Button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
-import { MercadoPagoCard, type MercadoPagoFormState } from './parts/MercadoPagoCard'
+import { TooltipProvider } from '@/Components/ui/Tooltip'
+import PasarelaCard from './parts/PasarelaCard'
+import SheetConfigPasarela from './parts/SheetConfigPasarela'
 import { ComingSoonCard } from './parts/ComingSoonCard'
+import type { MercadoPagoFormState } from './parts/MercadoPagoCard'
+import type { BoldFormState } from './parts/BoldCard'
 
 interface Props {
     mp_access_token_sandbox: string | null
     mp_public_key_sandbox:   string | null
     mp_access_token_prod:    string | null
     mp_public_key_prod:      string | null
-    mp_webhook_secret:       string | null
+    mp_webhook_secret_set:   boolean
     mp_sandbox:              boolean
-    webhook_url:             string
+    mp_webhook_url:          string
+    bold_identity_key_set:   boolean
+    bold_secret_key_set:     boolean
+    bold_webhook_url:        string
 }
+
+const TOKEN_NO_CAMBIAR = '***'
 
 const PROXIMAS_PASARELAS = [
     { nombre: 'Wompi',  descripcion: 'Pasarela de Bancolombia. Tarjetas, PSE, Nequi y efectivo.' },
@@ -24,37 +31,48 @@ const PROXIMAS_PASARELAS = [
     { nombre: 'ePayco', descripcion: 'Pasarela colombiana con integración sencilla y soporte local.' },
 ]
 
+type Clave = 'mercadopago' | 'bold' | null
+type FormState = MercadoPagoFormState & BoldFormState
+
 export default function Pasarelas({
-    mp_access_token_sandbox,
-    mp_public_key_sandbox,
-    mp_access_token_prod,
-    mp_public_key_prod,
-    mp_webhook_secret,
-    mp_sandbox,
-    webhook_url,
+    mp_access_token_sandbox, mp_public_key_sandbox, mp_access_token_prod, mp_public_key_prod,
+    mp_webhook_secret_set, mp_sandbox, mp_webhook_url,
+    bold_identity_key_set, bold_secret_key_set, bold_webhook_url,
 }: Props) {
     const { props } = usePage<{ auth: { permissions: string[] } }>()
     const puede = (permiso: string) =>
         props.auth.permissions.includes('*') || props.auth.permissions.includes(permiso)
     const puedeEditar = puede('integraciones.editar')
 
-    const [form, setForm] = useState<MercadoPagoFormState>({
+    const [configurando, setConfigurando] = useState<Clave>(null)
+    const [guardando, setGuardando] = useState(false)
+    const [form, setForm] = useState<FormState>({
         mp_access_token_sandbox: mp_access_token_sandbox ?? '',
         mp_public_key_sandbox:   mp_public_key_sandbox   ?? '',
         mp_access_token_prod:    mp_access_token_prod    ?? '',
         mp_public_key_prod:      mp_public_key_prod      ?? '',
-        mp_webhook_secret:       mp_webhook_secret       ?? '',
+        mp_webhook_secret:       mp_webhook_secret_set ? TOKEN_NO_CAMBIAR : '',
         mp_sandbox,
+        bold_identity_key:       bold_identity_key_set ? TOKEN_NO_CAMBIAR : '',
+        bold_secret_key:         bold_secret_key_set   ? TOKEN_NO_CAMBIAR : '',
     })
-    const [guardando, setGuardando] = useState(false)
+
+    const mpConfigurado = !!(mp_access_token_sandbox || mp_access_token_prod)
+    const mpInfoExtra   = mpConfigurado
+        ? (mp_sandbox ? 'Sandbox activo' : 'Producción activo')
+        : undefined
+
+    const boldConfigurado = bold_identity_key_set && bold_secret_key_set
+    const boldInfoExtra   = boldConfigurado ? 'Listo para recibir pagos' : undefined
 
     function guardar() {
         setGuardando(true)
-        // `as any` — Inertia router exige `RequestPayload` con index signature.
-        // El form es un objeto fijo conocido (no dinámico) que el backend valida.
         router.post(route('admin.integraciones.pasarelas.update'), form as any, {
             preserveScroll: true,
-            onSuccess: () => toast.success('Configuración guardada correctamente'),
+            onSuccess: () => {
+                toast.success('Configuración guardada correctamente')
+                setConfigurando(null)
+            },
             onError:   () => toast.error('Error al guardar la configuración'),
             onFinish:  () => setGuardando(false),
         })
@@ -73,16 +91,32 @@ export default function Pasarelas({
                         </div>
                         <div>
                             <h1 className="text-lg font-semibold text-slate-900">Pasarelas de pago</h1>
-                            <p className="text-xs text-slate-500">Conecta tu pasarela para procesar pagos en línea.</p>
+                            <p className="text-xs text-slate-500">Conecta tus pasarelas para procesar pagos en línea.</p>
                         </div>
                     </div>
 
-                    <MercadoPagoCard
-                        form={form}
-                        setForm={setForm}
-                        puedeEditar={puedeEditar}
-                        webhookUrl={webhook_url}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <PasarelaCard
+                            clave="mercadopago"
+                            nombre="Mercado Pago"
+                            descripcion="Tarjeta, PSE, Nequi y más. La pasarela más usada en Colombia."
+                            configurado={mpConfigurado}
+                            infoExtra={mpInfoExtra}
+                            puedeEditar={puedeEditar}
+                            onConfigurar={() => setConfigurando('mercadopago')}
+                            docsUrl="https://www.mercadopago.com.co/developers/es/docs"
+                        />
+                        <PasarelaCard
+                            clave="bold"
+                            nombre="Bold"
+                            descripcion="Tarjeta, PSE, Nequi, Bancolombia y QR. Comisión desde 1.50%."
+                            configurado={boldConfigurado}
+                            infoExtra={boldInfoExtra}
+                            puedeEditar={puedeEditar}
+                            onConfigurar={() => setConfigurando('bold')}
+                            docsUrl="https://developers.bold.co/"
+                        />
+                    </div>
 
                     <div className="grid grid-cols-3 gap-4">
                         {PROXIMAS_PASARELAS.map(p => (
@@ -90,18 +124,19 @@ export default function Pasarelas({
                         ))}
                     </div>
 
-                    <div className="flex items-center justify-end pt-2 border-t border-slate-100">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span>
-                                    <Button onClick={guardar} disabled={guardando || !puedeEditar}>
-                                        {guardando ? 'Guardando…' : 'Guardar cambios'}
-                                    </Button>
-                                </span>
-                            </TooltipTrigger>
-                            {!puedeEditar && <TooltipContent>No tienes permiso para editar</TooltipContent>}
-                        </Tooltip>
-                    </div>
+                    <SheetConfigPasarela
+                        clave={configurando}
+                        form={form}
+                        setForm={setForm}
+                        puedeEditar={puedeEditar}
+                        guardando={guardando}
+                        onGuardar={guardar}
+                        onClose={() => setConfigurando(null)}
+                        mpWebhookUrl={mp_webhook_url}
+                        boldWebhookUrl={bold_webhook_url}
+                        identityKeyPresente={bold_identity_key_set}
+                        secretKeyPresente={bold_secret_key_set}
+                    />
 
                 </div>
             </TooltipProvider>

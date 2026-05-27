@@ -41,25 +41,25 @@ class NotificarOrdenCreada implements ShouldQueue
                 'total'      => $this->orden->total,
                 'created_at' => $this->orden->created_at->format('H:i'),
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenCreada Ably: ' . $e->getMessage());
         }
 
         try {
             Mail::to($this->orden->email)->send(new OrdenConfirmadaMail($this->orden));
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenCreada Mail: ' . $e->getMessage());
         }
 
         try {
             $sendPulse->notificarOrdenCreada($this->orden);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenCreada SendPulse: ' . $e->getMessage());
         }
 
         try {
             $sendPulse->notificarOrdenAlDueno($this->orden);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenCreada SendPulse (dueño): ' . $e->getMessage());
         }
     }

@@ -29,6 +29,8 @@ class Integracion extends Model
         'mp_access_token_prod',
         'mp_webhook_secret',
         'fb_access_token',
+        'bold_identity_key',
+        'bold_secret_key',
     ];
 
     private static function cacheKey(string $clave): string

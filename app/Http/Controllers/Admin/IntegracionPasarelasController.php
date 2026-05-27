@@ -21,9 +21,13 @@ class IntegracionPasarelasController extends Controller
             'mp_public_key_sandbox'   => Integracion::get('mp_public_key_sandbox'),
             'mp_access_token_prod'    => Integracion::get('mp_access_token_prod'),
             'mp_public_key_prod'      => Integracion::get('mp_public_key_prod'),
-            'mp_webhook_secret'       => Integracion::get('mp_webhook_secret'),
+            'mp_webhook_secret_set'   => ! empty(Integracion::get('mp_webhook_secret')),
             'mp_sandbox'              => Integracion::get('mp_sandbox', '1') === '1',
-            'webhook_url'             => route('mp.webhook'),
+            'mp_webhook_url'          => route('mp.webhook'),
+            // Bold — el identity_key (pública) puede mostrarse parcial; el secret jamás.
+            'bold_identity_key_set'   => ! empty(Integracion::get('bold_identity_key')),
+            'bold_secret_key_set'     => ! empty(Integracion::get('bold_secret_key')),
+            'bold_webhook_url'        => route('bold.webhook'),
         ]);
     }
 
@@ -38,6 +42,10 @@ class IntegracionPasarelasController extends Controller
             'mp_public_key_prod'      => 'nullable|string|max:200',
             'mp_webhook_secret'       => 'nullable|string|max:200',
             'mp_sandbox'              => 'boolean',
+            // Bold — identity_key (pública) y secret_key (HMAC webhook).
+            // Permitir sentinel "***" para preservar el valor actual sin reescribir.
+            'bold_identity_key'       => 'nullable|string|max:500',
+            'bold_secret_key'         => 'nullable|string|max:500',
         ]);
 
         $action->handle($data);

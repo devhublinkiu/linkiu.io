@@ -30,11 +30,15 @@ class OrdenEstadoCambiadoMail extends Mailable
 
         $asunto = $etiquetas[$this->orden->estado] ?? "Actualización de tu pedido #{$this->orden->codigo}";
 
+        $fromAddress = config('mail.orders_from')
+            ?? config('mail.from.address')
+            ?? 'no-reply@linkiu.bio';
+        $fromName    = config('mail.orders_name')
+            ?? config('mail.from.name')
+            ?? 'Linkiu';
+
         return new Envelope(
-            from: new Address(
-                config('mail.orders_from', config('mail.from.address')),
-                config('mail.orders_name', config('mail.from.name')),
-            ),
+            from: new Address($fromAddress, $fromName),
             subject: "{$asunto} #{$this->orden->codigo}",
         );
     }

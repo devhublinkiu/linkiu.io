@@ -41,14 +41,19 @@ class Order extends Model
         'mp_status',
         'mp_status_detail',
         'mp_notificado_at',
+        'bold_payment_id',
+        'bold_status',
+        'bold_link_id',
+        'bold_notificado_at',
     ];
 
     protected $casts = [
-        'subtotal'         => 'integer',
-        'costo_envio'      => 'integer',
-        'recargo'          => 'integer',
-        'total'            => 'integer',
-        'mp_notificado_at' => 'datetime',
+        'subtotal'           => 'integer',
+        'costo_envio'        => 'integer',
+        'recargo'            => 'integer',
+        'total'              => 'integer',
+        'mp_notificado_at'   => 'datetime',
+        'bold_notificado_at' => 'datetime',
     ];
 
     protected static function booted(): void

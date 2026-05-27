@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\MetodosPago\UpdateMetodoPagoConfigRequest;
 use App\Models\Integracion;
 use App\Models\MetodoPago;
+use App\Services\BoldService;
 use App\Services\MercadoPagoService;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -15,16 +16,17 @@ use Inertia\Response;
 
 class MetodosPagoController extends Controller
 {
-    public function index(MercadoPagoService $mp): Response
+    public function index(MercadoPagoService $mp, BoldService $bold): Response
     {
         abort_if(! auth()->user()->can('metodos-pago.ver'), 403);
 
         return Inertia::render('admin/metodos-pago/Index', [
-            'metodos'        => MetodoPago::orderBy('orden')->get(),
+            'metodos'          => MetodoPago::orderBy('orden')->get(),
             // tieneCredenciales() chequea el modo activo (sandbox/prod) — fix del bug
             // donde leíamos la clave inexistente 'mp_access_token' que siempre era false.
-            'mp_configurado' => $mp->tieneCredenciales(),
-            'mp_sandbox'     => Integracion::get('mp_sandbox', '1') === '1',
+            'mp_configurado'   => $mp->tieneCredenciales(),
+            'mp_sandbox'       => Integracion::get('mp_sandbox', '1') === '1',
+            'bold_configurado' => $bold->tieneCredenciales(),
         ]);
     }
 

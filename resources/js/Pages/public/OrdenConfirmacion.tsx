@@ -28,6 +28,13 @@ function OrdenConfirmacion() {
     const { google_ads_id, google_ads_purchase_label } = usePage<SharedPixelProps>().props
 
     useEffect(() => {
+        // Idempotencia: Meta debe contar UN solo Purchase por orden. Si el cliente
+        // refresca la página de gracias, vuelve atrás o abre el link otra vez, NO
+        // disparamos de nuevo. Persiste en localStorage por código de orden.
+        if (typeof window === 'undefined') return
+        const key = `purchase_${codigo}`
+        if (localStorage.getItem(key)) return
+
         // Purchase es el evento crítico para Ads — enriquecemos con email/phone
         // del comprador para mejor Event Match Quality (EMQ) en Meta.
         const [first_name, ...resto] = (nombre ?? '').trim().split(/\s+/)
@@ -51,6 +58,8 @@ function OrdenConfirmacion() {
                 transaction_id: codigo,
             })
         }
+
+        localStorage.setItem(key, String(Date.now()))
     }, [])
 
     return (

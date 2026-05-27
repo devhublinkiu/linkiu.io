@@ -170,12 +170,12 @@ export default function CustomerForm({
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {CAMPOS_PERSONALES.map(c => {
                         const esEmail = c.key === 'email'
                         const bloqueado = esEmail && clienteLogueado
                         return (
-                            <div key={c.id} className={c.span === 'full' ? 'col-span-2' : 'col-span-1'}>
+                            <div key={c.id}>
                                 <label htmlFor={c.id} className="block text-xs font-medium text-slate-600 mb-1.5">
                                     {c.label}
                                 </label>
@@ -293,10 +293,10 @@ export default function CustomerForm({
 
                 {/* Formulario — se muestra si no hay guardadas o si eligió "nueva" */}
                 {(!clienteLogueado || direccionesGuardadas.length === 0 || direccionSeleccionadaId === 'nueva') && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
                     {CAMPOS_FIJOS.map(c => (
-                        <div key={c.id} className="col-span-2">
+                        <div key={c.id} className={c.span === 'full' ? 'md:col-span-2' : ''}>
                             <label htmlFor={c.id} className="block text-xs font-medium text-slate-600 mb-1.5">
                                 {c.label}
                                 {c.opcional && <span className="text-slate-400 font-normal ml-1">(opcional)</span>}
@@ -316,7 +316,7 @@ export default function CustomerForm({
                     ))}
 
                     {/* Departamento */}
-                    <div className="col-span-1">
+                    <div>
                         <label htmlFor="departamento" className="block text-xs font-medium text-slate-600 mb-1.5">
                             Departamento
                         </label>
@@ -334,7 +334,7 @@ export default function CustomerForm({
                     </div>
 
                     {/* Ciudad */}
-                    <div className="col-span-1">
+                    <div>
                         <label htmlFor="ciudad" className="block text-xs font-medium text-slate-600 mb-1.5">
                             Ciudad
                         </label>
@@ -385,8 +385,8 @@ export default function CustomerForm({
                 </label>
 
                 {crearCuenta && (
-                    <div className="grid grid-cols-2 gap-3 pl-7">
-                        <div className="col-span-1 space-y-1.5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-7">
+                        <div className="space-y-1.5">
                             <label htmlFor="contrasena" className="block text-xs font-medium text-slate-600">
                                 Contraseña
                             </label>
@@ -402,7 +402,7 @@ export default function CustomerForm({
                                 <p className="text-[11px] text-red-500">Mínimo 8 caracteres</p>
                             )}
                         </div>
-                        <div className="col-span-1 space-y-1.5">
+                        <div className="space-y-1.5">
                             <label htmlFor="confirmar_contrasena" className="block text-xs font-medium text-slate-600">
                                 Confirmar contraseña
                             </label>

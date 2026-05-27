@@ -152,12 +152,7 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, descripcion
             if (existente) replaceItem(existente.id, nuevoItem)
             else addItem(nuevoItem)
 
-            trackFb('InitiateCheckout', {
-                content_type: 'product',
-                num_items:    cantidadActiva?.cantidad ?? 1,
-                value:        cantidadActiva?.precio_bundle ?? 0,
-                currency:     'COP',
-            })
+            // InitiateCheckout se dispara en /checkout, no aquí — evita duplicados.
             router.visit('/checkout')
             return
         }

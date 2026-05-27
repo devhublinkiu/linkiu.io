@@ -20,11 +20,18 @@ class OrdenConfirmadaMail extends Mailable
 
     public function envelope(): Envelope
     {
+        // Defaults seguros: si MAIL_FROM_ADDRESS no está en .env, evitamos
+        // TypeError en Address::__construct (que NO es Exception sino Error
+        // y rompía el job entero).
+        $fromAddress = config('mail.orders_from')
+            ?? config('mail.from.address')
+            ?? 'no-reply@linkiu.bio';
+        $fromName    = config('mail.orders_name')
+            ?? config('mail.from.name')
+            ?? 'Linkiu';
+
         return new Envelope(
-            from: new Address(
-                config('mail.orders_from', config('mail.from.address')),
-                config('mail.orders_name', config('mail.from.name')),
-            ),
+            from: new Address($fromAddress, $fromName),
             subject: "Pedido recibido #{$this->orden->codigo}",
         );
     }

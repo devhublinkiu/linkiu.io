@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { CreditCardIcon, BanknoteIcon, LandmarkIcon, UploadIcon, CopyIcon, CheckIcon } from 'lucide-react'
+import { CreditCardIcon, BanknoteIcon, LandmarkIcon, UploadIcon, CopyIcon, CheckIcon, ZapIcon } from 'lucide-react'
 
 export interface MetodoPagoPublico {
     clave: string
@@ -19,6 +19,7 @@ interface Props {
 
 const ICONOS: Record<string, React.ReactNode> = {
     mercadopago:   <CreditCardIcon className="size-5" />,
+    bold:          <ZapIcon className="size-5" />,
     contraentrega: <BanknoteIcon className="size-5" />,
     transferencia: <LandmarkIcon className="size-5" />,
 }
@@ -98,6 +99,13 @@ export default function PaymentMethods({ metodos, metodoPago, onMetodoPago, comp
             {seleccionado?.clave === 'mercadopago' && (
                 <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-center gap-2">
                     <span className="text-xs text-slate-500">Acepta tarjetas, PSE y Efecty. Ingresa los datos a continuación.</span>
+                </div>
+            )}
+
+            {/* Detalle Bold — el botón se renderiza debajo en el checkout */}
+            {seleccionado?.clave === 'bold' && (
+                <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-center gap-2">
+                    <span className="text-xs text-slate-500">Tarjetas, PSE, Nequi, Bancolombia y QR. Pagas dentro de la página, sin redirección.</span>
                 </div>
             )}
 

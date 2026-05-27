@@ -1,46 +1,69 @@
-import { type ReactNode, useEffect } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { CreditCard } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { TooltipProvider } from '@/Components/ui/Tooltip'
-import CardMercadoPago from './parts/CardMercadoPago'
-import CardContraentrega from './parts/CardContraentrega'
-import CardTransferencia from './parts/CardTransferencia'
+import MetodoCard from './parts/MetodoCard'
+import SheetConfigMetodo from './parts/SheetConfigMetodo'
 import type { MetodoPago } from './parts/types'
 
 interface Props {
-    metodos:        MetodoPago[]
-    mp_configurado: boolean
-    mp_sandbox:     boolean
+    metodos:          MetodoPago[]
+    mp_configurado:   boolean
+    mp_sandbox:       boolean
+    bold_configurado: boolean
 }
 
-export default function MetodosPago({ metodos, mp_configurado, mp_sandbox }: Props) {
+// Helper: chequea si un método "está configurado" según su clave. Para
+// pasarelas externas (MP/Bold) miramos un flag del backend; para los
+// locales (contraentrega, transferencia) basta con que su `config` exista.
+function calcularEstado(metodo: MetodoPago, flags: { mp: boolean; bold: boolean }): { configurado: boolean; infoExtra?: string } {
+    switch (metodo.clave) {
+        case 'mercadopago':
+            return { configurado: flags.mp }
+        case 'bold':
+            return { configurado: flags.bold }
+        case 'contraentrega': {
+            const recargo = Number(metodo.config?.recargo ?? 0)
+            return {
+                configurado: true,
+                infoExtra:   recargo > 0 ? `Recargo: $${recargo.toLocaleString('es-CO')}` : 'Sin recargo',
+            }
+        }
+        case 'transferencia':
+            return { configurado: !!metodo.config?.numero_cuenta }
+        default:
+            return { configurado: true }
+    }
+}
+
+export default function MetodosPago({ metodos, mp_configurado, mp_sandbox, bold_configurado }: Props) {
     const { props } = usePage<{ auth: { permissions: string[] }; flash?: { status?: string } }>()
     const puede = (permiso: string) =>
         props.auth.permissions.includes('*') || props.auth.permissions.includes(permiso)
     const puedeEditar = puede('metodos-pago.editar')
 
-    // Flash unificado: mensajes vienen del backend (Método activado/desactivado/
-    // Configuración guardada). Una sola fuente de verdad.
+    const [configurando, setConfigurando] = useState<MetodoPago | null>(null)
+
     useEffect(() => {
         if (props.flash?.status) toast.success(props.flash.status)
     }, [props.flash?.status])
 
-    const toggleMetodo = (metodo: MetodoPago) => {
-        // Guard preventivo en frontend — backend también valida con can:metodos-pago.editar
+    function toggleMetodo(metodo: MetodoPago) {
         if (!puedeEditar) return
-
         router.post(route('admin.metodos-pago.toggle', metodo.id), {}, {
             preserveScroll: true,
-            // toast.success viene del flash unificado. Solo manejamos error aquí.
             onError: (errors) => toast.error((errors.metodo as string | undefined) ?? 'Error al cambiar el estado'),
         })
     }
 
-    const mp            = metodos.find(m => m.clave === 'mercadopago')
-    const contraentrega = metodos.find(m => m.clave === 'contraentrega')
-    const transferencia = metodos.find(m => m.clave === 'transferencia')
+    function configurar(metodo: MetodoPago) {
+        const claveConSheet = ['contraentrega', 'transferencia']
+        if (claveConSheet.includes(metodo.clave)) {
+            setConfigurando(metodo)
+        }
+    }
 
     return (
         <>
@@ -59,32 +82,32 @@ export default function MetodosPago({ metodos, mp_configurado, mp_sandbox }: Pro
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        {mp && (
-                            <CardMercadoPago
-                                metodo={mp}
-                                mp_configurado={mp_configurado}
-                                mp_sandbox={mp_sandbox}
-                                puedeEditar={puedeEditar}
-                                onToggle={() => toggleMetodo(mp)}
-                            />
-                        )}
-                        {contraentrega && (
-                            <CardContraentrega
-                                metodo={contraentrega}
-                                puedeEditar={puedeEditar}
-                                onToggle={() => toggleMetodo(contraentrega)}
-                            />
-                        )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {metodos.map(metodo => {
+                            const { configurado, infoExtra } = calcularEstado(metodo, { mp: mp_configurado, bold: bold_configurado })
+                            const sandboxInfo = metodo.clave === 'mercadopago' && mp_configurado && mp_sandbox ? 'Modo Sandbox' : undefined
+                            const esExterno  = metodo.clave === 'mercadopago' || metodo.clave === 'bold'
+
+                            return (
+                                <MetodoCard
+                                    key={metodo.id}
+                                    metodo={metodo}
+                                    configurado={configurado}
+                                    infoExtra={sandboxInfo ?? infoExtra}
+                                    puedeEditar={puedeEditar}
+                                    onToggle={() => toggleMetodo(metodo)}
+                                    onConfigurar={!esExterno ? () => configurar(metodo) : undefined}
+                                    urlExterna={esExterno ? route('admin.integraciones.pasarelas') : undefined}
+                                />
+                            )
+                        })}
                     </div>
 
-                    {transferencia && (
-                        <CardTransferencia
-                            metodo={transferencia}
-                            puedeEditar={puedeEditar}
-                            onToggle={() => toggleMetodo(transferencia)}
-                        />
-                    )}
+                    <SheetConfigMetodo
+                        metodo={configurando}
+                        puedeEditar={puedeEditar}
+                        onClose={() => setConfigurando(null)}
+                    />
 
                 </div>
             </TooltipProvider>

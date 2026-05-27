@@ -17,6 +17,8 @@ class UpdatePasarelasConfig
         'mp_access_token_sandbox',
         'mp_access_token_prod',
         'mp_webhook_secret',
+        'bold_identity_key',
+        'bold_secret_key',
     ];
 
     private const CLAVES_TEXTO = [
@@ -25,7 +27,13 @@ class UpdatePasarelasConfig
         'mp_access_token_prod',
         'mp_public_key_prod',
         'mp_webhook_secret',
+        'bold_identity_key',
+        'bold_secret_key',
     ];
+
+    // Sentinel para "no modificar el token actual" — UI lo manda cuando hay
+    // un valor guardado y el admin no tocó el campo.
+    private const TOKEN_NO_CAMBIAR = '***';
 
     public function handle(array $data): void
     {
@@ -34,9 +42,14 @@ class UpdatePasarelasConfig
         $estadoAnterior = $this->snapshotConfiguradas();
 
         foreach (self::CLAVES_TEXTO as $clave) {
-            Integracion::set($clave, $data[$clave] ?: null);
+            $valor = $data[$clave] ?? null;
+            // Respetar el sentinel: no tocar valor guardado si el usuario no lo cambió.
+            if ($valor === self::TOKEN_NO_CAMBIAR) {
+                continue;
+            }
+            Integracion::set($clave, $valor ?: null);
         }
-        Integracion::set('mp_sandbox', $data['mp_sandbox'] ? '1' : '0');
+        Integracion::set('mp_sandbox', ! empty($data['mp_sandbox']) ? '1' : '0');
 
         $this->registrarAuditoria($estadoAnterior);
     }

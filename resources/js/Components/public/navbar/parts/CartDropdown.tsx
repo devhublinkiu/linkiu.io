@@ -157,15 +157,7 @@ export default function CartDropdown({ open, onClose, anchorRef }: Props) {
                         </div>
                         <Link
                             href="/checkout"
-                            onClick={() => {
-                                trackFb('InitiateCheckout', {
-                                    content_ids: items.map(i => i.id),
-                                    num_items:   items.reduce((acc, i) => acc + i.cantidad, 0),
-                                    value:       total,
-                                    currency:    'COP',
-                                })
-                                onClose()
-                            }}
+                            onClick={onClose}
                             className="w-full block text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm font-bold py-3 rounded-lg transition-all duration-200 ease-in-out"
                         >
                             Finalizar compra
