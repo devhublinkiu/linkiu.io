@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { router } from '@inertiajs/react'
 import type { VariableGrupo, VariableItem } from '@/Pages/public/Product'
 import { toast } from 'sonner'
@@ -73,6 +73,13 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, descripcion
     const [interactuado, setInteractuado]     = useState(false)
     const [shake, setShake]                   = useState(false)
     const variablesRef                        = useRef<HTMLDivElement>(null)
+
+    // Sincroniza el precio del sticky bar / página con la cantidad activa.
+    // Crítico al mount: si la cantidad inicial es la destacada (ej. 2x), el padre
+    // debe arrancar mostrando ese precio bundle y no el precio_base.
+    useEffect(() => {
+        if (cantidadActiva) onPrecio(cantidadActiva.precio_bundle)
+    }, [cantidadActiva, onPrecio])
 
     const imagenVariable = useMemo(() => {
         const grupoImagen = grupos.find(g => g.tipo === 'imagen')

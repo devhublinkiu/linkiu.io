@@ -95,7 +95,7 @@ export default function ModalBanners({ open, onClose, config, disabled }: Props)
             <SheetContent className="sm:max-w-lg flex flex-col">
                 <SheetHeader>
                     <SheetTitle>Banners</SheetTitle>
-                    <SheetDescription>Slider de imágenes promocionales (máx. {MAX}).</SheetDescription>
+                    <SheetDescription>Slider de imágenes promocionales (máx. {MAX}). Medida recomendada: <strong>2400 × 900 px</strong> (formato 8:3). Si subes otra, la imagen se ajusta con padding lateral para no recortar contenido.</SheetDescription>
                 </SheetHeader>
 
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
@@ -174,7 +174,7 @@ export default function ModalBanners({ open, onClose, config, disabled }: Props)
                                     : <ImageIcon className="size-5" />
                                 }
                                 <span className="text-sm">{subiendo ? 'Subiendo…' : 'Agregar banner'}</span>
-                                <span className="text-xs text-slate-300">{items.length}/{MAX} · Horizontal recomendado</span>
+                                <span className="text-xs text-slate-300">{items.length}/{MAX} · Recomendado 2400 × 900px</span>
                             </button>
                         )}
 
