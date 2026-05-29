@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { Palette, Check, Upload, X } from 'lucide-react'
+import { Palette, Check, Upload, X, Trash2, Plus, Bell } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -33,9 +33,15 @@ interface Logos {
     admin:  string | null
 }
 
+interface DestinatarioNotif {
+    nombre:   string
+    telefono: string
+}
+
 interface Seo {
-    nombre_tienda:   string
-    telefono_tienda: string
+    nombre_tienda:       string
+    telefono_tienda:     string
+    notif_destinatarios: DestinatarioNotif[]
 }
 
 interface Props {
@@ -588,6 +594,101 @@ export default function Theme({ colores, botones, logos, seo }: Props) {
                                             Se incluye en las notificaciones por WhatsApp al cliente como número de contacto de la tienda.
                                         </p>
                                     </div>
+
+                                    <div className="border-t border-slate-100" />
+
+                                    {/* Destinatarios de notificaciones de pedido */}
+                                    <div className="space-y-4">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex items-start gap-2.5">
+                                                <Bell className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+                                                <div>
+                                                    <Label>Notificaciones de pedidos por WhatsApp</Label>
+                                                    <p className="text-xs text-slate-500 mt-0.5">
+                                                        Estos números reciben un mensaje cuando entra un pedido nuevo. Máx. 5.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="outline"
+                                                disabled={!puedeEditar || formSeo.notif_destinatarios.length >= 5}
+                                                onClick={() => setFormSeo(f => ({
+                                                    ...f,
+                                                    notif_destinatarios: [...f.notif_destinatarios, { nombre: '', telefono: '' }],
+                                                }))}
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                Agregar
+                                            </Button>
+                                        </div>
+
+                                        {formSeo.notif_destinatarios.length === 0 ? (
+                                            <div className="rounded-lg border border-dashed border-slate-200 px-4 py-6 text-center">
+                                                <p className="text-xs text-slate-500">
+                                                    Sin destinatarios configurados — se usará el teléfono de contacto de la tienda.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col gap-2">
+                                                {formSeo.notif_destinatarios.map((d, i) => (
+                                                    <div
+                                                        key={i}
+                                                        className="rounded-lg border border-slate-200 bg-white p-3 space-y-2.5"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-xs font-medium text-slate-500">Destinatario {i + 1}</span>
+                                                            <button
+                                                                type="button"
+                                                                disabled={!puedeEditar}
+                                                                onClick={() => setFormSeo(f => ({
+                                                                    ...f,
+                                                                    notif_destinatarios: f.notif_destinatarios.filter((_, idx) => idx !== i),
+                                                                }))}
+                                                                className="rounded-md p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                            <div className="space-y-1">
+                                                                <Label className="text-xs">Nombre o rol</Label>
+                                                                <Input
+                                                                    value={d.nombre}
+                                                                    maxLength={50}
+                                                                    disabled={!puedeEditar}
+                                                                    onChange={e => setFormSeo(f => ({
+                                                                        ...f,
+                                                                        notif_destinatarios: f.notif_destinatarios.map((x, idx) =>
+                                                                            idx === i ? { ...x, nombre: e.target.value } : x,
+                                                                        ),
+                                                                    }))}
+                                                                    placeholder="Ej. Bodega Bogotá"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <Label className="text-xs">Teléfono</Label>
+                                                                <Input
+                                                                    value={d.telefono}
+                                                                    maxLength={10}
+                                                                    disabled={!puedeEditar}
+                                                                    onChange={e => setFormSeo(f => ({
+                                                                        ...f,
+                                                                        notif_destinatarios: f.notif_destinatarios.map((x, idx) =>
+                                                                            idx === i ? { ...x, telefono: e.target.value.replace(/\D/g, '') } : x,
+                                                                        ),
+                                                                    }))}
+                                                                    placeholder="3001234567"
+                                                                    className="font-mono text-sm"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="flex justify-end pt-4 border-t border-slate-100 mt-4">
@@ -596,7 +697,12 @@ export default function Theme({ colores, botones, logos, seo }: Props) {
                                             <span>
                                                 <Button
                                                     onClick={guardarSeo}
-                                                    disabled={guardandoSeo || !puedeEditar || !formSeo.nombre_tienda.trim()}
+                                                    disabled={
+                                                        guardandoSeo ||
+                                                        !puedeEditar ||
+                                                        !formSeo.nombre_tienda.trim() ||
+                                                        formSeo.notif_destinatarios.some(d => !/^\d{10}$/.test(d.telefono))
+                                                    }
                                                 >
                                                     {guardandoSeo ? 'Guardando…' : 'Guardar datos de tienda'}
                                                 </Button>

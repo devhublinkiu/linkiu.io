@@ -32,21 +32,28 @@ class SendPulseService
     }
 
     /**
-     * Notifica al dueño/admin de la tienda que llegó un pedido nuevo.
-     * Envía al teléfono configurado en LinkiuBuild → Theme → SEO. Si no hay
-     * teléfono configurado, no-op silencioso (devuelve false).
+     * Notifica el pedido nuevo a TODOS los destinatarios configurados en
+     * LinkiuBuild → Theme → SEO → Notificaciones de pedidos.
+     *
+     * Resolución:
+     *  1) Si hay lista de destinatarios → envía a cada uno
+     *  2) Si la lista está vacía → fallback al build_seo_telefono_tienda
+     *     (retrocompatibilidad con instalaciones que aún no tienen lista)
+     *  3) Si tampoco hay teléfono público → no-op silencioso
+     *
+     * Devuelve true si AL MENOS un envío fue exitoso.
      */
     public function notificarOrdenAlDueno(Order $orden): bool
     {
-        $telefonoDueno = BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', ''));
-        $nombreTienda  = BuildConfig::get('build_seo_nombre_tienda',   config('app.name', 'Tu tienda'));
+        $nombreTienda = BuildConfig::get('build_seo_nombre_tienda', config('app.name', 'Tu tienda'));
+        $destinatarios = $this->resolverDestinatariosNotif();
 
-        if (! $telefonoDueno) {
-            Log::info('SendPulseService: sin teléfono de dueño configurado, se omite notificación al merchant.');
+        if (empty($destinatarios)) {
+            Log::info('SendPulseService: sin destinatarios configurados, se omite notificación al merchant.');
             return false;
         }
 
-        return $this->enviarPlantilla($telefonoDueno, 'new_order_merchant_v1', [
+        $parametros = [
             $nombreTienda,
             $orden->codigo,
             $orden->nombre . ' ' . ($orden->apellido ?? ''),
@@ -54,7 +61,38 @@ class SendPulseService
             $orden->ciudad ?? '—',
             number_format($orden->total, 0, ',', '.'),
             url('/admin/ordenes'),
-        ]);
+        ];
+
+        $alMenosUnoOk = false;
+        foreach ($destinatarios as $telefono) {
+            $ok = $this->enviarPlantilla($telefono, 'new_order_merchant_v1', $parametros);
+            $alMenosUnoOk = $alMenosUnoOk || $ok;
+        }
+
+        return $alMenosUnoOk;
+    }
+
+    /**
+     * Devuelve array de teléfonos a notificar. Usa la lista configurada o
+     * cae al teléfono público de la tienda como fallback.
+     */
+    private function resolverDestinatariosNotif(): array
+    {
+        $raw  = BuildConfig::get('build_notif_pedidos_destinatarios', '[]');
+        $lista = json_decode($raw, true) ?: [];
+
+        $telefonos = array_values(array_filter(array_map(
+            fn ($d) => trim((string) ($d['telefono'] ?? '')),
+            $lista,
+        )));
+
+        if (! empty($telefonos)) {
+            return $telefonos;
+        }
+
+        // Fallback retrocompatible
+        $fallback = BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', ''));
+        return $fallback ? [$fallback] : [];
     }
 
     public function notificarCambioEstado(Order $orden): bool

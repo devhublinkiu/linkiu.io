@@ -46,8 +46,9 @@ class LinkiuBuildController extends Controller
                 'admin'  => BuildConfig::asset('build_logo_admin'),
             ],
             'seo' => [
-                'nombre_tienda'   => BuildConfig::get('build_seo_nombre_tienda', 'Mi tienda'),
-                'telefono_tienda' => BuildConfig::get('build_seo_telefono_tienda', ''),
+                'nombre_tienda'       => BuildConfig::get('build_seo_nombre_tienda', 'Mi tienda'),
+                'telefono_tienda'     => BuildConfig::get('build_seo_telefono_tienda', ''),
+                'notif_destinatarios' => json_decode(BuildConfig::get('build_notif_pedidos_destinatarios', '[]'), true) ?: [],
             ],
         ]);
     }
@@ -57,8 +58,11 @@ class LinkiuBuildController extends Controller
         abort_if(! auth()->user()->can('linkiubuild.editar'), 403);
 
         $data = $request->validate([
-            'nombre_tienda'   => ['required', 'string', 'max:60'],
-            'telefono_tienda' => ['nullable', 'string', 'max:30'],
+            'nombre_tienda'                  => ['required', 'string', 'max:60'],
+            'telefono_tienda'                => ['nullable', 'string', 'max:30'],
+            'notif_destinatarios'            => ['nullable', 'array', 'max:5'],
+            'notif_destinatarios.*.nombre'   => ['nullable', 'string', 'max:50'],
+            'notif_destinatarios.*.telefono' => ['required', 'string', 'regex:/^\d{10}$/'],
         ]);
 
         $action->handle($data);
