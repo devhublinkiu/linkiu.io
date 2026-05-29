@@ -6,6 +6,7 @@ import { CheckCircle2, AlertCircle, KeyRound, Loader2, ExternalLink } from 'luci
 import { Input } from '@/Components/ui/Input'
 import { Label } from '@/Components/ui/Label'
 import { Button } from '@/Components/ui/Button'
+import { Badge } from '@/Components/ui/Badge'
 
 interface Props {
     configurada: boolean
@@ -63,15 +64,15 @@ export default function ConfigCardMastershop({ configurada, puedeEditar }: Props
                     <h2 className="text-lg font-bold text-slate-900">Configuración API</h2>
                 </div>
                 {configurada ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5">
-                        <CheckCircle2 className="w-3 h-3" />
+                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                        <CheckCircle2 />
                         Conectada
-                    </span>
+                    </Badge>
                 ) : (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5">
-                        <AlertCircle className="w-3 h-3" />
+                    <Badge className="bg-amber-50 text-amber-700 border-amber-200">
+                        <AlertCircle />
                         Sin configurar
-                    </span>
+                    </Badge>
                 )}
             </div>
 

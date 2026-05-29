@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BuildConfig;
+use App\Models\Integracion;
 use App\Models\Order;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +30,116 @@ class SendPulseService
             url("/orden/{$orden->acceso_token}"),
             BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', '')),
         ]);
+    }
+
+    /**
+     * Envía la plantilla `order_received_cod_v1` con botones Quick Reply
+     * "Sí, confirmo" / "No, cancelar". Pensada para pedidos contraentrega
+     * que pasaron el filtro antifraude — el cliente decide en el mismo mensaje.
+     *
+     * ANTES de enviar la plantilla, setea la variable `tienda_callback_url`
+     * del contacto. El router central (linkiu.com.co/webhook.php) lee esa
+     * variable del webhook para reenviar la respuesta del cliente al servidor
+     * correcto. Multi-tenant: un solo bot SendPulse compartido, varias tiendas
+     * con dominios distintos.
+     */
+    public function notificarOrdenCreadaCod(Order $orden): bool
+    {
+        $this->setearCallbackUrlEnContacto($orden->telefono);
+
+        return $this->enviarPlantilla($orden->telefono, 'order_received_cod_v1', [
+            $orden->nombre,
+            $orden->codigo,
+            '$' . number_format($orden->total, 0, ',', '.'),
+            $orden->ciudad,
+            BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', '')),
+        ]);
+    }
+
+    /**
+     * Variante "raw" para testing — mismo template pero con valores arbitrarios,
+     * sin necesitar un Order persistido. Usado por sendpulse:test-cod.
+     */
+    public function notificarOrdenCreadaCodRaw(
+        string $telefono,
+        string $nombre,
+        string $codigo,
+        int $total,
+        string $ciudad,
+    ): bool {
+        $this->setearCallbackUrlEnContacto($telefono);
+
+        return $this->enviarPlantilla($telefono, 'order_received_cod_v1', [
+            $nombre,
+            $codigo,
+            '$' . number_format($total, 0, ',', '.'),
+            $ciudad,
+            BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', '+57 300 000 0000')),
+        ]);
+    }
+
+    /**
+     * Setea la variable `tienda_callback_url` del contacto en SendPulse para
+     * que el router central pueda reenviar el webhook a esta instalación.
+     * Si falla, log y seguimos — la plantilla se envía igual pero la
+     * confirmación del cliente no podrá enrutarse hasta acá.
+     */
+    private function setearCallbackUrlEnContacto(string $telefono): bool
+    {
+        $token = Integracion::get('sendpulse_webhook_token');
+        if (! $token) {
+            Log::warning('SendPulseService: sin sendpulse_webhook_token configurado — no se puede setear tienda_callback_url. Corré php artisan sendpulse:webhook-token.');
+            return false;
+        }
+
+        $callbackUrl = url('/webhooks/sendpulse') . '?token=' . $token;
+
+        return $this->setearVariableContacto($telefono, 'tienda_callback_url', $callbackUrl);
+    }
+
+    /**
+     * Llama a la API SendPulse para setear (o actualizar) una variable del
+     * contacto identificado por teléfono. La variable debe existir antes en
+     * el bot — se crea desde el panel SendPulse en Audience > Variables.
+     */
+    private function setearVariableContacto(string $telefono, string $variable, string $valor): bool
+    {
+        if (! $this->clientId || ! $this->clientSecret || ! $this->botId) {
+            return false;
+        }
+
+        $telefonoNormalizado = $this->normalizarTelefono($telefono);
+
+        try {
+            $accessToken = $this->getToken();
+            if (! $accessToken) return false;
+
+            $respuesta = Http::withToken($accessToken)
+                ->post('https://api.sendpulse.com/whatsapp/contacts/setVariablesByPhone', [
+                    'bot_id'    => $this->botId,
+                    'phone'     => $telefonoNormalizado,
+                    'variables' => [
+                        $variable => $valor,
+                    ],
+                ]);
+
+            if ($respuesta->failed()) {
+                Log::warning('SendPulseService: setearVariableContacto falló', [
+                    'variable' => $variable,
+                    'phone'    => $telefonoNormalizado,
+                    'status'   => $respuesta->status(),
+                    'body'     => $respuesta->json(),
+                ]);
+                return false;
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('SendPulseService: setearVariableContacto excepción', [
+                'mensaje' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 
     /**
@@ -107,12 +218,11 @@ class SendPulseService
                 $url,
                 $merchantPhone,
             ]),
-            'preparando' => $this->enviarPlantilla($orden->telefono, 'order_preparing', [
-                $orden->nombre,
-                $orden->codigo,
-                $url,
-                $merchantPhone,
-            ]),
+            // 'preparando' está oculto del UI mientras se reestructura el flujo
+            // (Capa 3). Si por API o cron la orden pasa a 'preparando', NO se
+            // notifica al cliente — se considera un estado transitorio interno.
+            // Cuando se reactive, restaurar la llamada a order_preparing.
+            'preparando' => false,
             'enviado' => ($orden->numero_guia && $orden->transportadora)
                 ? $this->enviarPlantilla($orden->telefono, 'order_shipped', [
                     $orden->nombre,

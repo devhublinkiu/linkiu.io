@@ -136,6 +136,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/integraciones/pasarelas',  [IntegracionPasarelasController::class, 'show'])  ->name('integraciones.pasarelas')        ->middleware('can:integraciones.ver');
     Route::post('/integraciones/pasarelas', [IntegracionPasarelasController::class, 'update'])->name('integraciones.pasarelas.update') ->middleware('can:integraciones.editar');
 
+    // Antifraude (Capa 2) — sin item de sidebar; entry desde Mastershop
+    Route::get(   '/antifraude',                       [\App\Http\Controllers\Admin\AntifraudeController::class, 'show']            )->name('antifraude.configuracion') ->middleware('can:antifraude.ver');
+    Route::post(  '/antifraude/reglas',                [\App\Http\Controllers\Admin\AntifraudeController::class, 'updateReglas']    )->name('antifraude.reglas.update') ->middleware('can:antifraude.editar');
+    Route::post(  '/antifraude/blacklist',             [\App\Http\Controllers\Admin\AntifraudeController::class, 'storeBlacklist'] )->name('antifraude.blacklist.store') ->middleware('can:antifraude.editar');
+    Route::delete('/antifraude/blacklist/{entry}',     [\App\Http\Controllers\Admin\AntifraudeController::class, 'destroyBlacklist'])->name('antifraude.blacklist.destroy')->middleware('can:antifraude.editar')->where('entry', '[0-9]+');
+
     // Mastershop — config + enrolamiento de productos (Capa 1)
     Route::get( '/integraciones/mastershop',                       [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'show']       )->name('integraciones.mastershop')             ->middleware('can:integraciones.ver');
     Route::post('/integraciones/mastershop',                       [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'update']     )->name('integraciones.mastershop.update')      ->middleware('can:integraciones.editar');
@@ -171,6 +177,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/ordenes/{order}',                  [OrdersController::class, 'show']              )->name('ordenes.show')           ->middleware('can:ordenes.ver');
     Route::post('/ordenes/{order}/estado',          [OrdersController::class, 'updateEstado']      )->name('ordenes.estado')         ->middleware('can:ordenes.editar');
     Route::post('/ordenes/{order}/notas-internas',  [OrdersController::class, 'updateNotasInternas'])->name('ordenes.notas-internas')->middleware('can:ordenes.editar');
+    Route::post('/ordenes/{order}/revision/aprobar',  [OrdersController::class, 'aprobarRevision'] )->name('ordenes.revision.aprobar') ->middleware('can:ordenes.editar');
+    Route::post('/ordenes/{order}/revision/rechazar', [OrdersController::class, 'rechazarRevision'])->name('ordenes.revision.rechazar')->middleware('can:ordenes.editar');
+    Route::post('/ordenes/{order}/confirmacion/reenviar', [OrdersController::class, 'reenviarConfirmacion'])->name('ordenes.confirmacion.reenviar')->middleware('can:ordenes.editar');
 
     // Clientes
     Route::get('/clientes',                 [ClientsController::class, 'index']    )->name('clientes.index') ->middleware('can:clientes.ver');

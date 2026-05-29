@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Actions\Orders\EnviarConfirmacionCod;
 use App\Mail\OrdenConfirmadaMail;
 use App\Models\Order;
 use App\Services\SendPulseService;
@@ -30,7 +31,7 @@ class NotificarOrdenCreada implements ShouldQueue
     {
     }
 
-    public function handle(SendPulseService $sendPulse): void
+    public function handle(SendPulseService $sendPulse, EnviarConfirmacionCod $confirmacionCod): void
     {
         try {
             $ably = new \Ably\AblyRest(config('broadcasting.connections.ably.key'));
@@ -51,8 +52,18 @@ class NotificarOrdenCreada implements ShouldQueue
             Log::error('Job NotificarOrdenCreada Mail: ' . $e->getMessage());
         }
 
+        // Bifurcación Capa 3: si es COD y NO está en revisión antifraude,
+        // mandamos la plantilla con botones de confirmación. Cualquier otro
+        // caso (prepago, COD bajo revisión) usa la plantilla normal.
+        $esCodLimpio = $this->orden->metodo_pago === 'contraentrega'
+            && $this->orden->revision_estado === null;
+
         try {
-            $sendPulse->notificarOrdenCreada($this->orden);
+            if ($esCodLimpio) {
+                $confirmacionCod->execute($this->orden);
+            } else {
+                $sendPulse->notificarOrdenCreada($this->orden);
+            }
         } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenCreada SendPulse: ' . $e->getMessage());
         }

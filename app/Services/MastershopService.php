@@ -156,6 +156,49 @@ class MastershopService
         // basta dejarlo expirar (5-30 min) — el admin no rota la key seguido.
     }
 
+    /**
+     * Valida un número de teléfono colombiano contra el endpoint
+     * /customers/validate-phone-number de Mastershop. "Best effort":
+     *  - true  → Mastershop confirma que es válido
+     *  - false → Mastershop confirma que es inválido
+     *  - null  → no se pudo consultar (sin API key, error de red, etc.)
+     *           El caller decide cómo tratar el null (típicamente: no bloquear).
+     */
+    public function validarTelefono(string $telefono): ?bool
+    {
+        if (! $this->tieneCredenciales()) return null;
+
+        $cacheKey = "mastershop:phone:{$telefono}";
+
+        return Cache::remember($cacheKey, now()->addDays(7), function () use ($telefono) {
+            try {
+                $res = $this->cliente()->get('/api/customers/validate-phone-number', [
+                    'phone' => $telefono,
+                ]);
+
+                if (! $res->successful()) {
+                    $this->logFallo('validarTelefono', $res, ['telefono' => $telefono]);
+                    return null;
+                }
+
+                // El endpoint devuelve { valid: bool } o similar. Tomamos cualquier
+                // shape razonable para no quedar acoplados a un campo específico.
+                $body = $res->json() ?: [];
+                if (isset($body['valid']))    return (bool) $body['valid'];
+                if (isset($body['isValid'])) return (bool) $body['isValid'];
+                if (isset($body['ok']))       return (bool) $body['ok'];
+
+                return null;
+            } catch (\Throwable $e) {
+                Log::warning('Mastershop validarTelefono excepción', [
+                    'telefono' => $telefono,
+                    'mensaje'  => $e->getMessage(),
+                ]);
+                return null;
+            }
+        });
+    }
+
     // ─────────────────────────────────────────────────────────────────────
 
     private function cliente(?string $apiKey = null)

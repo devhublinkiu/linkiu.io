@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Antifraude\AprobarOrden;
+use App\Actions\Antifraude\RechazarOrden;
+use App\Actions\Orders\EnviarConfirmacionCod;
 use App\Actions\Orders\UpdateOrderEstado;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
@@ -23,6 +26,12 @@ class OrdersController extends Controller
             $query->where('estado', $request->estado);
         }
 
+        // Filtro Antifraude (independiente del estado). Solo activo cuando se
+        // pasa `revision=pendiente` desde el tab nuevo del Index.
+        if ($request->filled('revision')) {
+            $query->where('revision_estado', $request->revision);
+        }
+
         if ($request->filled('q')) {
             $q = $request->q;
             $query->where(function ($sub) use ($q) {
@@ -33,13 +42,34 @@ class OrdersController extends Controller
             });
         }
 
-        $ordenes = $query->paginate(20)->withQueryString();
+        $ordenes = $query->paginate(20)
+            ->withQueryString()
+            ->through(fn ($o) => [
+                'id'                         => $o->id,
+                'codigo'                     => $o->codigo,
+                'estado'                     => $o->estado,
+                'nombre'                     => $o->nombre,
+                'apellido'                   => $o->apellido,
+                'email'                      => $o->email,
+                'ciudad'                     => $o->ciudad,
+                'total'                      => $o->total,
+                'metodo_pago'                => $o->metodo_pago,
+                'created_at'                 => $o->created_at?->toIso8601String(),
+                'revision_estado'            => $o->revision_estado,
+                'revision_motivos'           => $o->revision_motivos,
+                'confirmacion_solicitada_at' => $o->confirmacion_solicitada_at?->toIso8601String(),
+                'confirmacion_reenviada'     => (bool) $o->confirmacion_reenviada,
+                'confirmacion_respondida_at' => $o->confirmacion_respondida_at?->toIso8601String(),
+                'confirmacion_respuesta'     => $o->confirmacion_respuesta,
+            ]);
 
         return Inertia::render('admin/ordenes/Index', [
             'ordenes'         => $ordenes,
             'filtroEstado'    => $request->estado ?? '',
+            'filtroRevision'  => $request->revision ?? '',
             'filtroQ'         => $request->q ?? '',
             'totalPendientes' => Order::countPendientes(),
+            'totalRevision'   => Order::countRevisionPendiente(),
         ]);
     }
 
@@ -79,6 +109,14 @@ class OrdersController extends Controller
                     'cantidad' => $i->cantidad,
                     'precio'   => $i->precio_unitario,
                 ]),
+                'revision_estado'      => $order->revision_estado,
+                'revision_motivos'     => $order->revision_motivos,
+                'revision_revisada_at' => $order->revision_revisada_at?->format('d/m/Y H:i'),
+                'revision_comentario'  => $order->revision_comentario,
+                'confirmacion_solicitada_at' => $order->confirmacion_solicitada_at?->toIso8601String(),
+                'confirmacion_reenviada'     => (bool) $order->confirmacion_reenviada,
+                'confirmacion_respondida_at' => $order->confirmacion_respondida_at?->format('d/m/Y H:i'),
+                'confirmacion_respuesta'     => $order->confirmacion_respuesta,
             ],
         ]);
     }
@@ -88,7 +126,10 @@ class OrdersController extends Controller
         abort_if(! auth()->user()->can('ordenes.editar'), 403);
 
         $data = $request->validate([
-            'estado'              => 'required|in:pendiente,confirmado,preparando,enviado,entregado,cancelado',
+            // 'preparando' se mantiene en BD para compatibilidad con órdenes
+            // existentes pero está oculto del UI mientras se piensa la mejora.
+            // 'devuelto' es nuevo (Capa 3) para casos COD post-entrega.
+            'estado'              => 'required|in:pendiente,confirmado,preparando,enviado,entregado,cancelado,devuelto',
             'numero_guia'         => 'nullable|string|max:100',
             'transportadora'      => 'nullable|string|max:100',
             'motivo_cancelacion'  => 'nullable|string|max:500',
@@ -203,5 +244,57 @@ class OrdersController extends Controller
         $order->update(['notas_internas' => $request->notas_internas]);
 
         return back()->with('status', 'Notas guardadas.');
+    }
+
+    /**
+     * Aprueba la revisión antifraude — la orden vuelve al flujo normal.
+     * Requiere ordenes.editar (no creamos permiso nuevo solo para esto).
+     */
+    public function aprobarRevision(Request $request, Order $order, AprobarOrden $action)
+    {
+        abort_if(! auth()->user()->can('ordenes.editar'), 403);
+        abort_unless($order->revision_estado === 'pendiente', 422, 'La orden no está bajo revisión.');
+
+        $data = $request->validate([
+            'comentario' => 'nullable|string|max:500',
+        ]);
+
+        $action->execute($order, $data['comentario'] ?? null);
+
+        return back()->with('status', 'Orden aprobada.');
+    }
+
+    /**
+     * Rechaza la revisión antifraude y cancela la orden. Delega el cambio de
+     * estado a UpdateOrderEstado → dispara order_cancelled al cliente.
+     */
+    /**
+     * Reenvía la plantilla de confirmación COD al cliente. Solo 1 reenvío por
+     * orden — la UI oculta el botón cuando `confirmacion_reenviada = true`.
+     */
+    public function reenviarConfirmacion(Order $order, EnviarConfirmacionCod $action)
+    {
+        abort_if(! auth()->user()->can('ordenes.editar'), 403);
+        abort_unless($order->metodo_pago === 'contraentrega', 422, 'Solo aplica a órdenes contraentrega.');
+        abort_if($order->confirmacion_reenviada, 422, 'Ya se reenvió una vez. No se permite más.');
+        abort_if($order->confirmacion_respondida_at !== null, 422, 'El cliente ya respondió.');
+
+        $action->execute($order, esReenvio: true);
+
+        return back()->with('status', 'Confirmación reenviada al cliente.');
+    }
+
+    public function rechazarRevision(Request $request, Order $order, RechazarOrden $action)
+    {
+        abort_if(! auth()->user()->can('ordenes.editar'), 403);
+        abort_unless($order->revision_estado === 'pendiente', 422, 'La orden no está bajo revisión.');
+
+        $data = $request->validate([
+            'comentario' => 'required|string|max:500',
+        ]);
+
+        $action->execute($order, $data['comentario']);
+
+        return back()->with('status', 'Orden rechazada y cancelada.');
     }
 }

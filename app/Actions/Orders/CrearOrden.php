@@ -5,6 +5,7 @@ namespace App\Actions\Orders;
 use App\Jobs\NotificarOrdenCreada;
 use App\Models\Client;
 use App\Models\Order;
+use App\Services\AntifraudeService;
 use App\Services\EnvioService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,7 @@ class CrearOrden
 {
     public function __construct(
         private readonly EnvioService $envioService,
+        private readonly AntifraudeService $antifraude,
     ) {}
 
     /**
@@ -99,6 +101,19 @@ class CrearOrden
         });
 
         $this->guardarDireccionCliente($orden);
+
+        // Antifraude — Capa 2. Si la orden dispara reglas activas, queda
+        // bloqueada con revision_estado='pendiente' hasta que el admin la
+        // apruebe. Las notificaciones (cliente y merchant) se mantienen para
+        // que el merchant sepa que tiene algo nuevo para revisar en el admin.
+        $motivos = $this->antifraude->evaluar($orden);
+        if (! empty($motivos)) {
+            $orden->update([
+                'revision_estado'  => 'pendiente',
+                'revision_motivos' => $motivos,
+            ]);
+            $orden->refresh();
+        }
 
         // Background: Ably + Mail + SendPulse. El cliente no espera.
         if ($notificar) {

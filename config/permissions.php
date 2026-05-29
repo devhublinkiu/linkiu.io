@@ -113,4 +113,12 @@ return [
         ],
     ],
 
+    'antifraude' => [
+        'label'   => 'Antifraude',
+        'actions' => [
+            'ver'    => 'Ver',
+            'editar' => 'Editar reglas y blacklist',
+        ],
+    ],
+
 ];

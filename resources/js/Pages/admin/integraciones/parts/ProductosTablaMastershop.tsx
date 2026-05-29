@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, Link as LinkIcon, Unlink, Package } from 'lucide-react'
+import { Badge } from '@/Components/ui/Badge'
 import { Button } from '@/Components/ui/Button'
 import {
     Empty,
@@ -264,19 +265,17 @@ function FilaProducto({
             </TableCell>
             <TableCell>
                 {!vinculado && (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 rounded-full px-2.5 py-0.5">
-                        Sin vincular
-                    </span>
+                    <Badge variant="secondary">Sin vincular</Badge>
                 )}
                 {vinculado && variantesIncompletas && (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5">
+                    <Badge className="bg-amber-50 text-amber-700 border-amber-200">
                         Vinculado · {producto.variantes_vinculadas}/{producto.variantes_total} variantes
-                    </span>
+                    </Badge>
                 )}
                 {vinculado && !variantesIncompletas && (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-0.5">
+                    <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
                         Vinculado
-                    </span>
+                    </Badge>
                 )}
             </TableCell>
             <TableCell className="text-right">

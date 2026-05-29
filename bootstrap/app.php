@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'track/product-view',
             'webhooks/mercadopago',
             'webhooks/bold',
+            'webhooks/sendpulse',
         ]);
 
         $middleware->web(append: [

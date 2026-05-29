@@ -118,6 +118,11 @@ Route::post('/api/bold/iniciar', [\App\Http\Controllers\BoldController::class, '
 Route::post('/webhooks/bold', [\App\Http\Controllers\BoldController::class, 'webhook'])
     ->name('bold.webhook');
 
+// Capa 3 — Webhook SendPulse para botones Quick Reply de la plantilla
+// order_received_cod_v1 (confirmación COD por el cliente).
+Route::post('/webhooks/sendpulse', [\App\Http\Controllers\SendPulseWebhookController::class, 'handle'])
+    ->name('sendpulse.webhook');
+
 Route::get('/productos',                   [PublicProductosController::class, 'index'])    ->name('productos');
 Route::get('/productos/categoria/{slug}',  [PublicProductosController::class, 'categoria'])->name('productos.categoria');
 Route::get('/productos/{slug}',            [PublicProductosController::class, 'show'])     ->name('producto.show');

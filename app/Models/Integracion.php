@@ -33,6 +33,7 @@ class Integracion extends Model
         'bold_secret_key',
         'mipaquete_api_key',
         'mastershop_api_key',
+        'sendpulse_webhook_token',
     ];
 
     private static function cacheKey(string $clave): string

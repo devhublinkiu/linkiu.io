@@ -10,7 +10,8 @@ use Illuminate\Support\Str;
 
 class Order extends Model
 {
-    public const CACHE_COUNT_PENDIENTES = 'orders:count:pendientes';
+    public const CACHE_COUNT_PENDIENTES         = 'orders:count:pendientes';
+    public const CACHE_COUNT_REVISION_PENDIENTE = 'orders:count:revision-pendiente';
 
 
     protected $fillable = [
@@ -45,15 +46,29 @@ class Order extends Model
         'bold_status',
         'bold_link_id',
         'bold_notificado_at',
+        'revision_estado',
+        'revision_motivos',
+        'revision_revisada_por',
+        'revision_revisada_at',
+        'revision_comentario',
+        'confirmacion_solicitada_at',
+        'confirmacion_reenviada',
+        'confirmacion_respondida_at',
+        'confirmacion_respuesta',
     ];
 
     protected $casts = [
-        'subtotal'           => 'integer',
-        'costo_envio'        => 'integer',
-        'recargo'            => 'integer',
-        'total'              => 'integer',
-        'mp_notificado_at'   => 'datetime',
-        'bold_notificado_at' => 'datetime',
+        'subtotal'                   => 'integer',
+        'costo_envio'                => 'integer',
+        'recargo'                    => 'integer',
+        'total'                      => 'integer',
+        'mp_notificado_at'           => 'datetime',
+        'bold_notificado_at'         => 'datetime',
+        'revision_motivos'           => 'array',
+        'revision_revisada_at'       => 'datetime',
+        'confirmacion_solicitada_at' => 'datetime',
+        'confirmacion_reenviada'     => 'boolean',
+        'confirmacion_respondida_at' => 'datetime',
     ];
 
     protected static function booted(): void
@@ -84,6 +99,7 @@ class Order extends Model
         // agregados cacheados del cliente dueño de la orden (Show admin).
         $invalidar = function (Order $order) {
             Cache::forget(self::CACHE_COUNT_PENDIENTES);
+            Cache::forget(self::CACHE_COUNT_REVISION_PENDIENTE);
             if ($order->client_id) {
                 Cache::forget(Client::cacheKeyStats($order->client_id));
             }
@@ -101,6 +117,23 @@ class Order extends Model
             self::CACHE_COUNT_PENDIENTES,
             fn () => self::where('estado', 'pendiente')->count(),
         );
+    }
+
+    /**
+     * Cuenta de órdenes bajo revisión antifraude (revision_estado=pendiente).
+     * Independiente de countPendientes — son ejes ortogonales.
+     */
+    public static function countRevisionPendiente(): int
+    {
+        return Cache::rememberForever(
+            self::CACHE_COUNT_REVISION_PENDIENTE,
+            fn () => self::where('revision_estado', 'pendiente')->count(),
+        );
+    }
+
+    public function scopeEnRevision($query)
+    {
+        return $query->where('revision_estado', 'pendiente');
     }
 
     public function client(): BelongsTo

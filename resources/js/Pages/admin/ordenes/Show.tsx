@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { ArrowLeftIcon, FileTextIcon, EyeIcon, DownloadIcon, XCircleIcon } from 'lucide-react'
+import { ArrowLeftIcon, FileTextIcon, EyeIcon, DownloadIcon, XCircleIcon, ShieldAlert, CheckCircle2 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
@@ -14,7 +14,13 @@ import {
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/Components/ui/Dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
 import StatusBadge, { type Estado } from './parts/StatusBadge'
+import MotivoRevisionBadge from './parts/MotivoRevisionBadge'
+import ConfirmacionCodBadge, { calcularEstadoConfirmacion } from './parts/ConfirmacionCodBadge'
+
+type RevisionEstado = 'pendiente' | 'aprobada' | 'rechazada' | null
+type RespuestaCod   = 'si' | 'no' | null
 
 interface OrderItem {
     id: number
@@ -47,14 +53,22 @@ interface Orden {
     comprobante_url: string | null
     created_at: string
     items: OrderItem[]
+    revision_estado:      RevisionEstado
+    revision_motivos:     string[] | null
+    revision_revisada_at: string | null
+    revision_comentario:  string | null
+    confirmacion_solicitada_at:  string | null
+    confirmacion_reenviada:      boolean
+    confirmacion_respondida_at:  string | null
+    confirmacion_respuesta:      RespuestaCod
 }
 
-const ESTADOS_FLUJO = ['pendiente', 'confirmado', 'preparando', 'enviado', 'entregado'] as const
+// 'preparando' oculto del UI (Capa 3) — la transición confirmado -> enviado es directa.
+const ESTADOS_FLUJO = ['pendiente', 'confirmado', 'enviado', 'entregado'] as const
 
 const LABEL_FLUJO: Record<string, string> = {
     pendiente:  'Pendiente',
     confirmado: 'Confirmado',
-    preparando: 'Preparando',
     enviado:    'Enviado',
     entregado:  'Entregado',
 }
@@ -83,7 +97,41 @@ function OrdenShow() {
     const [confirmarCancelar, setConfirmarCancelar] = useState(false)
     const [motivoCancelacion, setMotivoCancelacion] = useState('')
 
+    // Antifraude
+    const enRevision = orden.revision_estado === 'pendiente'
+    const [confirmarRechazo, setConfirmarRechazo] = useState(false)
+    const [comentarioRechazo, setComentarioRechazo] = useState('')
+    const [procesandoRevision, setProcesandoRevision] = useState(false)
+
+    function aprobarRevision() {
+        setProcesandoRevision(true)
+        router.post(route('admin.ordenes.revision.aprobar', orden.id), {}, {
+            preserveScroll: true,
+            onError:  () => toast.error('Error al aprobar la orden'),
+            onFinish: () => setProcesandoRevision(false),
+        })
+    }
+
+    function ejecutarRechazo() {
+        if (! comentarioRechazo.trim()) return
+        setProcesandoRevision(true)
+        router.post(
+            route('admin.ordenes.revision.rechazar', orden.id),
+            { comentario: comentarioRechazo.trim() },
+            {
+                preserveScroll: true,
+                onSuccess: () => { setConfirmarRechazo(false); setComentarioRechazo('') },
+                onError:   () => toast.error('Error al rechazar la orden'),
+                onFinish:  () => setProcesandoRevision(false),
+            },
+        )
+    }
+
     function cambiarEstado(nuevoEstado: string) {
+        if (enRevision) {
+            toast.error('Aprobá la revisión antifraude primero.')
+            return
+        }
         if (nuevoEstado === orden.estado) return
         if (nuevoEstado === 'enviado') {
             setEstadoPendiente('enviado')
@@ -143,7 +191,7 @@ function OrdenShow() {
     const extensionImg  = orden.comprobante_url?.match(/\.(jpg|jpeg|png|webp)$/i)
 
     return (
-        <>
+        <TooltipProvider>
             <Head title={`Orden ${orden.codigo}`} />
 
             {/* Header */}
@@ -162,6 +210,84 @@ function OrdenShow() {
                     <p className="text-xs text-slate-500">{orden.created_at}</p>
                 </div>
             </div>
+
+            {/* Card revisión antifraude — solo cuando está bloqueada. Va arriba
+                de todo el grid para destacarlo. */}
+            {enRevision && (
+                <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-5">
+                    <div className="flex items-start gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                            <ShieldAlert className="w-4 h-4 text-amber-700" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h2 className="text-sm font-bold text-amber-800">Orden bajo revisión antifraude</h2>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                                No se puede procesar hasta que la apruebes o rechaces.
+                            </p>
+
+                            {orden.revision_motivos && orden.revision_motivos.length > 0 && (
+                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                    {orden.revision_motivos.map(m => (
+                                        <MotivoRevisionBadge key={m} motivo={m} className="bg-white" />
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-2 mt-4">
+                                <Button
+                                    size="sm"
+                                    onClick={aprobarRevision}
+                                    disabled={procesandoRevision}
+                                >
+                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                                    Aprobar y desbloquear
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setConfirmarRechazo(true)}
+                                    disabled={procesandoRevision}
+                                    className="text-red-600 hover:text-red-700"
+                                >
+                                    <XCircleIcon className="w-3.5 h-3.5 mr-1" />
+                                    Rechazar y cancelar
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Aviso de auditoría cuando ya fue revisada */}
+            {(orden.revision_estado === 'aprobada' || orden.revision_estado === 'rechazada') && orden.revision_revisada_at && (
+                <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-2">
+                    {orden.revision_estado === 'aprobada' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    ) : (
+                        <XCircleIcon className="w-4 h-4 text-red-600 shrink-0" />
+                    )}
+                    <p className="text-xs text-slate-600">
+                        Revisión <strong className="text-slate-900">{orden.revision_estado}</strong> el {orden.revision_revisada_at}
+                        {orden.revision_comentario && <> — <span className="italic">"{orden.revision_comentario}"</span></>}
+                    </p>
+                </div>
+            )}
+
+            {/* Estado de confirmación COD del cliente vía WhatsApp */}
+            {(() => {
+                const ec = calcularEstadoConfirmacion(orden)
+                if (!ec) return null
+                return (
+                    <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-2">
+                        <ConfirmacionCodBadge estado={ec} />
+                        {orden.confirmacion_respondida_at && (
+                            <p className="text-xs text-slate-600">
+                                el {orden.confirmacion_respondida_at}
+                            </p>
+                        )}
+                    </div>
+                )
+            })()}
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
 
@@ -252,13 +378,13 @@ function OrdenShow() {
                         <div className="py-1">
                             {ESTADOS_FLUJO.map(est => {
                                 const esActual = orden.estado === est
-                                return (
+                                const boton = (
                                     <button
                                         key={est}
                                         onClick={() => cambiarEstado(est)}
-                                        disabled={esActual}
+                                        disabled={esActual || enRevision}
                                         className={`flex items-center gap-3 w-full px-5 py-3 text-left transition-colors duration-200 ${
-                                            esActual ? 'cursor-default' : 'hover:bg-slate-50'
+                                            esActual ? 'cursor-default' : enRevision ? 'cursor-not-allowed opacity-50' : 'hover:bg-slate-50'
                                         }`}
                                     >
                                         <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 flex items-center justify-center ${
@@ -274,11 +400,22 @@ function OrdenShow() {
                                         )}
                                     </button>
                                 )
+
+                                if (enRevision && !esActual) {
+                                    return (
+                                        <Tooltip key={est}>
+                                            <TooltipTrigger asChild><span className="block">{boton}</span></TooltipTrigger>
+                                            <TooltipContent>Aprobá la revisión antifraude primero</TooltipContent>
+                                        </Tooltip>
+                                    )
+                                }
+
+                                return boton
                             })}
                         </div>
 
-                        {orden.estado !== 'cancelado' && (
-                            <div className="px-5 pb-5 pt-3 border-t border-slate-100 mt-1">
+                        {orden.estado !== 'cancelado' && orden.estado !== 'devuelto' && !enRevision && (
+                            <div className="px-5 pb-5 pt-3 border-t border-slate-100 mt-1 flex flex-col gap-2">
                                 <button
                                     onClick={() => cambiarEstado('cancelado')}
                                     className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-red-200 text-red-500 text-xs font-semibold hover:bg-red-50 transition-colors duration-200"
@@ -286,6 +423,21 @@ function OrdenShow() {
                                     <XCircleIcon className="w-3.5 h-3.5" />
                                     Cancelar pedido
                                 </button>
+                                {(orden.estado === 'enviado' || orden.estado === 'entregado') && (
+                                    <button
+                                        onClick={() => cambiarEstado('devuelto')}
+                                        className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-red-200 text-red-500 text-xs font-semibold hover:bg-red-50 transition-colors duration-200"
+                                    >
+                                        <XCircleIcon className="w-3.5 h-3.5" />
+                                        Marcar como devuelto
+                                    </button>
+                                )}
+                            </div>
+                        )}
+
+                        {orden.estado === 'devuelto' && (
+                            <div className="px-5 pb-5 pt-3 border-t border-slate-100 mt-1">
+                                <p className="text-xs text-center text-red-400 font-medium">Pedido devuelto</p>
                             </div>
                         )}
 
@@ -464,7 +616,47 @@ function OrdenShow() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </>
+
+            {/* AlertDialog rechazo de revisión antifraude */}
+            <AlertDialog open={confirmarRechazo} onOpenChange={v => { setConfirmarRechazo(v); if (! v) setComentarioRechazo('') }}>
+                <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Rechazar la orden {orden.codigo}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            La orden se cancelará y se notificará al cliente por correo y WhatsApp.
+                            Esta acción no es reversible.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+
+                    <div className="space-y-1.5 px-1">
+                        <label htmlFor="motivo-rechazo" className="text-xs font-medium text-slate-600">
+                            Motivo <span className="text-red-600">*</span>
+                            <span className="text-slate-500 font-normal"> (queda en el historial y se incluye en la cancelación)</span>
+                        </label>
+                        <Textarea
+                            id="motivo-rechazo"
+                            value={comentarioRechazo}
+                            onChange={e => setComentarioRechazo(e.target.value)}
+                            maxLength={500}
+                            rows={3}
+                            placeholder="Ej: teléfono inválido y no contesta…"
+                            className="resize-none"
+                        />
+                    </div>
+
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={procesandoRevision}>Volver</AlertDialogCancel>
+                        <AlertDialogAction
+                            variant="destructive"
+                            onClick={ejecutarRechazo}
+                            disabled={procesandoRevision || ! comentarioRechazo.trim()}
+                        >
+                            Sí, rechazar y cancelar
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </TooltipProvider>
     )
 }
 

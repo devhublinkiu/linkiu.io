@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
-import { ChevronLeft, ChevronRight, Download, Search, ShoppingCart } from 'lucide-react'
+import { toast } from 'sonner'
+import { ChevronLeft, ChevronRight, Download, Search, Send, ShieldAlert, ShoppingCart } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
+import { Badge } from '@/Components/ui/Badge'
 import { Button } from '@/Components/ui/Button'
 import { Input } from '@/Components/ui/Input'
 import {
@@ -15,18 +17,32 @@ import {
 } from '@/Components/ui/Empty'
 import { rangoPaginacion } from '@/lib/utils'
 import StatusBadge, { type Estado } from './parts/StatusBadge'
+import MotivoRevisionBadge from './parts/MotivoRevisionBadge'
+import ConfirmacionCodBadge, {
+    calcularEstadoConfirmacion,
+    puedeReenviarConfirmacion,
+} from './parts/ConfirmacionCodBadge'
+
+type RevisionEstado = 'pendiente' | 'aprobada' | 'rechazada' | null
+type RespuestaCod   = 'si' | 'no' | null
 
 interface OrdenResumen {
-    id: number
-    codigo: string
-    estado: Estado
-    nombre: string
-    apellido: string
-    email: string
-    ciudad: string
-    total: number
-    metodo_pago: string
-    created_at: string
+    id:                          number
+    codigo:                      string
+    estado:                      Estado
+    nombre:                      string
+    apellido:                    string
+    email:                       string
+    ciudad:                      string
+    total:                       number
+    metodo_pago:                 string
+    created_at:                  string
+    revision_estado:             RevisionEstado
+    revision_motivos:            string[] | null
+    confirmacion_solicitada_at:  string | null
+    confirmacion_reenviada:      boolean
+    confirmacion_respondida_at:  string | null
+    confirmacion_respuesta:      RespuestaCod
 }
 
 interface Paginado {
@@ -35,24 +51,26 @@ interface Paginado {
     last_page:    number
     per_page:     number
     total:        number
-    links:        { url: string | null; label: string; active: boolean }[]
 }
 
 interface Props {
     ordenes:         Paginado
     filtroEstado:    string
+    filtroRevision:  string
     filtroQ:         string
     totalPendientes: number
+    totalRevision:   number
 }
 
 const ESTADOS = [
     { value: '',           label: 'Todas'       },
     { value: 'pendiente',  label: 'Pendientes'  },
     { value: 'confirmado', label: 'Confirmadas' },
-    { value: 'preparando', label: 'Preparando'  },
+    // 'preparando' oculto del UI (Capa 3) — se reactiva cuando se reestructure el flujo
     { value: 'enviado',    label: 'Enviadas'    },
     { value: 'entregado',  label: 'Entregadas'  },
     { value: 'cancelado',  label: 'Canceladas'  },
+    { value: 'devuelto',   label: 'Devueltas'   },
 ]
 
 function formatPrecio(n: number) {
@@ -65,24 +83,49 @@ function formatFecha(iso: string) {
 }
 
 function OrdenesList() {
-    const { ordenes, filtroEstado, filtroQ, totalPendientes } = usePage<Props>().props
+    const { ordenes, filtroEstado, filtroRevision, filtroQ, totalPendientes, totalRevision } = usePage<Props>().props
 
-    function filtrar(estado: string) {
+    // Estamos en el tab "Revisión" cuando hay filtroRevision activo. Excluyente
+    // con los filtros por estado para no enredar la UI.
+    const enRevision = filtroRevision === 'pendiente'
+
+    function filtrarPorEstado(estado: string) {
         router.get(route('admin.ordenes.index'), { estado, q: filtroQ }, { preserveState: true, replace: true })
+    }
+
+    function filtrarRevision() {
+        router.get(route('admin.ordenes.index'), { revision: 'pendiente', q: filtroQ }, { preserveState: true, replace: true })
     }
 
     function buscar(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
         const q = (e.currentTarget.elements.namedItem('q') as HTMLInputElement).value
-        router.get(route('admin.ordenes.index'), { estado: filtroEstado, q }, { preserveState: true, replace: true })
+        const params: Record<string, string> = { q }
+        if (enRevision)          params.revision = 'pendiente'
+        else if (filtroEstado)   params.estado   = filtroEstado
+        router.get(route('admin.ordenes.index'), params, { preserveState: true, replace: true })
     }
 
     function irAPagina(page: number) {
-        router.get(route('admin.ordenes.index'), { estado: filtroEstado, q: filtroQ, page }, { preserveState: true, replace: true })
+        const params: Record<string, string | number> = { q: filtroQ, page }
+        if (enRevision)          params.revision = 'pendiente'
+        else if (filtroEstado)   params.estado   = filtroEstado
+        router.get(route('admin.ordenes.index'), params, { preserveState: true, replace: true })
+    }
+
+    function reenviarConfirmacion(ordenId: number) {
+        router.post(
+            route('admin.ordenes.confirmacion.reenviar', ordenId),
+            {},
+            {
+                preserveScroll: true,
+                onError: () => toast.error('Error al reenviar la confirmación'),
+            },
+        )
     }
 
     const paginas = rangoPaginacion(ordenes.current_page, ordenes.last_page)
-    const sinOrdenes    = ordenes.total === 0 && !filtroEstado && !filtroQ
+    const sinOrdenes    = ordenes.total === 0 && !filtroEstado && !filtroQ && !enRevision
     const sinResultados = ordenes.data.length === 0 && !sinOrdenes
 
     return (
@@ -97,7 +140,12 @@ function OrdenesList() {
                     </div>
                     <div>
                         <h1 className="text-lg font-bold text-slate-900">Órdenes</h1>
-                        <p className="text-xs text-slate-500">{ordenes.total} en total · {totalPendientes} pendientes</p>
+                        <p className="text-xs text-slate-500">
+                            {ordenes.total} en total · {totalPendientes} pendientes
+                            {totalRevision > 0 && (
+                                <span className="text-amber-700"> · {totalRevision} en revisión</span>
+                            )}
+                        </p>
                     </div>
                 </div>
 
@@ -122,14 +170,14 @@ function OrdenesList() {
                 </div>
             </div>
 
-            {/* Tabs de estado */}
+            {/* Tabs de estado + tab Revisión separado */}
             <div className="flex items-center gap-1 mb-4 border-b border-slate-200">
                 {ESTADOS.map(e => (
                     <button
                         key={e.value}
-                        onClick={() => filtrar(e.value)}
+                        onClick={() => filtrarPorEstado(e.value)}
                         className={`px-3 py-2 text-xs font-medium transition-colors duration-200 border-b-2 -mb-px ${
-                            filtroEstado === e.value
+                            !enRevision && filtroEstado === e.value
                                 ? 'border-slate-900 text-slate-900'
                                 : 'border-transparent text-slate-500 hover:text-slate-700'
                         }`}
@@ -137,6 +185,22 @@ function OrdenesList() {
                         {e.label}
                     </button>
                 ))}
+                {totalRevision > 0 && (
+                    <button
+                        onClick={filtrarRevision}
+                        className={`ml-2 px-3 py-2 text-xs font-medium transition-colors duration-200 border-b-2 -mb-px inline-flex items-center gap-1.5 ${
+                            enRevision
+                                ? 'border-amber-600 text-amber-700'
+                                : 'border-transparent text-amber-700 hover:text-amber-800'
+                        }`}
+                    >
+                        <ShieldAlert className="w-3.5 h-3.5" />
+                        Revisión
+                        <Badge className="bg-amber-100 text-amber-700">
+                            {totalRevision}
+                        </Badge>
+                    </button>
+                )}
             </div>
 
             {/* Tabla o Empty */}
@@ -153,10 +217,12 @@ function OrdenesList() {
             ) : sinResultados ? (
                 <Empty className="border border-dashed border-slate-200 bg-white">
                     <EmptyHeader>
-                        <EmptyMedia variant="icon"><Search /></EmptyMedia>
-                        <EmptyTitle>Sin resultados</EmptyTitle>
+                        <EmptyMedia variant="icon">{enRevision ? <ShieldAlert /> : <Search />}</EmptyMedia>
+                        <EmptyTitle>{enRevision ? 'No hay órdenes en revisión' : 'Sin resultados'}</EmptyTitle>
                         <EmptyDescription>
-                            No hay órdenes{filtroEstado ? ` con estado "${filtroEstado}"` : ''}{filtroQ ? ` para "${filtroQ}"` : ''}.
+                            {enRevision
+                                ? 'Todas las órdenes pasaron los filtros antifraude automáticamente.'
+                                : `No hay órdenes${filtroEstado ? ` con estado "${filtroEstado}"` : ''}${filtroQ ? ` para "${filtroQ}"` : ''}.`}
                         </EmptyDescription>
                     </EmptyHeader>
                 </Empty>
@@ -172,6 +238,7 @@ function OrdenesList() {
                                 <TableHead className="text-right">Total</TableHead>
                                 <TableHead>Estado</TableHead>
                                 <TableHead className="hidden sm:table-cell">Fecha</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -190,9 +257,30 @@ function OrdenesList() {
                                     <TableCell className="text-slate-600 capitalize hidden lg:table-cell">{orden.metodo_pago.replace('_', ' ')}</TableCell>
                                     <TableCell className="text-right font-bold text-slate-900">{formatPrecio(orden.total)}</TableCell>
                                     <TableCell>
-                                        <StatusBadge estado={orden.estado} />
+                                        <div className="flex flex-wrap items-center gap-1">
+                                            <StatusBadge estado={orden.estado} />
+                                            {orden.revision_estado === 'pendiente' && orden.revision_motivos?.map(m => (
+                                                <MotivoRevisionBadge key={m} motivo={m} />
+                                            ))}
+                                            {(() => {
+                                                const ec = calcularEstadoConfirmacion(orden)
+                                                return ec ? <ConfirmacionCodBadge estado={ec} /> : null
+                                            })()}
+                                        </div>
                                     </TableCell>
                                     <TableCell className="text-xs text-slate-500 hidden sm:table-cell">{formatFecha(orden.created_at)}</TableCell>
+                                    <TableCell className="text-right" onClick={e => e.stopPropagation()}>
+                                        {puedeReenviarConfirmacion(orden) && (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => reenviarConfirmacion(orden.id)}
+                                            >
+                                                <Send className="w-3.5 h-3.5 mr-1" />
+                                                Reenviar
+                                            </Button>
+                                        )}
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>
