@@ -6,9 +6,9 @@
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
-        <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        {{-- La fuente real (Plus Jakarta Sans) se sirve autohostada vía Vite
+             con font-display: swap. No cargamos Figtree de bunny.net porque no
+             se usa en el proyecto — ahorra un roundtrip externo de ~200ms. --}}
 
         <!-- Scripts -->
         @routes

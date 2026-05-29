@@ -91,22 +91,30 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
     useProductTracker(producto_id)
 
     useEffect(() => {
-        trackFb('ViewContent', {
-            content_ids:  [producto_id ?? 0],
-            content_name: nombre ?? '',
-            content_type: 'product',
-            value:        precio_base ?? 0,
-            currency:     'COP',
-        })
+        // Diferimos tracking y FOMO al idle del navegador para no competir
+        // con el LCP. requestIdleCallback no existe en Safari → fallback a setTimeout.
+        const ric: (cb: () => void) => number =
+            (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback
+            ?? ((cb) => window.setTimeout(cb, 1500))
 
-        if (build?.fomo_enabled && producto_id) {
-            const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? ''
-            fetch('/api/fomo-view', {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
-                body:    JSON.stringify({ producto_id }),
-            }).catch(() => {})
-        }
+        ric(() => {
+            trackFb('ViewContent', {
+                content_ids:  [producto_id ?? 0],
+                content_name: nombre ?? '',
+                content_type: 'product',
+                value:        precio_base ?? 0,
+                currency:     'COP',
+            })
+
+            if (build?.fomo_enabled && producto_id) {
+                const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? ''
+                fetch('/api/fomo-view', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrf },
+                    body:    JSON.stringify({ producto_id }),
+                }).catch(() => {})
+            }
+        })
     }, [producto_id])
 
     function hook(key: string) {
@@ -204,6 +212,12 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
             <Head>
                 <title>{tituloPagina}</title>
                 {descripcionSeo && <meta name="description" content={descripcionSeo} />}
+
+                {/* Preload del LCP: la imagen principal del producto. Sin esto el
+                    navegador tiene que esperar a montar React para descubrirla. */}
+                {imagen_principal && (
+                    <link rel="preload" as="image" href={imagen_principal} fetchPriority="high" />
+                )}
 
                 {/* Open Graph */}
                 <meta property="og:type"        content="product" />
