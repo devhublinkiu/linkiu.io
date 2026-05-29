@@ -11,6 +11,16 @@ type Props = {
     imagenes: ImagenProducto[]
 }
 
+/**
+ * Deriva la URL del thumb 200x200 a partir de la URL de la imagen original.
+ * SubirImagenWebp sube ambas versiones con UUID compartido: {uuid}.webp +
+ * {uuid}_thumb.webp. Si el thumb no existe (imágenes pre-Sprint 1.7), el
+ * onError de la miniatura cae a la URL original.
+ */
+function thumbDe(url: string): string {
+    return url.replace(/\.webp(\?|$)/i, '_thumb.webp$1')
+}
+
 export default function Gallery({ imagenes }: Props) {
     const principal = imagenes.find(i => i.principal) ?? imagenes[0]
     const [activa, setActiva] = useState<ImagenProducto | null>(principal ?? null)
@@ -70,12 +80,17 @@ export default function Gallery({ imagenes }: Props) {
                                 )}
                             >
                                 <img
-                                    src={img.url}
+                                    src={thumbDe(img.url)}
                                     alt={`Miniatura ${i + 1}`}
                                     width={64}
                                     height={64}
                                     loading="lazy"
                                     decoding="async"
+                                    onError={(e) => {
+                                        // Fallback para imágenes existentes sin thumb generado todavía
+                                        const target = e.currentTarget
+                                        if (target.src !== img.url) target.src = img.url
+                                    }}
                                     className="w-full h-full object-cover"
                                 />
                             </button>

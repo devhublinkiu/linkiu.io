@@ -27,25 +27,43 @@ use Intervention\Image\ImageManager;
  */
 class SubirImagenWebp
 {
+    public const ANCHO_THUMB = 200;
+
     public function execute(UploadedFile $archivo, string $carpeta, int $anchoMax, bool $track = true): array
     {
         $manager = new ImageManager(new Driver());
 
+        // Decodificamos una sola vez; reutilizamos para las dos variantes.
+        $imagen = $manager->decode($archivo);
+
         // Quality 80 da imágenes ~70% más livianas que 92 sin pérdida visible
         // en thumbnails ni en fotos de producto. PageSpeed Insights lo agradece.
-        $webp = $manager->decode($archivo)
+        $webp = (clone $imagen)
             ->scaleDown(width: $anchoMax)
             ->encode(new WebpEncoder(quality: 80));
 
-        $ruta = $carpeta . '/' . Str::uuid() . '.webp';
+        // Thumb 200px de ancho para miniaturas (galería, cards, etc.). El consumer
+        // del frontend deriva la URL agregando _thumb antes de la extensión.
+        // PageSpeed flagea sobredimensión cuando una imagen de 1254px se muestra
+        // a 64-105px — los thumbs resuelven ese flag.
+        $thumb = (clone $imagen)
+            ->scaleDown(width: self::ANCHO_THUMB)
+            ->encode(new WebpEncoder(quality: 80));
+
+        $uuid      = Str::uuid();
+        $ruta      = "{$carpeta}/{$uuid}.webp";
+        $rutaThumb = "{$carpeta}/{$uuid}_thumb.webp";
 
         // CacheControl + ContentType: PageSpeed flagea cualquier asset estático
         // sin cache eficiente. 1 año immutable es seguro porque cada upload
         // genera un UUID nuevo (cambia la URL si se reemplaza la imagen).
-        Storage::disk('s3')->put($ruta, (string) $webp, [
+        $opciones = [
             'CacheControl' => 'public, max-age=31536000, immutable',
             'ContentType'  => 'image/webp',
-        ]);
+        ];
+
+        Storage::disk('s3')->put($ruta,      (string) $webp,  $opciones);
+        Storage::disk('s3')->put($rutaThumb, (string) $thumb, $opciones);
 
         if ($track) {
             BuildImageUpload::registrar($ruta, auth()->id());
