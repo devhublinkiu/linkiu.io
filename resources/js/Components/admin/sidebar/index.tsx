@@ -4,7 +4,7 @@ import {
     Hammer, Webhook, FileText, Shield, ShieldCheck, UserCog, BarChart2, Plug, Languages,
     ChevronLeft, ChevronRight,
     Flame, MousePointer, Video,
-    Wallet, CreditCard, Sparkles, Truck, Crosshair,
+    Wallet, CreditCard, Sparkles, Truck, Crosshair, Store,
     Palette, AlignJustify, LayoutGrid, Home, Info, Phone,
 } from 'lucide-react'
 import { usePage } from '@inertiajs/react'
@@ -77,8 +77,9 @@ const NAV: NavEntry[] = [
         label: 'Integraciones',
         icon: Plug,
         children: [
-            { label: 'Pasarelas de pago', icon: Wallet,    routeName: 'admin.integraciones.pasarelas', permiso: 'integraciones.ver' },
-            { label: 'Pixeles ADS',       icon: Crosshair, routeName: 'admin.integraciones.pixeles',   permiso: 'integraciones.ver' },
+            { label: 'Pasarelas de pago', icon: Wallet,    routeName: 'admin.integraciones.pasarelas',  permiso: 'integraciones.ver' },
+            { label: 'Pixeles ADS',       icon: Crosshair, routeName: 'admin.integraciones.pixeles',    permiso: 'integraciones.ver' },
+            { label: 'Mastershop',        icon: Store,     routeName: 'admin.integraciones.mastershop', permiso: 'integraciones.ver' },
             { label: 'IA API',            icon: Sparkles,  routeName: null },
         ],
     },

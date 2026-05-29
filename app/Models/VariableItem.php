@@ -16,6 +16,7 @@ class VariableItem extends Model
         'nombre',
         'valor',
         'precio_ajuste',
+        'mastershop_id_variant',
         'activo',
         'orden',
     ];

@@ -32,6 +32,7 @@ class Integracion extends Model
         'bold_identity_key',
         'bold_secret_key',
         'mipaquete_api_key',
+        'mastershop_api_key',
     ];
 
     private static function cacheKey(string $clave): string

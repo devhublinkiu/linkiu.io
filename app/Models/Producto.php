@@ -22,6 +22,8 @@ class Producto extends Model
         'aplica_iva',
         'iva_porcentaje',
         'layout_orden',
+        'mastershop_id_product',
+        'mastershop_id_variant',
     ];
 
     protected $casts = [

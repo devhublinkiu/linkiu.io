@@ -136,6 +136,15 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/integraciones/pasarelas',  [IntegracionPasarelasController::class, 'show'])  ->name('integraciones.pasarelas')        ->middleware('can:integraciones.ver');
     Route::post('/integraciones/pasarelas', [IntegracionPasarelasController::class, 'update'])->name('integraciones.pasarelas.update') ->middleware('can:integraciones.editar');
 
+    // Mastershop — config + enrolamiento de productos (Capa 1)
+    Route::get( '/integraciones/mastershop',                       [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'show']       )->name('integraciones.mastershop')             ->middleware('can:integraciones.ver');
+    Route::post('/integraciones/mastershop',                       [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'update']     )->name('integraciones.mastershop.update')      ->middleware('can:integraciones.editar');
+    Route::post('/integraciones/mastershop/probar',                [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'probar']     )->name('integraciones.mastershop.probar')      ->middleware('can:integraciones.editar');
+    Route::get( '/integraciones/mastershop/buscar',                [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'buscar']     )->name('integraciones.mastershop.buscar')      ->middleware('can:integraciones.editar');
+    Route::get( '/integraciones/mastershop/producto/{idProduct}',  [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'producto']   )->name('integraciones.mastershop.producto')    ->middleware('can:integraciones.editar')->where('idProduct', '[0-9]+');
+    Route::post('/integraciones/mastershop/vincular/{producto}',   [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'vincular']  )->name('integraciones.mastershop.vincular')    ->middleware('can:productos.editar')   ->where('producto',  '[0-9]+');
+    Route::delete('/integraciones/mastershop/vincular/{producto}', [\App\Http\Controllers\Admin\IntegracionMastershopController::class, 'desvincular'])->name('integraciones.mastershop.desvincular')->middleware('can:productos.editar')   ->where('producto',  '[0-9]+');
+
     // Categorías
     // Nota: `categorias.update` usa POST (no PUT/PATCH) porque el frontend
     // envía multipart/form-data con `forceFormData: true` para soportar la
