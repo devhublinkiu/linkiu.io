@@ -33,15 +33,17 @@ class IntegracionMastershopController extends Controller
     {
         abort_if(! auth()->user()->can('integraciones.ver'), 403);
 
+        // 20 por página alcanza para tiendas grandes sin sobrecargar el render.
+        // El controller paginated conserva los query params (?page=N) automáticamente.
         $productos = Producto::query()
             ->with(['variableGrupos:id,producto_id,nombre,tipo,orden',
                     'variableGrupos.items:id,grupo_id,nombre,mastershop_id_variant'])
             ->orderBy('nombre')
-            ->get([
+            ->paginate(20, [
                 'id', 'nombre', 'sku', 'slug', 'status',
                 'mastershop_id_product', 'mastershop_id_variant',
             ])
-            ->map(fn ($p) => [
+            ->through(fn ($p) => [
                 'id'                     => $p->id,
                 'nombre'                 => $p->nombre,
                 'sku'                    => $p->sku,
@@ -64,8 +66,7 @@ class IntegracionMastershopController extends Controller
                         'mastershop_id_variant' => $i->mastershop_id_variant,
                     ])->values(),
                 ])->values(),
-            ])
-            ->values();
+            ]);
 
         return Inertia::render('admin/integraciones/Mastershop', [
             'api_key_configurada' => ! empty(Integracion::get('mastershop_api_key')),

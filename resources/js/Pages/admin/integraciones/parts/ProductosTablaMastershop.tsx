@@ -1,8 +1,42 @@
+import { useState } from 'react'
 import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { Link, Unlink, Package } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Link as LinkIcon, Unlink, Package } from 'lucide-react'
 import { Button } from '@/Components/ui/Button'
-import { Empty } from '@/Components/ui/Empty'
+import {
+    Empty,
+    EmptyContent,
+    EmptyDescription,
+    EmptyHeader,
+    EmptyMedia,
+    EmptyTitle,
+} from '@/Components/ui/Empty'
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/Components/ui/Table'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/Components/ui/AlertDialog'
+import {
+    Pagination,
+    PaginationContent,
+    PaginationEllipsis,
+    PaginationItem,
+} from '@/Components/ui/Pagination'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/Components/ui/Tooltip'
+import { rangoPaginacion } from '@/lib/utils'
 
 export interface GrupoVariante {
     id:     number
@@ -28,8 +62,16 @@ export interface ProductoMastershop {
     grupos_variantes:       GrupoVariante[]
 }
 
+export interface ProductosPaginado {
+    data:         ProductoMastershop[]
+    current_page: number
+    last_page:    number
+    per_page:     number
+    total:        number
+}
+
 interface Props {
-    productos:         ProductoMastershop[]
+    productos:         ProductosPaginado
     apiKeyConfigurada: boolean
     puedeVincular:     boolean
     onVincular:        (p: ProductoMastershop) => void
@@ -37,63 +79,153 @@ interface Props {
 
 export default function ProductosTablaMastershop({ productos, apiKeyConfigurada, puedeVincular, onVincular }: Props) {
 
-    function desvincular(p: ProductoMastershop) {
-        if (! confirm(`¿Desvincular "${p.nombre}" de Mastershop?\n\nSe perderán también los mapeos de variantes.`)) return
-        router.delete(route('admin.integraciones.mastershop.desvincular', p.id), {
+    // El propio objeto (no solo el id) — necesario para mostrar el nombre del
+    // producto en la descripción del AlertDialog de confirmación.
+    const [aDesvincular, setADesvincular] = useState<ProductoMastershop | null>(null)
+    const [eliminando,   setEliminando]   = useState(false)
+
+    function ejecutarDesvincular() {
+        if (!aDesvincular) return
+        setEliminando(true)
+        router.delete(route('admin.integraciones.mastershop.desvincular', aDesvincular.id), {
             preserveScroll: true,
-            onSuccess: () => toast.success('Vinculación eliminada'),
-            onError:   () => toast.error('Error al desvincular'),
+            onSuccess: () => {
+                toast.success('Vinculación eliminada')
+                setADesvincular(null)
+            },
+            onError:  () => toast.error('Error al desvincular'),
+            onFinish: () => setEliminando(false),
         })
     }
 
-    if (productos.length === 0) {
+    function irAPagina(page: number) {
+        if (page < 1 || page > productos.last_page) return
+        router.get(route('admin.integraciones.mastershop'), { page }, {
+            preserveScroll: true,
+            preserveState:  true,
+        })
+    }
+
+    if (productos.total === 0) {
         return (
-            <div className="rounded-xl border border-slate-200 bg-white p-12">
-                <Empty
-                    icon={Package}
-                    title="No hay productos creados todavía"
-                    description="Creá productos primero para poder vincularlos con Mastershop."
-                />
-            </div>
+            <Empty className="border border-dashed border-slate-200 bg-white">
+                <EmptyHeader>
+                    <EmptyMedia variant="icon"><Package /></EmptyMedia>
+                    <EmptyTitle>No hay productos creados todavía</EmptyTitle>
+                    <EmptyDescription>
+                        Creá productos primero para poder vincularlos con Mastershop.
+                    </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                    <Button variant="outline" asChild>
+                        <a href={route('admin.productos.index')}>Ir a productos</a>
+                    </Button>
+                </EmptyContent>
+            </Empty>
         )
     }
 
+    const vinculadosEnPagina = productos.data.filter(p => p.mastershop_id_product !== null).length
+    const paginas = rangoPaginacion(productos.current_page, productos.last_page)
+
     return (
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+        <>
+            <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
 
-            <div className="px-6 py-4 border-b border-slate-200">
-                <h2 className="text-sm font-bold text-slate-900">Productos Linkiu</h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                    {productos.filter(p => p.mastershop_id_product !== null).length} de {productos.length} vinculados
-                </p>
-            </div>
+                <div className="px-6 py-4 border-b border-slate-200">
+                    <h2 className="text-lg font-bold text-slate-900">Productos Linkiu</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                        {productos.total} en total · {vinculadosEnPagina} vinculado{vinculadosEnPagina !== 1 ? 's' : ''} en esta página
+                    </p>
+                </div>
 
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-200">
-                        <tr>
-                            <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide">Producto</th>
-                            <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide">SKU</th>
-                            <th className="text-left px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide">Estado</th>
-                            <th className="text-right px-6 py-3 font-semibold text-slate-600 text-xs uppercase tracking-wide">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {productos.map(p => (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Producto</TableHead>
+                            <TableHead>SKU</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {productos.data.map(p => (
                             <FilaProducto
                                 key={p.id}
                                 producto={p}
                                 puedeVincular={puedeVincular}
                                 apiKeyConfigurada={apiKeyConfigurada}
                                 onVincular={() => onVincular(p)}
-                                onDesvincular={() => desvincular(p)}
+                                onDesvincular={() => setADesvincular(p)}
                             />
                         ))}
-                    </tbody>
-                </table>
+                    </TableBody>
+                </Table>
+
             </div>
 
-        </div>
+            {productos.last_page > 1 && (
+                <Pagination className="mt-4">
+                    <PaginationContent>
+                        <PaginationItem>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={productos.current_page === 1}
+                                onClick={() => irAPagina(productos.current_page - 1)}
+                                aria-label="Página anterior"
+                            >
+                                <ChevronLeft className="size-4" />
+                            </Button>
+                        </PaginationItem>
+                        {paginas.map((p, i) => (
+                            <PaginationItem key={`${p}-${i}`}>
+                                {p === 'ellipsis' ? (
+                                    <PaginationEllipsis />
+                                ) : (
+                                    <Button
+                                        variant={p === productos.current_page ? 'outline' : 'ghost'}
+                                        size="icon"
+                                        onClick={() => irAPagina(p)}
+                                    >
+                                        {p}
+                                    </Button>
+                                )}
+                            </PaginationItem>
+                        ))}
+                        <PaginationItem>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={productos.current_page === productos.last_page}
+                                onClick={() => irAPagina(productos.current_page + 1)}
+                                aria-label="Página siguiente"
+                            >
+                                <ChevronRight className="size-4" />
+                            </Button>
+                        </PaginationItem>
+                    </PaginationContent>
+                </Pagination>
+            )}
+
+            <AlertDialog open={!!aDesvincular} onOpenChange={v => !v && setADesvincular(null)}>
+                <AlertDialogContent size="sm">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Desvincular producto?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Se eliminará la vinculación de <strong className="text-slate-900">{aDesvincular?.nombre}</strong> con
+                            Mastershop, incluyendo los mapeos de variantes. Esta acción no es reversible.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={eliminando}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction variant="destructive" onClick={ejecutarDesvincular} disabled={eliminando}>
+                            Desvincular
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     )
 }
 
@@ -110,20 +242,27 @@ function FilaProducto({
     const variantesIncompletas = producto.tiene_variantes
         && producto.variantes_vinculadas < producto.variantes_total
 
+    // Política AGENTS.md: nunca ocultar botones, siempre disabled + tooltip explicativo.
+    // El botón Vincular requiere ambos: permiso (puedeVincular) + API key configurada.
+    const disabledVincular = !puedeVincular || !apiKeyConfigurada
+    const tooltipDisabled  = !puedeVincular
+        ? 'No tenés permiso para editar productos'
+        : 'Configurá la API key de Mastershop primero'
+
     return (
-        <tr className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors duration-200">
-            <td className="px-6 py-3.5">
+        <TableRow>
+            <TableCell>
                 <p className="font-medium text-slate-900">{producto.nombre}</p>
                 {producto.tiene_variantes && (
                     <p className="text-xs text-slate-500 mt-0.5">
                         {producto.variantes_total} variante{producto.variantes_total !== 1 ? 's' : ''}
                     </p>
                 )}
-            </td>
-            <td className="px-6 py-3.5">
+            </TableCell>
+            <TableCell>
                 <span className="text-xs text-slate-500 font-mono">{producto.sku ?? '—'}</span>
-            </td>
-            <td className="px-6 py-3.5">
+            </TableCell>
+            <TableCell>
                 {!vinculado && (
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 rounded-full px-2.5 py-0.5">
                         Sin vincular
@@ -139,25 +278,40 @@ function FilaProducto({
                         Vinculado
                     </span>
                 )}
-            </td>
-            <td className="px-6 py-3.5 text-right">
-                {puedeVincular && (
-                    <div className="inline-flex items-center gap-1.5">
+            </TableCell>
+            <TableCell className="text-right">
+                <div className="inline-flex items-center gap-1.5">
+                    {disabledVincular ? (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                {/* span wrapper para que el tooltip funcione sobre un button disabled */}
+                                <span>
+                                    <Button variant="outline" size="sm" disabled>
+                                        <LinkIcon className="w-3.5 h-3.5 mr-1" />
+                                        {vinculado ? 'Editar' : 'Vincular'}
+                                    </Button>
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{tooltipDisabled}</TooltipContent>
+                        </Tooltip>
+                    ) : (
                         <Button variant="outline" size="sm" onClick={onVincular}>
-                            <Link className="w-3.5 h-3.5 mr-1" />
+                            <LinkIcon className="w-3.5 h-3.5 mr-1" />
                             {vinculado ? 'Editar' : 'Vincular'}
                         </Button>
-                        {vinculado && (
-                            <Button variant="outline" size="sm" onClick={onDesvincular} className="text-red-600 hover:text-red-700">
-                                <Unlink className="w-3.5 h-3.5" />
-                            </Button>
-                        )}
-                    </div>
-                )}
-                {!apiKeyConfigurada && !vinculado && (
-                    <span className="text-xs text-slate-400">Configurá la API primero</span>
-                )}
-            </td>
-        </tr>
+                    )}
+                    {vinculado && puedeVincular && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={onDesvincular}
+                            className="text-red-600 hover:text-red-700"
+                        >
+                            <Unlink className="w-3.5 h-3.5" />
+                        </Button>
+                    )}
+                </div>
+            </TableCell>
+        </TableRow>
     )
 }

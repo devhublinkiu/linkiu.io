@@ -4,12 +4,12 @@ import { Store } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { TooltipProvider } from '@/Components/ui/Tooltip'
 import ConfigCardMastershop from './parts/ConfigCardMastershop'
-import ProductosTablaMastershop, { type ProductoMastershop } from './parts/ProductosTablaMastershop'
+import ProductosTablaMastershop, { type ProductoMastershop, type ProductosPaginado } from './parts/ProductosTablaMastershop'
 import VincularSheetMastershop from './parts/VincularSheetMastershop'
 
 interface Props {
     api_key_configurada: boolean
-    productos:           ProductoMastershop[]
+    productos:           ProductosPaginado
 }
 
 export default function Mastershop({ api_key_configurada, productos }: Props) {
@@ -33,7 +33,7 @@ export default function Mastershop({ api_key_configurada, productos }: Props) {
                             <Store className="w-4 h-4 text-slate-600" />
                         </div>
                         <div>
-                            <h1 className="text-lg font-semibold text-slate-900">Mastershop</h1>
+                            <h1 className="text-lg font-bold text-slate-900">Mastershop</h1>
                             <p className="text-xs text-slate-500">
                                 Conectá tu cuenta para enrolar productos del catálogo Mastershop con los tuyos.
                             </p>

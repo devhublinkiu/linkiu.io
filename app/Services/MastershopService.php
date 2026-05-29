@@ -73,8 +73,11 @@ class MastershopService
     }
 
     /**
-     * Busca productos por nombre/descripción. Cache 5 min — los catálogos
-     * cambian poco minuto a minuto y queremos limitar el rate (500/min).
+     * Busca productos por nombre/descripción o por ID directo.
+     *
+     * Si `$query` es sólo dígitos lo tratamos como ID y vamos a /products/:id —
+     * 1 sola request, sin fuzzy. Si no, va a /products?search= con cache 5min
+     * (los catálogos no cambian minuto a minuto + protege el rate 500/min).
      *
      * @return array{results: array, total: int}|null
      */
@@ -84,6 +87,16 @@ class MastershopService
 
         $query = trim($query);
         if ($query === '') return ['results' => [], 'total' => 0];
+
+        // Atajo por ID: si el query es enteramente numérico, lo buscamos directo.
+        // El detalle por ID retorna el mismo shape que un item de search.
+        if (ctype_digit($query)) {
+            $producto = $this->obtenerProducto((int) $query);
+            return [
+                'results' => $producto ? [$producto] : [],
+                'total'   => $producto ? 1 : 0,
+            ];
+        }
 
         $cacheKey = "mastershop:buscar:" . md5("{$query}|{$page}|{$limit}");
 
