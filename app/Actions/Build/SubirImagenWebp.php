@@ -31,13 +31,21 @@ class SubirImagenWebp
     {
         $manager = new ImageManager(new Driver());
 
+        // Quality 80 da imágenes ~70% más livianas que 92 sin pérdida visible
+        // en thumbnails ni en fotos de producto. PageSpeed Insights lo agradece.
         $webp = $manager->decode($archivo)
             ->scaleDown(width: $anchoMax)
-            ->encode(new WebpEncoder(quality: 92));
+            ->encode(new WebpEncoder(quality: 80));
 
         $ruta = $carpeta . '/' . Str::uuid() . '.webp';
 
-        Storage::disk('s3')->put($ruta, (string) $webp);
+        // CacheControl + ContentType: PageSpeed flagea cualquier asset estático
+        // sin cache eficiente. 1 año immutable es seguro porque cada upload
+        // genera un UUID nuevo (cambia la URL si se reemplaza la imagen).
+        Storage::disk('s3')->put($ruta, (string) $webp, [
+            'CacheControl' => 'public, max-age=31536000, immutable',
+            'ContentType'  => 'image/webp',
+        ]);
 
         if ($track) {
             BuildImageUpload::registrar($ruta, auth()->id());

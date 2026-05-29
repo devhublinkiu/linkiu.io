@@ -213,12 +213,6 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                 <title>{tituloPagina}</title>
                 {descripcionSeo && <meta name="description" content={descripcionSeo} />}
 
-                {/* Preload del LCP: la imagen principal del producto. Sin esto el
-                    navegador tiene que esperar a montar React para descubrirla. */}
-                {imagen_principal && (
-                    <link rel="preload" as="image" href={imagen_principal} fetchPriority="high" />
-                )}
-
                 {/* Open Graph */}
                 <meta property="og:type"        content="product" />
                 <meta property="og:title"       content={tituloPagina} />

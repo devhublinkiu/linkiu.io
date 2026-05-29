@@ -35,6 +35,15 @@ function sanitizarGoogleAdsId(valor: string | null): string | null {
     return /^AW-\d{6,12}$/i.test(valor) ? valor : null
 }
 
+// Carga deferida: requestIdleCallback con fallback a setTimeout (Safari).
+// Mantiene tracking + CAPI dedup pero no compite con el LCP.
+function cargarDiferido(cb: () => void) {
+    const ric: ((cb: () => void) => number) | undefined =
+        (window as unknown as { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback
+    if (ric) ric(cb)
+    else window.setTimeout(cb, 2000)
+}
+
 function FbPixel() {
     const { fb_pixel_id, fb_test_event_code } = usePage<SharedProps>().props
     const pixelId  = sanitizarPixelId(fb_pixel_id)
@@ -44,26 +53,31 @@ function FbPixel() {
         if (!pixelId) return
         if (document.getElementById('fb-pixel-script')) return
 
-        const s = document.createElement('script')
-        s.id  = 'fb-pixel-script'
-        s.async = true
+        // El PageView se difiere ~500ms tras LCP. La dedup por event_id que hace
+        // CAPI server-side cubre el caso de visitas muy cortas que se vayan
+        // antes del idle callback.
+        cargarDiferido(() => {
+            const s = document.createElement('script')
+            s.id  = 'fb-pixel-script'
+            s.async = true
 
-        const initOptions = testCode
-            ? `fbq('init', '${pixelId}', {}, { test_event_code: '${testCode}' });`
-            : `fbq('init', '${pixelId}');`
+            const initOptions = testCode
+                ? `fbq('init', '${pixelId}', {}, { test_event_code: '${testCode}' });`
+                : `fbq('init', '${pixelId}');`
 
-        s.textContent = `
-            !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){
-            n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window,document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            ${initOptions}
-            fbq('track', 'PageView');
-        `
-        document.head.appendChild(s)
+            s.textContent = `
+                !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){
+                n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+                n.queue=[];t=b.createElement(e);t.async=!0;
+                t.src=v;s=b.getElementsByTagName(e)[0];
+                s.parentNode.insertBefore(t,s)}(window,document,'script',
+                'https://connect.facebook.net/en_US/fbevents.js');
+                ${initOptions}
+                fbq('track', 'PageView');
+            `
+            document.head.appendChild(s)
+        })
     }, [pixelId, testCode])
 
     if (!pixelId) return null
@@ -91,23 +105,26 @@ function GoogleAdsScript() {
         if (!adsId) return
         if (document.getElementById('google-ads-script')) return
 
-        // Loader gtag.js
-        const loader = document.createElement('script')
-        loader.id    = 'google-ads-script'
-        loader.async = true
-        loader.src   = `https://www.googletagmanager.com/gtag/js?id=${adsId}`
-        document.head.appendChild(loader)
+        // Carga deferida — gtag.js también pesa y bloquea el render si entra antes del LCP.
+        cargarDiferido(() => {
+            // Loader gtag.js
+            const loader = document.createElement('script')
+            loader.id    = 'google-ads-script'
+            loader.async = true
+            loader.src   = `https://www.googletagmanager.com/gtag/js?id=${adsId}`
+            document.head.appendChild(loader)
 
-        // Inicialización + config con el ID
-        const init = document.createElement('script')
-        init.id    = 'google-ads-init'
-        init.textContent = `
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${adsId}');
-        `
-        document.head.appendChild(init)
+            // Inicialización + config con el ID
+            const init = document.createElement('script')
+            init.id    = 'google-ads-init'
+            init.textContent = `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${adsId}');
+            `
+            document.head.appendChild(init)
+        })
     }, [google_ads_id])
 
     return null
