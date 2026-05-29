@@ -78,7 +78,7 @@ class RecomprimirImagenesS3 extends Command
                 $bytesOrig = strlen($original);
                 $totalOriginal += $bytesOrig;
 
-                $nuevo = (string) $manager->read($original)
+                $nuevo = (string) $manager->decode($original)
                     ->scaleDown(width: $ancho)
                     ->encode(new WebpEncoder(quality: $quality));
 
