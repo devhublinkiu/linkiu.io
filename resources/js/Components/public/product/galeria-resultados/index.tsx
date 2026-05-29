@@ -34,6 +34,8 @@ export default function GaleriaResultados({ config }: Props) {
                 <div className="flex items-center gap-3">
                     {total > 1 && (
                         <button
+                            type="button"
+                            aria-label="Resultado anterior"
                             onClick={() => ir(activo - 1)}
                             className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors duration-200 shrink-0"
                         >
@@ -48,7 +50,7 @@ export default function GaleriaResultados({ config }: Props) {
                         >
                             {imagenes.map((img, i) => (
                                 <div key={i} className="w-full shrink-0">
-                                    <img src={img.url} alt="" className="w-full aspect-[9/16] object-cover" />
+                                    <img src={img.url} alt={`Resultado ${i + 1}`} loading="lazy" decoding="async" className="w-full aspect-[9/16] object-cover" />
                                 </div>
                             ))}
                         </div>
@@ -56,6 +58,8 @@ export default function GaleriaResultados({ config }: Props) {
 
                     {total > 1 && (
                         <button
+                            type="button"
+                            aria-label="Resultado siguiente"
                             onClick={() => ir(activo + 1)}
                             className="w-8 h-8 rounded-full border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50 transition-colors duration-200 shrink-0"
                         >
@@ -70,6 +74,9 @@ export default function GaleriaResultados({ config }: Props) {
                         {imagenes.map((_, i) => (
                             <button
                                 key={i}
+                                type="button"
+                                aria-label={`Ir al resultado ${i + 1}`}
+                                aria-current={i === activo ? 'true' : undefined}
                                 onClick={() => ir(i)}
                                 className={cn(
                                     'rounded-full transition-all duration-300',

@@ -50,6 +50,8 @@ export default function SliderImagenes({ config }: Props) {
                         <img
                             src={img.url}
                             alt=""
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-auto object-cover"
                         />
                     </div>
@@ -60,23 +62,30 @@ export default function SliderImagenes({ config }: Props) {
             {imagenes.length > 1 && (
                 <>
                     <button
+                        type="button"
+                        aria-label="Imagen anterior"
                         onClick={() => ir(activo - 1)}
                         className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center transition-colors duration-200 backdrop-blur-sm"
                     >
                         <ChevronLeftIcon className="w-4 h-4 text-white" />
                     </button>
                     <button
+                        type="button"
+                        aria-label="Imagen siguiente"
                         onClick={() => ir(activo + 1)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center transition-colors duration-200 backdrop-blur-sm"
                     >
                         <ChevronRightIcon className="w-4 h-4 text-white" />
                     </button>
 
-                    {/* Dots */}
+                    {/* Dots — wrappers de 24x24 con target táctil accesible (44px no cabe acá) */}
                     <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
                         {imagenes.map((_, i) => (
                             <button
                                 key={i}
+                                type="button"
+                                aria-label={`Ir a imagen ${i + 1}`}
+                                aria-current={i === activo ? 'true' : undefined}
                                 onClick={() => ir(i)}
                                 className={cn(
                                     'rounded-full transition-all duration-300',

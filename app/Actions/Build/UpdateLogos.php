@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 
 class UpdateLogos
 {
+    public function __construct(private SubirImagenWebp $subirWebp) {}
+
     public function handle(array $data): void
     {
         foreach (['tienda', 'admin'] as $slot) {
@@ -20,10 +22,17 @@ class UpdateLogos
                     BuildImageUpload::olvidar($rutaActual);
                 }
 
-                $ruta = $data["logo_{$slot}"]->store("logos/{$slot}", 's3');
-                BuildConfig::set("build_logo_{$slot}", $ruta);
-                BuildImageUpload::registrar($ruta, auth()->id());
-                BuildImageUpload::where('ruta', $ruta)->update(['attached' => true]);
+                // Convertimos a WebP con SubirImagenWebp para aprovechar la
+                // optimización + Cache-Control inmutable. El logo no necesita
+                // más de 600px de ancho para verse perfecto en cualquier viewport.
+                $resultado = $this->subirWebp->execute(
+                    archivo:  $data["logo_{$slot}"],
+                    carpeta:  "logos/{$slot}",
+                    anchoMax: 600,
+                    track:    false, // logos no son huérfanos — los gestiona BuildConfig
+                );
+
+                BuildConfig::set("build_logo_{$slot}", $resultado['ruta']);
             }
 
             if (! empty($data["eliminar_{$slot}"])) {

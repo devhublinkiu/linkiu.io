@@ -53,31 +53,34 @@ function FbPixel() {
         if (!pixelId) return
         if (document.getElementById('fb-pixel-script')) return
 
-        // El PageView se difiere ~500ms tras LCP. La dedup por event_id que hace
-        // CAPI server-side cubre el caso de visitas muy cortas que se vayan
-        // antes del idle callback.
-        cargarDiferido(() => {
-            const s = document.createElement('script')
-            s.id  = 'fb-pixel-script'
-            s.async = true
+        // Importante: el snippet se ejecuta inmediato (sin requestIdleCallback)
+        // porque define el proxy window.fbq que encola eventos hasta que
+        // fbevents.js termine de cargar. Sin esto, cualquier trackFb que se
+        // dispare antes del idle (p.ej. ViewContent en Product.tsx) llega sin
+        // event_id y rompe la dedup con CAPI — Meta lo flagea explícitamente.
+        //
+        // El render NO se bloquea: el snippet pesa <1KB y el fbevents.js que
+        // descarga está marcado async dentro del propio snippet.
+        const s = document.createElement('script')
+        s.id  = 'fb-pixel-script'
+        s.async = true
 
-            const initOptions = testCode
-                ? `fbq('init', '${pixelId}', {}, { test_event_code: '${testCode}' });`
-                : `fbq('init', '${pixelId}');`
+        const initOptions = testCode
+            ? `fbq('init', '${pixelId}', {}, { test_event_code: '${testCode}' });`
+            : `fbq('init', '${pixelId}');`
 
-            s.textContent = `
-                !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){
-                n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-                if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-                n.queue=[];t=b.createElement(e);t.async=!0;
-                t.src=v;s=b.getElementsByTagName(e)[0];
-                s.parentNode.insertBefore(t,s)}(window,document,'script',
-                'https://connect.facebook.net/en_US/fbevents.js');
-                ${initOptions}
-                fbq('track', 'PageView');
-            `
-            document.head.appendChild(s)
-        })
+        s.textContent = `
+            !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){
+            n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window,document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            ${initOptions}
+            fbq('track', 'PageView');
+        `
+        document.head.appendChild(s)
     }, [pixelId, testCode])
 
     if (!pixelId) return null
