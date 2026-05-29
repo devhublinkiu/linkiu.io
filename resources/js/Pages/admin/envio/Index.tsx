@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { Truck, MapPin, PencilIcon, Trash2Icon, PlusIcon } from 'lucide-react'
+import { Truck, MapPin, PencilIcon, Trash2Icon, PlusIcon, Settings } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Button } from '@/Components/ui/Button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
@@ -11,6 +11,7 @@ import {
 } from '@/Components/ui/AlertDialog'
 import { cn } from '@/lib/utils'
 import ZonaDialog, { type ZonaEnvio } from './parts/ZonaDialog'
+import ModalConfiguracionEnvio from './parts/ModalConfiguracionEnvio'
 
 interface Props {
     zonas: ZonaEnvio[]
@@ -41,6 +42,7 @@ export default function EnvioIndex({ zonas }: Props) {
     const puedeEditar = puede('envio.editar')
 
     const [dialogOpen,   setDialogOpen]   = useState(false)
+    const [configOpen,   setConfigOpen]   = useState(false)
     const [zonaEditar,   setZonaEditar]   = useState<ZonaEnvio | null>(null)
     const [zonaEliminar, setZonaEliminar] = useState<ZonaEnvio | null>(null)
 
@@ -94,16 +96,28 @@ export default function EnvioIndex({ zonas }: Props) {
                                 <p className="text-xs text-slate-500">Define zonas con los departamentos y ciudades donde despachás.</p>
                             </div>
                         </div>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <span>
-                                    <Button size="sm" onClick={abrirNuevaZona} disabled={!puedeEditar}>
-                                        <PlusIcon /> Nueva zona
-                                    </Button>
-                                </span>
-                            </TooltipTrigger>
-                            {!puedeEditar && <TooltipContent>No tienes permiso para editar</TooltipContent>}
-                        </Tooltip>
+                        <div className="flex items-center gap-2">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span>
+                                        <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)} disabled={!puedeEditar}>
+                                            <Settings /> Configuración
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                {!puedeEditar && <TooltipContent>No tienes permiso para editar</TooltipContent>}
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span>
+                                        <Button size="sm" onClick={abrirNuevaZona} disabled={!puedeEditar}>
+                                            <PlusIcon /> Nueva zona
+                                        </Button>
+                                    </span>
+                                </TooltipTrigger>
+                                {!puedeEditar && <TooltipContent>No tienes permiso para editar</TooltipContent>}
+                            </Tooltip>
+                        </div>
                     </div>
 
                     {/* Zonas */}
@@ -182,6 +196,12 @@ export default function EnvioIndex({ zonas }: Props) {
                 open={dialogOpen}
                 zona={zonaEditar}
                 onClose={() => { setDialogOpen(false); setZonaEditar(null) }}
+            />
+
+            {/* Modal Mipaquete config */}
+            <ModalConfiguracionEnvio
+                open={configOpen}
+                onClose={() => setConfigOpen(false)}
             />
 
             {/* AlertDialog confirmación de eliminación */}

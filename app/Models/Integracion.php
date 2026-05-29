@@ -31,6 +31,7 @@ class Integracion extends Model
         'fb_access_token',
         'bold_identity_key',
         'bold_secret_key',
+        'mipaquete_api_key',
     ];
 
     private static function cacheKey(string $clave): string

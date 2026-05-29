@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDownIcon, ChevronRightIcon, Loader2Icon } from 'lucide-react'
 import { Input } from '@/Components/ui/Input'
 import type { Ciudad, DepartamentoSeleccionado, DptoApi } from './types'
+import BadgeSugerencia, { type SugerenciaCotizacion } from './BadgeSugerencia'
 
 interface Props {
     dpto:           DptoApi
@@ -10,11 +11,12 @@ interface Props {
     seleccionado:   DepartamentoSeleccionado | undefined
     onToggleDpto:   (dpto: DptoApi) => void
     onToggleCiudad: (dptoId: number, ciudad: Ciudad) => void
+    sugerencia?:    SugerenciaCotizacion | null
 }
 
 // Fila colapsable de departamento. Si está seleccionada muestra el contador de
 // ciudades y permite gestionar la selección por ciudad individualmente.
-export default function DptoRow({ dpto, ciudades, cargando, seleccionado, onToggleDpto, onToggleCiudad }: Props) {
+export default function DptoRow({ dpto, ciudades, cargando, seleccionado, onToggleDpto, onToggleCiudad, sugerencia }: Props) {
     const [expandido, setExpandido] = useState(false)
     const [busqueda,  setBusqueda]  = useState('')
 
@@ -57,6 +59,11 @@ export default function DptoRow({ dpto, ciudades, cargando, seleccionado, onTogg
                         : <ChevronRightIcon className="size-3.5 text-slate-400 shrink-0" />
                     }
                     <span className="text-sm text-slate-700 truncate">{dpto.name}</span>
+                    {sugerencia && (
+                        <span className="shrink-0">
+                            <BadgeSugerencia data={sugerencia} />
+                        </span>
+                    )}
                     {seleccionado && (
                         <span className="ml-auto shrink-0 text-xs text-slate-500">
                             {seleccionado.ciudades.length} ciudades

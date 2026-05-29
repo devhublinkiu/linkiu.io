@@ -125,6 +125,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/envio/zonas/{zona}',    [ConfiguracionEnvioController::class, 'updateZona']   )->name('envio.zonas.update')  ->middleware('can:envio.editar');
     Route::delete('/envio/zonas/{zona}',  [ConfiguracionEnvioController::class, 'destroyZona']  )->name('envio.zonas.destroy') ->middleware('can:envio.editar');
 
+    // Mipaquete — config + sugerencias para los badges de "Nueva zona".
+    Route::get( '/envio/mipaquete/config',      [\App\Http\Controllers\Admin\EnvioSugerenciasController::class, 'config']        )->name('envio.mipaquete.config');
+    Route::post('/envio/mipaquete/config',      [\App\Http\Controllers\Admin\EnvioSugerenciasController::class, 'guardarConfig'] )->name('envio.mipaquete.config.save')->middleware('can:envio.editar');
+    Route::post('/envio/mipaquete/sugerencias', [\App\Http\Controllers\Admin\EnvioSugerenciasController::class, 'sugerencias']   )->name('envio.mipaquete.sugerencias')->middleware('can:envio.ver');
+
     // Integraciones
     Route::get('/integraciones/pixeles',    [IntegracionPixelesController::class,   'show'])  ->name('integraciones.pixeles')         ->middleware('can:integraciones.ver');
     Route::post('/integraciones/pixeles',   [IntegracionPixelesController::class,   'update'])->name('integraciones.pixeles.update')  ->middleware('can:integraciones.editar');

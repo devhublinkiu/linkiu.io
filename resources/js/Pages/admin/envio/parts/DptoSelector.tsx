@@ -4,6 +4,8 @@ import { Input } from '@/Components/ui/Input'
 import { Label } from '@/Components/ui/Label'
 import DptoRow from './DptoRow'
 import type { Ciudad, CiudadApi, DepartamentoSeleccionado, DptoApi } from './types'
+import type { SugerenciaCotizacion } from './BadgeSugerencia'
+import { DANES_CAPITALES } from './danesCapitales'
 
 interface Props {
     dptos:          DptoApi[]
@@ -11,12 +13,13 @@ interface Props {
     cargando:       boolean
     seleccionados:  DepartamentoSeleccionado[]
     onChange:       (next: DepartamentoSeleccionado[]) => void
+    sugerencias?:   Record<string, SugerenciaCotizacion | null>
 }
 
 // Selector de departamentos y ciudades: búsqueda + lista colapsable + chips
 // de seleccionados. Recibe el estado y notifica cambios hacia arriba — el
 // dialog mantiene la fuente de verdad.
-export default function DptoSelector({ dptos, ciudades, cargando, seleccionados, onChange }: Props) {
+export default function DptoSelector({ dptos, ciudades, cargando, seleccionados, onChange, sugerencias }: Props) {
     const [busquedaDpto, setBusquedaDpto] = useState('')
 
     // Mapa dptoId → Ciudad[] (ordenadas), una vez por cambio en ciudades
@@ -106,17 +109,22 @@ export default function DptoSelector({ dptos, ciudades, cargando, seleccionados,
                 ) : dptosFiltrados.length === 0 ? (
                     <p className="py-6 text-center text-xs text-slate-500">Sin resultados</p>
                 ) : (
-                    dptosFiltrados.map(d => (
-                        <DptoRow
-                            key={d.id}
-                            dpto={d}
-                            ciudades={ciudadesPorDpto[d.id] ?? []}
-                            cargando={cargando}
-                            seleccionado={seleccionados.find(s => s.id === d.id)}
-                            onToggleDpto={toggleDpto}
-                            onToggleCiudad={toggleCiudad}
-                        />
-                    ))
+                    dptosFiltrados.map(d => {
+                        const daneCode = DANES_CAPITALES[d.name]
+                        const sug = daneCode ? sugerencias?.[daneCode] : undefined
+                        return (
+                            <DptoRow
+                                key={d.id}
+                                dpto={d}
+                                ciudades={ciudadesPorDpto[d.id] ?? []}
+                                cargando={cargando}
+                                seleccionado={seleccionados.find(s => s.id === d.id)}
+                                onToggleDpto={toggleDpto}
+                                onToggleCiudad={toggleCiudad}
+                                sugerencia={sug}
+                            />
+                        )
+                    })
                 )}
             </div>
         </div>

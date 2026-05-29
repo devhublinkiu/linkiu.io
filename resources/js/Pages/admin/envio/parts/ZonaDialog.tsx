@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { router } from '@inertiajs/react'
+import axios from 'axios'
 import { toast } from 'sonner'
 import { Input } from '@/Components/ui/Input'
 import { Label } from '@/Components/ui/Label'
@@ -9,6 +10,8 @@ import {
 } from '@/Components/ui/Dialog'
 import DptoSelector from './DptoSelector'
 import TipoCostoSelector from './TipoCostoSelector'
+import type { SugerenciaCotizacion } from './BadgeSugerencia'
+import { DANES_CAPITALES } from './danesCapitales'
 import type {
     CiudadApi,
     DepartamentoSeleccionado,
@@ -37,6 +40,25 @@ export default function ZonaDialog({ open, zona, onClose }: Props) {
     const [dptos,    setDptos]    = useState<DptoApi[]>([])
     const [ciudades, setCiudades] = useState<CiudadApi[]>([])
     const [cargando, setCargando] = useState(false)
+
+    // Mapa codigo_dane → cotización sugerida vía Mipaquete. Se carga en
+    // paralelo a los departamentos (fire-and-forget); si falla, los badges
+    // simplemente no aparecen.
+    const [sugerencias, setSugerencias] = useState<Record<string, SugerenciaCotizacion | null>>({})
+
+    useEffect(() => {
+        if (!open) return
+        if (Object.keys(sugerencias).length > 0) return
+
+        axios.post<{ configurado: boolean; sugerencias: Record<string, SugerenciaCotizacion | null> }>(
+            route('admin.envio.mipaquete.sugerencias'),
+            { codigos: Object.values(DANES_CAPITALES) },
+        )
+            .then(res => {
+                if (res.data.configurado) setSugerencias(res.data.sugerencias ?? {})
+            })
+            .catch(() => {/* silencioso — sin badges si falla */})
+    }, [open])
 
     // Carga departamentos y ciudades una sola vez desde nuestro endpoint
     // (proxy cacheado 24h a api-colombia.com). Si el backend devuelve 503,
@@ -131,6 +153,7 @@ export default function ZonaDialog({ open, zona, onClose }: Props) {
                         cargando={cargando}
                         seleccionados={seleccionados}
                         onChange={setSeleccionados}
+                        sugerencias={sugerencias}
                     />
 
                     <TipoCostoSelector
