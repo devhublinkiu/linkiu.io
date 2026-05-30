@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BuildConfig;
 use App\Models\Integracion;
 use App\Models\Order;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -123,6 +124,45 @@ class SendPulseService
      * típicamente significa primer mensaje a ese cliente; el contacto se crea
      * automáticamente cuando se envía la plantilla después.
      */
+    /**
+     * Obtiene el UUID de una variable del bot por nombre. Cacheado forever
+     * — las variables no cambian de id en runtime y son por bot_id.
+     *
+     * Busca por nombre con y sin prefijo `$` (SendPulse las muestra con `$` en
+     * el panel pero el campo `name` interno suele ir sin prefijo).
+     */
+    private function obtenerVariableId(string $accessToken, string $nombreBuscado): ?string
+    {
+        $cacheKey = "sendpulse:variable_id:{$this->botId}:{$nombreBuscado}";
+
+        return Cache::rememberForever($cacheKey, function () use ($accessToken, $nombreBuscado) {
+            $res = Http::withToken($accessToken)
+                ->get('https://api.sendpulse.com/whatsapp/variables', [
+                    'bot_id' => $this->botId,
+                ]);
+
+            if ($res->failed()) {
+                Log::warning('SendPulseService: list variables falló', [
+                    'status' => $res->status(),
+                    'body'   => $res->json(),
+                ]);
+                return null;
+            }
+
+            $variables = data_get($res->json(), 'data', []);
+            $candidatos = [$nombreBuscado, '$' . ltrim($nombreBuscado, '$'), ltrim($nombreBuscado, '$')];
+
+            foreach ($variables as $v) {
+                $nombre = $v['name'] ?? '';
+                if (in_array($nombre, $candidatos, true)) {
+                    return $v['id'] ?? null;
+                }
+            }
+
+            return null;
+        });
+    }
+
     private function setearVariableContacto(string $telefono, string $variable, string $valor): bool
     {
         if (! $this->clientId || ! $this->clientSecret || ! $this->botId) {
@@ -160,15 +200,25 @@ class SendPulseService
             }
 
             // 2) Setear la variable con el contact_id.
-            // El shape de variables coincide con /contacts/create: { name, value }
-            // (NO variable_name/variable_value como en swagger de otras platformas).
+            // SendPulse requiere variable_id (UUID) en lugar de variable_name —
+            // sin importar lo que muestre el panel. Resolvemos por nombre vs
+            // lista de variables del bot, cacheado forever (las variables no
+            // cambian de id en runtime).
+            $variableId = $this->obtenerVariableId($accessToken, $variable);
+            if (! $variableId) {
+                Log::warning('SendPulseService: variable no existe en el bot', [
+                    'variable' => $variable,
+                ]);
+                return false;
+            }
+
             $resVariable = Http::withToken($accessToken)
                 ->post('https://api.sendpulse.com/whatsapp/contacts/setVariable', [
                     'contact_id' => $contactId,
                     'variables'  => [
                         [
-                            'name'  => $variable,
-                            'value' => $valor,
+                            'variable_id'    => $variableId,
+                            'variable_value' => $valor,
                         ],
                     ],
                 ]);
