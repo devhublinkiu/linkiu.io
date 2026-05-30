@@ -93,6 +93,10 @@ class SendPulseService
      * que el router central pueda reenviar el webhook a esta instalación.
      * Si falla, log y seguimos — la plantilla se envía igual pero la
      * confirmación del cliente no podrá enrutarse hasta acá.
+     *
+     * Nota: SendPulse requiere el prefijo `$` en variable_name (así aparecen
+     * en su panel: $tienda_callback_url, $bot_id, etc.) — sin prefix devuelve
+     * "Variable does not exist".
      */
     private function setearCallbackUrlEnContacto(string $telefono): bool
     {
@@ -104,7 +108,7 @@ class SendPulseService
 
         $callbackUrl = url('/webhooks/sendpulse') . '?token=' . $token;
 
-        return $this->setearVariableContacto($telefono, 'tienda_callback_url', $callbackUrl);
+        return $this->setearVariableContacto($telefono, '$tienda_callback_url', $callbackUrl);
     }
 
     /**
