@@ -48,6 +48,18 @@ class MastershopService
         try {
             $res = $this->cliente($key)->get('/api/products', ['limit' => 1]);
 
+            if (! $res->successful()) {
+                // Debug: si curl directo funciona pero Linkiu falla, ayuda
+                // identificar problemas de encoding/whitespace en la key guardada.
+                Log::warning('Mastershop probarConexion: respuesta no exitosa', [
+                    'status'     => $res->status(),
+                    'key_length' => strlen($key),
+                    'key_head'   => substr($key, 0, 4),
+                    'key_tail'   => substr($key, -4),
+                    'body'       => substr($res->body(), 0, 500),
+                ]);
+            }
+
             return match (true) {
                 $res->successful() => [
                     'ok'      => true,
