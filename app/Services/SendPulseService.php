@@ -160,11 +160,11 @@ class SendPulseService
                 return false;
             }
 
-            // 2) Setear el tag con el contact_id
+            // 2) Setear el tag con el contact_id (el body usa "tags" como array)
             $resTag = Http::withToken($accessToken)
                 ->post('https://api.sendpulse.com/whatsapp/contacts/setTag', [
                     'contact_id' => $contactId,
-                    'tag'        => $tag,
+                    'tags'       => [$tag],
                 ]);
 
             if ($resTag->failed()) {
