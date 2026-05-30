@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\BuildConfig;
 use App\Models\Integracion;
 use App\Models\Order;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -95,75 +94,37 @@ class SendPulseService
      * Si falla, log y seguimos — la plantilla se envía igual pero la
      * confirmación del cliente no podrá enrutarse hasta acá.
      *
-     * Nota: el `$` que aparece en el panel SendPulse es solo notación visual.
-     * El API espera el nombre crudo sin prefix (consistente con el shape de
-     * /contacts/create que muestra `{name, value}` sin `$`).
+     * Estrategia con TAGS (no variables): variables del panel SendPulse son
+     * caja negra inaccesible vía API. Tags son strings simples que se pueden
+     * setear sin pre-crear nada y vienen en `contact.tags` del webhook.
+     *
+     * Formato del tag: `linkiu_cb_<base64url(callback_url)>`
+     * El router central (linkiu.com.co/webhook.php) busca el tag con prefijo
+     * `linkiu_cb_`, decodifica el resto, y forwardea al servidor de la tienda.
      */
     private function setearCallbackUrlEnContacto(string $telefono): bool
     {
         $token = Integracion::get('sendpulse_webhook_token');
         if (! $token) {
-            Log::warning('SendPulseService: sin sendpulse_webhook_token configurado — no se puede setear tienda_callback_url. Corré php artisan sendpulse:webhook-token.');
+            Log::warning('SendPulseService: sin sendpulse_webhook_token configurado — no se puede setear callback. Corré php artisan sendpulse:webhook-token.');
             return false;
         }
 
         $callbackUrl = url('/webhooks/sendpulse') . '?token=' . $token;
+        $tag         = 'linkiu_cb_' . rtrim(strtr(base64_encode($callbackUrl), '+/', '-_'), '=');
 
-        return $this->setearVariableContacto($telefono, 'tienda_callback_url', $callbackUrl);
+        return $this->setearTagContacto($telefono, $tag);
     }
 
     /**
-     * Setea (o actualiza) una variable del contacto identificado por teléfono.
+     * Setea un tag al contacto identificado por teléfono. Multi-step:
+     * getByPhone para obtener contact_id + setTag con ese id.
      *
-     * La API SendPulse requiere contact_id (no acepta phone directo), así que
-     * hacemos 2 requests: getByPhone para obtener el id + setVariable con ese
-     * id. La variable debe existir previamente en el bot (panel SendPulse →
-     * Audience → Variables).
-     *
-     * Si el contacto no existe (404 en getByPhone), retorna false sin error —
-     * típicamente significa primer mensaje a ese cliente; el contacto se crea
-     * automáticamente cuando se envía la plantilla después.
+     * Si el contacto no existe (404), retorna false sin error — el contacto
+     * se crea automáticamente al enviar la plantilla (por eso el caller
+     * setea el tag DESPUÉS del send).
      */
-    /**
-     * Obtiene el UUID de una variable del bot por nombre. Cacheado forever
-     * — las variables no cambian de id en runtime y son por bot_id.
-     *
-     * Busca por nombre con y sin prefijo `$` (SendPulse las muestra con `$` en
-     * el panel pero el campo `name` interno suele ir sin prefijo).
-     */
-    private function obtenerVariableId(string $accessToken, string $nombreBuscado): ?string
-    {
-        $cacheKey = "sendpulse:variable_id:{$this->botId}:{$nombreBuscado}";
-
-        return Cache::rememberForever($cacheKey, function () use ($accessToken, $nombreBuscado) {
-            $res = Http::withToken($accessToken)
-                ->get('https://api.sendpulse.com/whatsapp/variables', [
-                    'bot_id' => $this->botId,
-                ]);
-
-            if ($res->failed()) {
-                Log::warning('SendPulseService: list variables falló', [
-                    'status' => $res->status(),
-                    'body'   => $res->json(),
-                ]);
-                return null;
-            }
-
-            $variables = data_get($res->json(), 'data', []);
-            $candidatos = [$nombreBuscado, '$' . ltrim($nombreBuscado, '$'), ltrim($nombreBuscado, '$')];
-
-            foreach ($variables as $v) {
-                $nombre = $v['name'] ?? '';
-                if (in_array($nombre, $candidatos, true)) {
-                    return $v['id'] ?? null;
-                }
-            }
-
-            return null;
-        });
-    }
-
-    private function setearVariableContacto(string $telefono, string $variable, string $valor): bool
+    private function setearTagContacto(string $telefono, string $tag): bool
     {
         if (! $this->clientId || ! $this->clientSecret || ! $this->botId) {
             return false;
@@ -199,43 +160,26 @@ class SendPulseService
                 return false;
             }
 
-            // 2) Setear la variable con el contact_id.
-            // SendPulse requiere variable_id (UUID) en lugar de variable_name —
-            // sin importar lo que muestre el panel. Resolvemos por nombre vs
-            // lista de variables del bot, cacheado forever (las variables no
-            // cambian de id en runtime).
-            $variableId = $this->obtenerVariableId($accessToken, $variable);
-            if (! $variableId) {
-                Log::warning('SendPulseService: variable no existe en el bot', [
-                    'variable' => $variable,
-                ]);
-                return false;
-            }
-
-            $resVariable = Http::withToken($accessToken)
-                ->post('https://api.sendpulse.com/whatsapp/contacts/setVariable', [
+            // 2) Setear el tag con el contact_id
+            $resTag = Http::withToken($accessToken)
+                ->post('https://api.sendpulse.com/whatsapp/contacts/setTag', [
                     'contact_id' => $contactId,
-                    'variables'  => [
-                        [
-                            'variable_id'    => $variableId,
-                            'variable_value' => $valor,
-                        ],
-                    ],
+                    'tag'        => $tag,
                 ]);
 
-            if ($resVariable->failed()) {
-                Log::warning('SendPulseService: setVariable falló', [
+            if ($resTag->failed()) {
+                Log::warning('SendPulseService: setTag falló', [
                     'contact_id' => $contactId,
-                    'variable'   => $variable,
-                    'status'     => $resVariable->status(),
-                    'body'       => $resVariable->json(),
+                    'tag'        => $tag,
+                    'status'     => $resTag->status(),
+                    'body'       => $resTag->json(),
                 ]);
                 return false;
             }
 
             return true;
         } catch (\Throwable $e) {
-            Log::error('SendPulseService: setearVariableContacto excepción', [
+            Log::error('SendPulseService: setearTagContacto excepción', [
                 'mensaje' => $e->getMessage(),
             ]);
             return false;
