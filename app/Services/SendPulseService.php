@@ -95,12 +95,16 @@ class SendPulseService
      * confirmación del cliente no podrá enrutarse hasta acá.
      *
      * Estrategia con TAGS (no variables): variables del panel SendPulse son
-     * caja negra inaccesible vía API. Tags son strings simples que se pueden
-     * setear sin pre-crear nada y vienen en `contact.tags` del webhook.
+     * caja negra inaccesible vía API. Tags son strings simples soportados
+     * por POST /contacts/setTag y vienen en `contact.tags` del webhook.
      *
-     * Formato del tag: `linkiu_cb_<base64url(callback_url)>`
-     * El router central (linkiu.com.co/webhook.php) busca el tag con prefijo
-     * `linkiu_cb_`, decodifica el resto, y forwardea al servidor de la tienda.
+     * SendPulse impone un límite de 32 chars por tag, así que no cabe la URL
+     * completa codificada. Solución: tag corto con slug del dominio
+     * (`linkiu_<sha256-16>`), y el router central mantiene un mapping
+     * [slug => callback_url].
+     *
+     * Para saber qué línea agregar al mapping, correr `php artisan
+     * sendpulse:webhook-info` en esta instalación.
      */
     private function setearCallbackUrlEnContacto(string $telefono): bool
     {
@@ -110,10 +114,19 @@ class SendPulseService
             return false;
         }
 
-        $callbackUrl = url('/webhooks/sendpulse') . '?token=' . $token;
-        $tag         = 'linkiu_cb_' . rtrim(strtr(base64_encode($callbackUrl), '+/', '-_'), '=');
+        $tag = self::tagSlugDelHost();
 
         return $this->setearTagContacto($telefono, $tag);
+    }
+
+    /**
+     * Slug determinístico para el tag de identificación de la tienda.
+     * Misma URL en todas las instalaciones de una misma tienda → mismo slug.
+     */
+    public static function tagSlugDelHost(): string
+    {
+        $host = parse_url(config('app.url'), PHP_URL_HOST) ?: 'unknown';
+        return 'linkiu_' . substr(hash('sha256', $host), 0, 16);
     }
 
     /**

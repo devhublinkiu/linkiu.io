@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Integracion;
+use App\Services\SendPulseService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 
@@ -47,9 +48,19 @@ class GenerarSendPulseWebhookToken extends Command
 
     private function mostrarUrl(string $token): void
     {
-        $url = url('/webhooks/sendpulse') . '?token=' . $token;
+        $url  = url('/webhooks/sendpulse') . '?token=' . $token;
+        $slug = SendPulseService::tagSlugDelHost();
+
         $this->newLine();
-        $this->line('URL del webhook:');
+        $this->line('URL del webhook (esta tienda):');
         $this->line('  ' . $url);
+
+        $this->newLine();
+        $this->line('Slug del tag (para mapping del router central):');
+        $this->line('  ' . $slug);
+
+        $this->newLine();
+        $this->line('Línea para agregar al `mappings.php` del router en linkiu.com.co:');
+        $this->line("  '{$slug}' => '{$url}',");
     }
 }
