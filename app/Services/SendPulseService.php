@@ -94,9 +94,9 @@ class SendPulseService
      * Si falla, log y seguimos — la plantilla se envía igual pero la
      * confirmación del cliente no podrá enrutarse hasta acá.
      *
-     * Nota: SendPulse requiere el prefijo `$` en variable_name (así aparecen
-     * en su panel: $tienda_callback_url, $bot_id, etc.) — sin prefix devuelve
-     * "Variable does not exist".
+     * Nota: el `$` que aparece en el panel SendPulse es solo notación visual.
+     * El API espera el nombre crudo sin prefix (consistente con el shape de
+     * /contacts/create que muestra `{name, value}` sin `$`).
      */
     private function setearCallbackUrlEnContacto(string $telefono): bool
     {
@@ -108,7 +108,7 @@ class SendPulseService
 
         $callbackUrl = url('/webhooks/sendpulse') . '?token=' . $token;
 
-        return $this->setearVariableContacto($telefono, '$tienda_callback_url', $callbackUrl);
+        return $this->setearVariableContacto($telefono, 'tienda_callback_url', $callbackUrl);
     }
 
     /**
@@ -159,14 +159,16 @@ class SendPulseService
                 return false;
             }
 
-            // 2) Setear la variable con el contact_id
+            // 2) Setear la variable con el contact_id.
+            // El shape de variables coincide con /contacts/create: { name, value }
+            // (NO variable_name/variable_value como en swagger de otras platformas).
             $resVariable = Http::withToken($accessToken)
                 ->post('https://api.sendpulse.com/whatsapp/contacts/setVariable', [
                     'contact_id' => $contactId,
                     'variables'  => [
                         [
-                            'variable_name'  => $variable,
-                            'variable_value' => $valor,
+                            'name'  => $variable,
+                            'value' => $valor,
                         ],
                     ],
                 ]);
