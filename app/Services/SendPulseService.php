@@ -37,23 +37,31 @@ class SendPulseService
      * "Sí, confirmo" / "No, cancelar". Pensada para pedidos contraentrega
      * que pasaron el filtro antifraude — el cliente decide en el mismo mensaje.
      *
-     * ANTES de enviar la plantilla, setea la variable `tienda_callback_url`
-     * del contacto. El router central (linkiu.com.co/webhook.php) lee esa
-     * variable del webhook para reenviar la respuesta del cliente al servidor
-     * correcto. Multi-tenant: un solo bot SendPulse compartido, varias tiendas
-     * con dominios distintos.
+     * Después del send, setea la variable `tienda_callback_url` del contacto.
+     * El router central (linkiu.com.co/webhook.php) lee esa variable del
+     * webhook para reenviar la respuesta del cliente al servidor correcto.
+     * Multi-tenant: un solo bot SendPulse compartido, varias tiendas con
+     * dominios distintos.
+     *
+     * Orden importa: el send crea el contacto si no existe, así getByPhone
+     * después no falla con 404. Ventana de race entre el send y el setVariable
+     * es de milisegundos — prácticamente imposible que el cliente presione un
+     * botón en ese intervalo.
      */
     public function notificarOrdenCreadaCod(Order $orden): bool
     {
-        $this->setearCallbackUrlEnContacto($orden->telefono);
-
-        return $this->enviarPlantilla($orden->telefono, 'order_received_cod_v1', [
+        $ok = $this->enviarPlantilla($orden->telefono, 'order_received_cod_v1', [
             $orden->nombre,
             $orden->codigo,
             '$' . number_format($orden->total, 0, ',', '.'),
             $orden->ciudad,
             BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', '')),
         ]);
+
+        // Setear variable POST-send para garantizar que el contacto existe.
+        $this->setearCallbackUrlEnContacto($orden->telefono);
+
+        return $ok;
     }
 
     /**
@@ -67,15 +75,17 @@ class SendPulseService
         int $total,
         string $ciudad,
     ): bool {
-        $this->setearCallbackUrlEnContacto($telefono);
-
-        return $this->enviarPlantilla($telefono, 'order_received_cod_v1', [
+        $ok = $this->enviarPlantilla($telefono, 'order_received_cod_v1', [
             $nombre,
             $codigo,
             '$' . number_format($total, 0, ',', '.'),
             $ciudad,
             BuildConfig::get('build_seo_telefono_tienda', config('sendpulse.merchant_phone', '+57 300 000 0000')),
         ]);
+
+        $this->setearCallbackUrlEnContacto($telefono);
+
+        return $ok;
     }
 
     /**
@@ -98,9 +108,16 @@ class SendPulseService
     }
 
     /**
-     * Llama a la API SendPulse para setear (o actualizar) una variable del
-     * contacto identificado por teléfono. La variable debe existir antes en
-     * el bot — se crea desde el panel SendPulse en Audience > Variables.
+     * Setea (o actualiza) una variable del contacto identificado por teléfono.
+     *
+     * La API SendPulse requiere contact_id (no acepta phone directo), así que
+     * hacemos 2 requests: getByPhone para obtener el id + setVariable con ese
+     * id. La variable debe existir previamente en el bot (panel SendPulse →
+     * Audience → Variables).
+     *
+     * Si el contacto no existe (404 en getByPhone), retorna false sin error —
+     * típicamente significa primer mensaje a ese cliente; el contacto se crea
+     * automáticamente cuando se envía la plantilla después.
      */
     private function setearVariableContacto(string $telefono, string $variable, string $valor): bool
     {
@@ -114,21 +131,48 @@ class SendPulseService
             $accessToken = $this->getToken();
             if (! $accessToken) return false;
 
-            $respuesta = Http::withToken($accessToken)
-                ->post('https://api.sendpulse.com/whatsapp/contacts/setVariablesByPhone', [
-                    'bot_id'    => $this->botId,
-                    'phone'     => $telefonoNormalizado,
-                    'variables' => [
-                        $variable => $valor,
+            // 1) Obtener contact_id por teléfono
+            $resContacto = Http::withToken($accessToken)
+                ->get('https://api.sendpulse.com/whatsapp/contacts/getByPhone', [
+                    'phone'  => $telefonoNormalizado,
+                    'bot_id' => $this->botId,
+                ]);
+
+            if ($resContacto->failed()) {
+                Log::info('SendPulseService: getByPhone falló (¿contacto inexistente?)', [
+                    'phone'  => $telefonoNormalizado,
+                    'status' => $resContacto->status(),
+                ]);
+                return false;
+            }
+
+            $contactId = data_get($resContacto->json(), 'data.id');
+            if (! $contactId) {
+                Log::warning('SendPulseService: getByPhone sin contact_id en respuesta', [
+                    'phone' => $telefonoNormalizado,
+                    'body'  => $resContacto->json(),
+                ]);
+                return false;
+            }
+
+            // 2) Setear la variable con el contact_id
+            $resVariable = Http::withToken($accessToken)
+                ->post('https://api.sendpulse.com/whatsapp/contacts/setVariable', [
+                    'contact_id' => $contactId,
+                    'variables'  => [
+                        [
+                            'variable_name'  => $variable,
+                            'variable_value' => $valor,
+                        ],
                     ],
                 ]);
 
-            if ($respuesta->failed()) {
-                Log::warning('SendPulseService: setearVariableContacto falló', [
-                    'variable' => $variable,
-                    'phone'    => $telefonoNormalizado,
-                    'status'   => $respuesta->status(),
-                    'body'     => $respuesta->json(),
+            if ($resVariable->failed()) {
+                Log::warning('SendPulseService: setVariable falló', [
+                    'contact_id' => $contactId,
+                    'variable'   => $variable,
+                    'status'     => $resVariable->status(),
+                    'body'       => $resVariable->json(),
                 ]);
                 return false;
             }
