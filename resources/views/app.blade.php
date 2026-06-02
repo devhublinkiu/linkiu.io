@@ -4,6 +4,13 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        {{-- Preconnect a hosts que sabemos vamos a usar antes del LCP:
+             S3 (imagenes de producto/logo) y Facebook (Pixel). El crossorigin
+             es obligatorio en ambos porque los recursos cruzan CORS. Ahorra
+             ~150-300ms de DNS+TCP+TLS acumulados en Speed Index. --}}
+        <link rel="preconnect" href="https://linkiu-clients.s3.us-east-1.amazonaws.com" crossorigin>
+        <link rel="preconnect" href="https://connect.facebook.net" crossorigin>
+
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 
         {{-- La fuente real (Plus Jakarta Sans) se sirve autohostada vía Vite
