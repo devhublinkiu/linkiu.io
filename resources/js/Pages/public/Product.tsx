@@ -1,26 +1,49 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { lazy, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Head } from '@inertiajs/react'
 import WebLayout from '@/Layouts/WebLayout'
 import { useProductTracker } from '@/lib/useProductTracker'
 import Gallery, { type ImagenProducto } from '@/Components/public/product/gallery'
 import Info from '@/Components/public/product/info'
-import GanchoPromesa from '@/Components/public/product/gancho-promesa'
-import TablaComparativa from '@/Components/public/product/tabla-comparativa'
-import AntesDespues from '@/Components/public/product/antes-despues'
-import FichaTecnica from '@/Components/public/product/ficha-tecnica'
-import CaracteristicasDestacadas from '@/Components/public/product/caracteristicas-destacadas'
-import ComoFunciona from '@/Components/public/product/como-funciona'
-import ResenasClientes from '@/Components/public/product/resenas-clientes'
-import GaleriaResultados from '@/Components/public/product/galeria-resultados'
-import Garantia from '@/Components/public/product/garantia'
-import FaqProducto from '@/Components/public/product/faq'
-import SliderImagenes from '@/Components/public/product/slider-imagenes'
-import QueIncluye from '@/Components/public/product/que-incluye'
-import SellosConfianza from '@/Components/public/product/sellos-confianza'
 import StickyBar from '@/Components/public/product/sticky-bar'
 import ResenasVivas from '@/Components/public/product/resenas-vivas'
+import LazyOnVisible from '@/Components/public/LazyOnVisible'
 import { trackFb } from '@/lib/usePixel'
 import { usePage } from '@inertiajs/react'
+
+// Hooks below-the-fold — se montan vía IntersectionObserver cuando el bloque
+// se acerca al viewport. Vite genera 1 chunk separado por componente.
+const GanchoPromesa             = lazy(() => import('@/Components/public/product/gancho-promesa'))
+const SliderImagenes            = lazy(() => import('@/Components/public/product/slider-imagenes'))
+const QueIncluye                = lazy(() => import('@/Components/public/product/que-incluye'))
+const TablaComparativa          = lazy(() => import('@/Components/public/product/tabla-comparativa'))
+const AntesDespues              = lazy(() => import('@/Components/public/product/antes-despues'))
+const FichaTecnica              = lazy(() => import('@/Components/public/product/ficha-tecnica'))
+const CaracteristicasDestacadas = lazy(() => import('@/Components/public/product/caracteristicas-destacadas'))
+const ComoFunciona              = lazy(() => import('@/Components/public/product/como-funciona'))
+const ResenasClientes           = lazy(() => import('@/Components/public/product/resenas-clientes'))
+const GaleriaResultados         = lazy(() => import('@/Components/public/product/galeria-resultados'))
+const Garantia                  = lazy(() => import('@/Components/public/product/garantia'))
+const FaqProducto               = lazy(() => import('@/Components/public/product/faq'))
+const SellosConfianza           = lazy(() => import('@/Components/public/product/sellos-confianza'))
+
+// Alturas estimadas por hook — reservan espacio para evitar CLS mientras el
+// componente real termina de cargar. Si alguno salta visiblemente, ajustar el
+// valor puntual sin tocar el componente.
+const MIN_H: Record<string, string> = {
+    gancho_promesa:             '280px',
+    slider_imagenes:            '380px',
+    que_incluye:                '320px',
+    tabla_comparativa:          '520px',
+    comparacion_visual:         '480px',
+    ficha_tecnica:              '360px',
+    caracteristicas_destacadas: '400px',
+    como_funciona:              '440px',
+    resenas_clientes:           '480px',
+    galeria_resultados:         '380px',
+    garantia:                   '280px',
+    preguntas_frecuentes:       '360px',
+    sellos_confianza:           '180px',
+}
 
 export interface HookEntry {
     key:    string
@@ -175,33 +198,34 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
     function renderBloque(key: string) {
         const h = hook(key)
         if (!h) return null
+        const minH = MIN_H[key] ?? '300px'
         switch (key) {
             case 'gancho_promesa':
-                return <GanchoPromesa key={key} config={h.config} />
+                return <LazyOnVisible key={key} minHeight={minH}><GanchoPromesa config={h.config} /></LazyOnVisible>
             case 'slider_imagenes':
-                return <SliderImagenes key={key} config={h.config} />
+                return <LazyOnVisible key={key} minHeight={minH}><SliderImagenes config={h.config} /></LazyOnVisible>
             case 'tabla_comparativa':
-                return <BloqueProducto key={key} padX="px-4"><TablaComparativa config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto padX="px-4"><TablaComparativa config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'comparacion_visual':
-                return <BloqueProducto key={key}><AntesDespues config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><AntesDespues config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'ficha_tecnica':
-                return <BloqueProducto key={key}><FichaTecnica config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><FichaTecnica config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'caracteristicas_destacadas':
-                return <BloqueProducto key={key}><CaracteristicasDestacadas config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><CaracteristicasDestacadas config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'como_funciona':
-                return <BloqueProducto key={key}><ComoFunciona config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><ComoFunciona config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'resenas_clientes':
-                return <BloqueProducto key={key}><ResenasClientes config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><ResenasClientes config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'galeria_resultados':
-                return <BloqueProducto key={key}><GaleriaResultados config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><GaleriaResultados config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'garantia':
-                return <BloqueProducto key={key}><Garantia config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><Garantia config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'preguntas_frecuentes':
-                return <BloqueProducto key={key}><FaqProducto config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><FaqProducto config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'que_incluye':
-                return <BloqueProducto key={key}><QueIncluye config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><QueIncluye config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'sellos_confianza':
-                return <BloqueProducto key={key}><SellosConfianza config={h.config} /></BloqueProducto>
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><SellosConfianza config={h.config} /></BloqueProducto></LazyOnVisible>
             default:
                 return null
         }
