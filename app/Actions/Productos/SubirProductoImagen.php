@@ -15,10 +15,13 @@ class SubirProductoImagen
 
     public function execute(UploadedFile $archivo, Producto $producto): ProductoImagen
     {
+        // 1200px cubre mobile DPR 2 (display ~662 × 2 = 1324) con escala minima
+        // imperceptible y desktop con margen. Antes 1600 era 1.2x oversize en
+        // DPR 2 (el grueso del mercado) — PageSpeed lo flageaba.
         ['ruta' => $ruta] = $this->subir->execute(
             archivo:  $archivo,
             carpeta:  "productos/{$producto->id}",
-            anchoMax: 1600,
+            anchoMax: 1200,
             track:    false,
         );
 

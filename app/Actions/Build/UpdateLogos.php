@@ -23,12 +23,13 @@ class UpdateLogos
                 }
 
                 // Convertimos a WebP con SubirImagenWebp para aprovechar la
-                // optimización + Cache-Control inmutable. El logo no necesita
-                // más de 600px de ancho para verse perfecto en cualquier viewport.
+                // optimización + Cache-Control inmutable. 400px cubre cualquier
+                // dispositivo (logo display ~115px, DPR 3 = 345 efectivo).
+                // Antes 600 era 1.7-5x oversize segun el DPR.
                 $resultado = $this->subirWebp->execute(
                     archivo:  $data["logo_{$slot}"],
                     carpeta:  "logos/{$slot}",
-                    anchoMax: 600,
+                    anchoMax: 400,
                     track:    false, // logos no son huérfanos — los gestiona BuildConfig
                 );
 
