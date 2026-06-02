@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\BuildAnnouncement;
 use App\Models\Category;
 use App\Models\Producto;
 use App\Models\ProductoCantidad;
@@ -9,6 +10,7 @@ use App\Models\ProductoHook;
 use App\Models\ProductoImagen;
 use App\Models\VariableGrupo;
 use App\Models\VariableItem;
+use App\Observers\BuildAnnouncementCacheObserver;
 use App\Observers\ProductosCacheObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -90,5 +92,9 @@ class AppServiceProvider extends ServiceProvider
         ] as $modelo) {
             $modelo::observe(ProductosCacheObserver::class);
         }
+
+        // Anuncios afectan el navbar (MenuCache). Distinto observer porque
+        // no tienen que invalidar el cache de productos.
+        BuildAnnouncement::observe(BuildAnnouncementCacheObserver::class);
     }
 }

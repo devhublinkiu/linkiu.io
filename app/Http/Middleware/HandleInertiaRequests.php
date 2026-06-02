@@ -7,6 +7,7 @@ use App\Models\BuildConfig;
 use App\Models\Category;
 use App\Models\Integracion;
 use App\Models\Producto;
+use App\Support\MenuCache;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -166,7 +167,7 @@ class HandleInertiaRequests extends Middleware
                 return $raw ? json_decode($raw, true) : null;
             })(),
             'fomo_enabled' => BuildConfig::get('fomo_enabled', 'false') === 'true',
-            'anuncios'    => BuildAnnouncement::activos()
+            'anuncios'    => MenuCache::anuncios(fn () => BuildAnnouncement::activos()
                 ->map(fn ($a) => [
                     'id'        => $a->id,
                     'texto'     => $a->texto,
@@ -175,7 +176,7 @@ class HandleInertiaRequests extends Middleware
                     'fin_timer' => $a->fin_timer?->toIso8601String(),
                 ])
                 ->values()
-                ->toArray(),
+                ->toArray()),
         ];
     }
 
@@ -221,11 +222,12 @@ class HandleInertiaRequests extends Middleware
                     : Integracion::get('mp_public_key_prod');
             },
             'build'          => fn () => $this->buildProps($request),
-            'nav_categorias' => fn () => Category::where('status', 'activo')
+            'nav_categorias' => fn () => MenuCache::categorias(fn () => Category::where('status', 'activo')
                 ->whereNull('parent_id')
                 ->orderBy('name')
-                ->get(['id', 'name', 'slug']),
-            'nav_productos' => fn () => $request->routeIs('admin.*') ? [] : Producto::where('status', 'activo')
+                ->get(['id', 'name', 'slug'])
+                ->toArray()),
+            'nav_productos' => fn () => $request->routeIs('admin.*') ? [] : MenuCache::productos(fn () => Producto::where('status', 'activo')
                 ->with([
                     'imagenPrincipal',
                     'cantidades',
@@ -251,7 +253,8 @@ class HandleInertiaRequests extends Middleware
                         'badge_texto'   => $c->badge_texto,
                         'destacado'     => $c->destacado,
                     ])->values()->toArray(),
-                ]),
+                ])
+                ->toArray()),
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Support\MenuCache;
 use App\Support\Producto\SnapshotsRepository;
 use App\Support\ProductosCache;
 use Illuminate\Database\Eloquent\Model;
@@ -24,11 +25,13 @@ class ProductosCacheObserver
     {
         ProductosCache::invalidar();
         SnapshotsRepository::invalidar();
+        MenuCache::invalidar();
     }
 
     public function deleted(Model $model): void
     {
         ProductosCache::invalidar();
         SnapshotsRepository::invalidar();
+        MenuCache::invalidar();
     }
 }
