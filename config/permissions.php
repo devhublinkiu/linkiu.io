@@ -28,6 +28,13 @@ return [
         ],
     ],
 
+    'vista_en_vivo' => [
+        'label'   => 'Vista en vivo',
+        'actions' => [
+            'ver' => 'Ver',
+        ],
+    ],
+
     'usuarios' => [
         'label'   => 'Usuarios',
         'actions' => [

@@ -133,11 +133,38 @@ function GoogleAdsScript() {
     return null
 }
 
+// Heartbeat de presencia para Vista en Vivo del admin. Ping cada 30s mientras
+// la pestaña este visible. Pausa si el visitante cambia de tab — su presencia
+// expira a los 60s en el server y desaparece del "online ahora".
+function HeartbeatPresencia() {
+    useEffect(() => {
+        let timer: ReturnType<typeof setInterval> | null = null
+
+        function tick() {
+            if (document.visibilityState !== 'visible') return
+            const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? ''
+            fetch('/api/heartbeat', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                keepalive: true,
+            }).catch(() => {})
+        }
+
+        tick()
+        timer = setInterval(tick, 30_000)
+
+        return () => { if (timer) clearInterval(timer) }
+    }, [])
+
+    return null
+}
+
 export default function WebLayout({ children }: WebLayoutProps) {
     return (
         <CartProvider>
             <FbPixel />
             <GoogleAdsScript />
+            <HeartbeatPresencia />
             <AnnouncementBar />
             <Navbar />
             <main>

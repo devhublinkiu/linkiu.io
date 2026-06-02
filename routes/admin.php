@@ -74,6 +74,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('/vista-en-vivo', [\App\Http\Controllers\Admin\VistaEnVivoController::class, 'index'])
+        ->name('vista-en-vivo')
+        ->middleware('can:vista_en_vivo.ver');
+
     // Perfil
     Route::get('/perfil',          [PerfilController::class, 'show']           )->name('perfil')          ->middleware('can:perfil.ver');
     Route::post('/perfil/personal',[PerfilController::class, 'updatePersonal'] )->name('perfil.personal') ->middleware(['can:perfil.editar', 'throttle:perfil-update']);
