@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils'
 
 export type EstadoConfirmacion =
-    | 'esperando'           // solicitada, sin respuesta, dentro de 6h o ya reenviada
-    | 'sin_respuesta'        // > 6h sin respuesta + ya reenviada (queda mostrarlo)
+    | 'esperando'           // solicitada, sin respuesta, dentro de 30min o ya reenviada
+    | 'sin_respuesta'        // > 30min sin respuesta + ya reenviada (queda mostrarlo)
     | 'confirmado_cliente'   // cliente respondió "Sí"
     | 'cancelado_cliente'    // cliente respondió "No"
 
@@ -49,12 +49,16 @@ export function calcularEstadoConfirmacion(orden: {
     if (orden.confirmacion_respuesta === 'si') return 'confirmado_cliente'
     if (orden.confirmacion_respuesta === 'no') return 'cancelado_cliente'
 
-    // Sin respuesta — la consideramos "sin_respuesta" solo si pasaron 6h Y ya
-    // se reenvió (porque ya no se puede reenviar más). Si pasaron 6h y aún se
+    // Sin respuesta — la consideramos "sin_respuesta" solo si pasaron 30min Y ya
+    // se reenvió (porque ya no se puede reenviar más). Si pasaron 30min y aún se
     // puede reenviar, mostramos "esperando" — el botón Reenviar es la CTA.
+    //
+    // 30min es el cooldown para evitar que el admin presione múltiples veces
+    // y WhatsApp interprete el patrón como spam (riesgo de suspensión del
+    // número incluso con check azul).
     const solicitadaMs    = new Date(orden.confirmacion_solicitada_at).getTime()
-    const seisHorasAtras  = Date.now() - 6 * 60 * 60 * 1000
-    if (solicitadaMs < seisHorasAtras && orden.confirmacion_reenviada) {
+    const treintaMinAtras = Date.now() - 30 * 60 * 1000
+    if (solicitadaMs < treintaMinAtras && orden.confirmacion_reenviada) {
         return 'sin_respuesta'
     }
     return 'esperando'
@@ -75,6 +79,6 @@ export function puedeReenviarConfirmacion(orden: {
     if (orden.confirmacion_respondida_at)      return false
 
     const solicitadaMs    = new Date(orden.confirmacion_solicitada_at).getTime()
-    const seisHorasAtras  = Date.now() - 6 * 60 * 60 * 1000
-    return solicitadaMs < seisHorasAtras
+    const treintaMinAtras = Date.now() - 30 * 60 * 1000
+    return solicitadaMs < treintaMinAtras
 }
