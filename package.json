@@ -5,6 +5,7 @@
     "scripts": {
         "build": "vite build && vite build --ssr && vite build && vite build --ssr --ssr",
         "dev": "vite",
+        "ssr": "node bootstrap/ssr/ssr.js",
         "email": "email dev --dir resources/emails/templates"
     },
     "devDependencies": {
