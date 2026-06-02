@@ -8,13 +8,6 @@ import { bootstrapSpaPixelTracker } from './lib/spaPixelTracker';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
-if (import.meta.env.VITE_MP_PUBLIC_KEY) {
-    initMercadoPago(import.meta.env.VITE_MP_PUBLIC_KEY, {
-        locale: 'es-CO',
-        advancedFraudPrevention: true,
-    });
-}
-
 bootstrapSpaPixelTracker();
 
 createInertiaApp({
