@@ -3,7 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build && vite build --ssr && vite build && vite build --ssr --ssr",
+        "build": "vite build && vite build --ssr",
         "dev": "vite",
         "ssr": "node bootstrap/ssr/ssr.js",
         "email": "email dev --dir resources/emails/templates"
