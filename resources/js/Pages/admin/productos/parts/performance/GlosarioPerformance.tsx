@@ -3,7 +3,7 @@ import {
 } from '@/Components/ui/Sheet'
 import { Button } from '@/Components/ui/Button'
 import {
-    BookOpen, Clock, Flame as FlameAccent, Sparkles, Thermometer, TrendingUp, Trophy as TrophyAccent,
+    BookOpen, Clock, DollarSign, Flame as FlameAccent, Sparkles, Thermometer, TrendingUp, Trophy as TrophyAccent,
 } from 'lucide-react'
 import { ICONOS_SENAL } from './senales'
 import type { SenalKey } from './types'
@@ -34,41 +34,62 @@ export function GlosarioPerformance() {
                 <div className="px-4 pb-6 space-y-6">
 
                     {/* SCORE */}
-                    <Section icon={Sparkles} iconColor="text-blue-500" titulo="Score" subtitulo="0 a 100">
+                    <Section icon={Sparkles} iconColor="text-blue-500" titulo="Score" subtitulo="conversión vs catálogo">
                         <p>
-                            Indica <strong>qué tan bien le va a este producto comparado con los demás</strong> de
-                            tu catálogo. 100 es el top, 0 es el último.
+                            Mide <strong>qué tan bien convierte el producto</strong> — qué porcentaje
+                            de quienes lo visitan terminan comprándolo, comparado con el resto
+                            de tu catálogo.
                         </p>
-                        <Detalle titulo="¿En qué se basa?">
-                            <Bullet>Cuántas personas compran cuando lo visitan (conversión)</Bullet>
-                            <Bullet>Cuántas unidades ha vendido en total desde que existe</Bullet>
-                            <Bullet>Cuánta gente lo está viendo este mes</Bullet>
-                            <Bullet>Si las ventas están subiendo o bajando</Bullet>
+                        <Detalle titulo="¿Qué muestra la pill?">
+                            <Bullet>El % de conversión del producto (ej. <strong>5.0%</strong>)</Bullet>
+                            <Bullet>En el tooltip: el percentil dentro del catálogo (ej. <strong>P70</strong>)</Bullet>
                         </Detalle>
                         <Detalle titulo="¿Cómo se interpretan los colores?">
-                            <ColorBand color="bg-emerald-500" label="80 o más"     desc="Top performer del catálogo" />
+                            <ColorBand color="bg-emerald-500" label="80 o más"     desc="Convierte mejor que el 80% del catálogo" />
                             <ColorBand color="bg-blue-500"    label="60 a 79"      desc="Por encima del promedio" />
                             <ColorBand color="bg-amber-500"   label="30 a 59"      desc="Bajo el promedio" />
                             <ColorBand color="bg-slate-300"   label="Menos de 30"  desc="En la cola del catálogo" />
                         </Detalle>
                         <Aviso>
-                            Si tienes menos de 20 productos activos, el Score se calcula directo
-                            (sin compararse contra el catálogo, porque no hay suficientes para un
-                            ranking confiable).
+                            Si un producto tiene <strong>menos de 50 visitas en los últimos 7 días</strong>,
+                            mostramos "—" en lugar de un Score. No hay data suficiente para
+                            decir si convierte bien o mal.
+                        </Aviso>
+                    </Section>
+
+                    {/* VALOR */}
+                    <Section icon={DollarSign} iconColor="text-violet-500" titulo="Valor" subtitulo="revenue vs catálogo">
+                        <p>
+                            Mide <strong>cuánto dinero genera el producto en los últimos 7 días</strong>,
+                            comparado con el resto del catálogo. Es la dimensión económica: un
+                            producto que vende poco pero caro puede tener Valor alto.
+                        </p>
+                        <Detalle titulo="¿Qué muestra la pill?">
+                            <Bullet>El revenue formateado (ej. <strong>$85k</strong>, <strong>$1.2M</strong>)</Bullet>
+                            <Bullet>En el tooltip: el percentil del catálogo y ticket promedio</Bullet>
+                        </Detalle>
+                        <Detalle titulo="¿Cómo se interpretan los colores?">
+                            <ColorBand color="bg-violet-500" label="80 o más"     desc="Top en revenue del catálogo" />
+                            <ColorBand color="bg-violet-400" label="60 a 79"      desc="Por encima del promedio" />
+                            <ColorBand color="bg-slate-300"  label="30 a 59"      desc="Bajo el promedio" />
+                            <ColorBand color="bg-slate-200"  label="Menos de 30"  desc="En la cola del catálogo" />
+                        </Detalle>
+                        <Aviso>
+                            Si el producto no tuvo ventas en los últimos 7 días, mostramos "—".
+                            Solo entran al ranking los productos que vendieron.
                         </Aviso>
                     </Section>
 
                     {/* TEMPERATURA */}
-                    <Section icon={Thermometer} iconColor="text-orange-500" titulo="Temperatura" subtitulo="0 a 100">
+                    <Section icon={Thermometer} iconColor="text-orange-500" titulo="Temperatura" subtitulo="demanda actual">
                         <p>
-                            Mide <strong>qué tan activo está el producto en los últimos 7 días</strong>. A diferencia
-                            del Score, esto es absoluto: no se compara con otros productos, mide
-                            si <em>este</em> producto está vivo o quieto.
+                            Mide <strong>qué tanto se está moviendo el producto ahora</strong> — volumen
+                            de ventas y visitas en los últimos 7 días, comparado con el top del
+                            catálogo. <em>No mide conversión</em> (eso es Score).
                         </p>
                         <Detalle titulo="¿En qué se basa?">
-                            <Bullet>Ventas de los últimos 7 días</Bullet>
-                            <Bullet>Visitas de los últimos 7 días</Bullet>
-                            <Bullet>Conversión (qué % de quienes lo ven, compran)</Bullet>
+                            <Bullet>Ventas de los últimos 7 días (peso 66%)</Bullet>
+                            <Bullet>Visitas de los últimos 7 días (peso 34%)</Bullet>
                         </Detalle>
                         <Detalle titulo="Bandas de temperatura">
                             <ColorBand color="bg-emerald-500" label="70 o más"     desc="Caliente — el producto se mueve" />

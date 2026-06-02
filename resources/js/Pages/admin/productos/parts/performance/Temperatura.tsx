@@ -17,10 +17,10 @@ export function Temperatura({ score, debug }: Props) {
     const ref = useRef<HTMLDivElement>(null)
 
     const config =
-        score >= 70 ? { color: 'bg-emerald-500', text: 'text-emerald-700', label: 'Caliente', bg: 'bg-emerald-50' } :
-        score >= 40 ? { color: 'bg-amber-400',   text: 'text-amber-700',   label: 'Tibio',    bg: 'bg-amber-50'   } :
-        score >= 15 ? { color: 'bg-slate-300',   text: 'text-slate-600',   label: 'Frío',     bg: 'bg-slate-100'  } :
-                      { color: 'bg-slate-200',   text: 'text-slate-500',   label: 'Helado',   bg: 'bg-slate-100'  }
+        score >= 70 ? { color: 'bg-red-500',    text: 'text-red-700',    label: 'Caliente', bg: 'bg-red-50'    } :
+        score >= 40 ? { color: 'bg-orange-400', text: 'text-orange-700', label: 'Tibio',    bg: 'bg-orange-50' } :
+        score >= 15 ? { color: 'bg-sky-400',    text: 'text-sky-700',    label: 'Frío',     bg: 'bg-sky-50'    } :
+                      { color: 'bg-blue-600',   text: 'text-blue-700',   label: 'Helado',   bg: 'bg-blue-50'   }
 
     function handleEnter() {
         if (ref.current) setRect(ref.current.getBoundingClientRect())
@@ -54,7 +54,7 @@ export function Temperatura({ score, debug }: Props) {
                     <p className="font-semibold text-slate-700 mb-2">
                         Temperatura {score}/100
                         <span className="block font-normal text-slate-500 text-xs mt-0.5">
-                            Calibrada al p75 del catálogo activo
+                            Demanda calibrada al p75 del catálogo
                         </span>
                     </p>
                     <div className="space-y-1.5">
@@ -70,12 +70,6 @@ export function Temperatura({ score, debug }: Props) {
                             <span className="font-medium text-slate-700">
                                 {debug.vistas_7d}
                                 <span className="text-slate-400 ml-1">/ {debug.p75_vistas_7d}</span>
-                            </span>
-                        </div>
-                        <div className="flex justify-between text-slate-500">
-                            <span>Conversion</span>
-                            <span className="font-medium text-slate-700">
-                                {(debug.conversion_rate * 100).toFixed(1)}%
                             </span>
                         </div>
                         <div className="flex justify-between text-slate-500">
