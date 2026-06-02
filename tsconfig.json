@@ -20,6 +20,5 @@
             "ziggy-js": ["./vendor/tightenco/ziggy/src/js"]
         }
     },
-    "include": ["resources/js/**/*.ts", "resources/js/**/*.tsx", "resources/js/ziggy.d.ts", "resources/js/types/**/*.d.ts"],
-    "references": [{ "path": "./tsconfig.node.json" }]
+    "include": ["resources/js/**/*.ts", "resources/js/**/*.tsx", "resources/js/ziggy.d.ts", "resources/js/types/**/*.d.ts"]
 }
