@@ -18,7 +18,11 @@ class HandleInertiaRequests extends Middleware
     private function buildProps(Request $request): array
     {
         if ($request->routeIs('admin.*')) {
-            return ['logo_admin' => BuildConfig::asset('build_logo_admin')];
+            return [
+                'logo_admin'   => BuildConfig::asset('build_logo_admin'),
+                'logo_admin_w' => (int) BuildConfig::get('build_logo_admin_w', '0') ?: null,
+                'logo_admin_h' => (int) BuildConfig::get('build_logo_admin_h', '0') ?: null,
+            ];
         }
 
         $colores = [
@@ -29,6 +33,8 @@ class HandleInertiaRequests extends Middleware
 
         return [
             'logo_tienda'   => BuildConfig::asset('build_logo_tienda'),
+            'logo_tienda_w' => (int) BuildConfig::get('build_logo_tienda_w', '0') ?: null,
+            'logo_tienda_h' => (int) BuildConfig::get('build_logo_tienda_h', '0') ?: null,
             'nombre_tienda' => BuildConfig::get('build_seo_nombre_tienda', 'Mi tienda'),
             'colores'       => $colores,
             'ticker'      => [

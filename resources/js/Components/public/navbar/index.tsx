@@ -32,11 +32,13 @@ export default function Navbar() {
     const { count } = useCart()
     const { auth, build } = usePage<{
         auth:   { client: { nombre: string } | null }
-        build?: { logo_tienda?: string | null; nav?: NavConfig; colores?: Colores }
+        build?: { logo_tienda?: string | null; logo_tienda_w?: number | null; logo_tienda_h?: number | null; nav?: NavConfig; colores?: Colores }
     }>().props
 
     const nav     = build?.nav
     const logoSrc = build?.logo_tienda || '/assets/build_resources/logo_default_admin.svg'
+    const logoW   = build?.logo_tienda_w ?? undefined
+    const logoH   = build?.logo_tienda_h ?? undefined
 
     const colores = build?.colores ?? { primario: '#314158', secundario: '#62748E', acento: '#FB2C36' }
 
@@ -102,11 +104,13 @@ export default function Navbar() {
             >
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4" style={{ color: navText }}>
 
-                    {/* Logo */}
+                    {/* Logo — width/height del WebP real para reservar espacio y evitar CLS. */}
                     <Link href="/" className="shrink-0">
                         <img
                             src={logoSrc}
                             alt="Logo"
+                            width={logoW}
+                            height={logoH}
                             className="h-7 sm:h-8 w-auto"
                             onError={e => { e.currentTarget.src = '/assets/build_resources/logo_default_admin.svg' }}
                         />

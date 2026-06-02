@@ -38,13 +38,15 @@ function formatPrecio(n: number) {
 
 export default function MobileMenu({ open, onClose, clienteLogueado }: MobileMenuProps) {
     const { build, nav_productos, nav_categorias } = usePage<{
-        build?:          { logo_tienda?: string | null; nav?: NavConfig }
+        build?:          { logo_tienda?: string | null; logo_tienda_w?: number | null; logo_tienda_h?: number | null; nav?: NavConfig }
         nav_productos:   NavProducto[]
         nav_categorias:  NavCategoria[]
     }>().props
 
     const nav     = build?.nav
     const logoSrc = build?.logo_tienda || '/assets/build_resources/logo_default_admin.svg'
+    const logoW   = build?.logo_tienda_w ?? undefined
+    const logoH   = build?.logo_tienda_h ?? undefined
 
     const productosLabel = nav?.productos_label ?? 'Productos'
 
@@ -81,6 +83,8 @@ export default function MobileMenu({ open, onClose, clienteLogueado }: MobileMen
                     <img
                         src={logoSrc}
                         alt="Logo"
+                        width={logoW}
+                        height={logoH}
                         className="h-6 w-auto"
                         onError={e => { e.currentTarget.src = '/assets/build_resources/logo_default_admin.svg' }}
                     />

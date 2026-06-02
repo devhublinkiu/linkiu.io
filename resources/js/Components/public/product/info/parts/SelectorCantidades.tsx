@@ -104,13 +104,17 @@ export default function SelectorCantidades({ opciones, cantidadActiva, imagenPri
                                         )}
                                     </div>
 
-                                    {/* Imagen */}
+                                    {/* Imagen — contenedor 40x40 fijo para reservar espacio y evitar CLS. */}
                                     {(opcion.imagen ?? imagenPrincipal) && (
-                                        <img
-                                            src={opcion.imagen ?? imagenPrincipal!}
-                                            alt=""
-                                            className="h-10 w-auto object-contain shrink-0"
-                                        />
+                                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                                            <img
+                                                src={opcion.imagen ?? imagenPrincipal!}
+                                                alt=""
+                                                width={40}
+                                                height={40}
+                                                className="max-w-full max-h-full object-contain"
+                                            />
+                                        </div>
                                     )}
 
                                     {/* Info */}
