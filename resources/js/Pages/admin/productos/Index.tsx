@@ -26,6 +26,7 @@ import { ScoreBadge } from './parts/performance/ScoreBadge'
 import { SenalIcon } from './parts/performance/SenalIcon'
 import { Temperatura } from './parts/performance/Temperatura'
 import { TendenciaBadge } from './parts/performance/TendenciaBadge'
+import { ValorBadge } from './parts/performance/ValorBadge'
 import type { PerformanceDebug, Senal, Tendencia } from './parts/performance/types'
 
 interface Producto {
@@ -39,7 +40,10 @@ interface Producto {
     hooks_activos:      number
     categoria:          string | null
     vendidos:           number
-    score:              number
+    score:              number | null
+    conversion_pct:     number | null
+    valor:              number | null
+    revenue_7d:         number
     temperatura:        number
     tendencia:          Tendencia
     senal:              Senal | null
@@ -229,6 +233,7 @@ export default function ProductosIndex({ productos, filtros }: Props) {
                                         <TableHead>Vendidos</TableHead>
                                         <TableHead>Hooks</TableHead>
                                         <TableHead>Score</TableHead>
+                                        <TableHead>Valor</TableHead>
                                         <TableHead>Temperatura</TableHead>
                                         <TableHead>Tendencia</TableHead>
                                         <TableHead>Señal</TableHead>
@@ -309,7 +314,11 @@ export default function ProductosIndex({ productos, filtros }: Props) {
                                             </TableCell>
 
                                             <TableCell onClick={e => e.stopPropagation()}>
-                                                <ScoreBadge score={p.score} debug={p.performance_debug} />
+                                                <ScoreBadge score={p.score} conversionPct={p.conversion_pct} debug={p.performance_debug} />
+                                            </TableCell>
+
+                                            <TableCell onClick={e => e.stopPropagation()}>
+                                                <ValorBadge valor={p.valor} revenue7d={p.revenue_7d} debug={p.performance_debug} />
                                             </TableCell>
 
                                             <TableCell onClick={e => e.stopPropagation()}>

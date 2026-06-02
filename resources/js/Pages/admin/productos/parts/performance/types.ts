@@ -30,6 +30,7 @@ export interface PerformanceDebug {
     ventas_total:     number
     scroll_promedio:  number
     conversion_rate:  number
+    revenue_7d:       number
     p75_ventas_7d:    number
     p75_vistas_7d:    number
     dias_creacion:    number

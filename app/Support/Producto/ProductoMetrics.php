@@ -26,6 +26,7 @@ class ProductoMetrics
         public readonly Carbon $created_at,
         public readonly array $series_8w,
         public readonly int $scroll_promedio = 0,
+        public readonly int $revenue_7d = 0,
     ) {}
 
     public function conversionRate(): float

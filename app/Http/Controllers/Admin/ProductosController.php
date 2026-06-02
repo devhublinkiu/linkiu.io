@@ -79,6 +79,9 @@ class ProductosController extends Controller
                     'pct'       => $snap['tendencia']['pct'],
                 ],
                 'score'           => $snap['score'],
+                'conversion_pct'  => $snap['conversion_pct'] ?? null,
+                'valor'           => $snap['valor'] ?? null,
+                'revenue_7d'      => $snap['revenue_7d'] ?? 0,
                 'senal'           => $snap['senal'],
                 'performance_debug' => $snap['debug'],
             ];
@@ -98,10 +101,13 @@ class ProductosController extends Controller
     private function snapshotVacio(): array
     {
         return [
-            'score'       => 0,
-            'temperatura' => 0,
-            'tendencia'   => ['direccion' => 'neutral', 'pct' => 0],
-            'senal'       => null,
+            'score'          => null,
+            'conversion_pct' => null,
+            'temperatura'    => 0,
+            'valor'          => null,
+            'revenue_7d'     => 0,
+            'tendencia'      => ['direccion' => 'neutral', 'pct' => 0],
+            'senal'          => null,
             'debug'       => [
                 'ventas_7d'       => 0,
                 'vistas_7d'       => 0,
@@ -109,6 +115,7 @@ class ProductosController extends Controller
                 'ventas_total'    => 0,
                 'scroll_promedio' => 0,
                 'conversion_rate' => 0,
+                'revenue_7d'      => 0,
                 'p75_ventas_7d'   => 0,
                 'p75_vistas_7d'   => 0,
                 'dias_creacion'   => 0,

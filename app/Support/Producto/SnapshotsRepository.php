@@ -77,6 +77,9 @@ class SnapshotsRepository
                     ->where('fecha', '>=', $hace30->toDateString()),
                 'ventas_total' => OrderItem::selectRaw('COALESCE(SUM(cantidad), 0)')
                     ->whereColumn('producto_id', 'productos.id'),
+                'revenue_7d' => OrderItem::selectRaw('COALESCE(SUM(cantidad * precio_unitario), 0)')
+                    ->whereColumn('producto_id', 'productos.id')
+                    ->where('created_at', '>=', $hace7),
                 'scroll_promedio' => ProductView::selectRaw(
                     'CASE WHEN SUM(scroll_depth_count) > 0 THEN ROUND(SUM(scroll_depth_sum) * 1.0 / SUM(scroll_depth_count)) ELSE 0 END'
                 )
@@ -97,6 +100,7 @@ class SnapshotsRepository
             created_at:      $p->created_at,
             series_8w:       $todasLasSeries[$p->id] ?? array_fill(0, 8, 0),
             scroll_promedio: (int) $p->scroll_promedio,
+            revenue_7d:      (int) $p->revenue_7d,
         ));
 
         // Pass 1: construir Contexto
