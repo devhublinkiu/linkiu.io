@@ -1,15 +1,34 @@
 import { useEffect, useRef } from 'react'
 import { router } from '@inertiajs/react'
 
+const SESION_MIN_MS    = 30 * 60 * 1000  // 30min — ventana de dedup por sesion
+const TIEMPO_MINIMO_MS = 3000             // 3s — debajo se considera rebote
+const SCROLL_MINIMO    = 5                // 5% — debajo se considera no-interaccion
+
+/**
+ * Registra "vistas reales" — filtra refrescos, rebotes y bouncers.
+ *
+ * Una visita cuenta solo si:
+ *   a) No hubo otra del mismo producto en los ultimos 30min (sesion local).
+ *   b) El usuario estuvo >=3s en la pagina.
+ *   c) Llegamos a >=5% de scroll (algo de interaccion real).
+ *
+ * El filtro de bots vive en backend (User-Agent) — los bots no van a llegar
+ * aca normalmente porque no ejecutan JS, pero por si acaso.
+ */
 export function useProductTracker(productoId: number | null) {
     const maxScroll  = useRef(0)
     const registrado = useRef(false)
+    const inicioMs   = useRef(0)
 
     useEffect(() => {
         if (!productoId) return
 
         maxScroll.current  = 0
         registrado.current = false
+        inicioMs.current   = Date.now()
+
+        const claveStorage = `pv:${productoId}`
 
         function onScroll() {
             const el     = document.documentElement
@@ -17,9 +36,35 @@ export function useProductTracker(productoId: number | null) {
             if (pct > maxScroll.current) maxScroll.current = Math.min(pct, 100)
         }
 
+        function debeEnviar(): boolean {
+            // a) Dedup por sesion — mismo producto contado hace <30min
+            try {
+                const ultimo = localStorage.getItem(claveStorage)
+                if (ultimo && Date.now() - Number(ultimo) < SESION_MIN_MS) return false
+            } catch {
+                // localStorage no disponible (modo privado antiguo, cuota llena) — seguimos
+            }
+
+            // b) Tiempo minimo de visita — rebotes no cuentan
+            if (Date.now() - inicioMs.current < TIEMPO_MINIMO_MS) return false
+
+            // c) Scroll minimo — quien no scrolleo no interactuo
+            if (maxScroll.current < SCROLL_MINIMO) return false
+
+            return true
+        }
+
         function enviar() {
             if (registrado.current) return
             registrado.current = true
+
+            if (!debeEnviar()) return
+
+            try {
+                localStorage.setItem(claveStorage, String(Date.now()))
+            } catch {
+                // ignorar — el dedup es best-effort
+            }
 
             const payload = JSON.stringify({
                 producto_id:  productoId,
