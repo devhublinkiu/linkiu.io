@@ -3,9 +3,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "vite build && vite build --ssr",
+        "build": "vite build",
         "dev": "vite",
-        "ssr": "node bootstrap/ssr/ssr.js",
         "email": "email dev --dir resources/emails/templates"
     },
     "devDependencies": {
