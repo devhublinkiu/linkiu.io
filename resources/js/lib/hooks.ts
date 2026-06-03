@@ -19,6 +19,7 @@ export const HOOK_LIMITS = {
     COMO_FUNCIONA_PASOS:  4,   // HookConfigValidator::MAX_COMO_FUNCIONA_PASOS
     RESENAS:              15,  // HookConfigValidator::MAX_RESENAS
     GALERIA_IMAGENES:     10,  // HookConfigValidator::MAX_GALERIA_IMAGENES
+    RESENAS_IMAGEN:       10,  // HookConfigValidator::MAX_RESENAS_IMAGEN
     FAQ:                  10,  // HookConfigValidator::MAX_FAQ
 } as const
 

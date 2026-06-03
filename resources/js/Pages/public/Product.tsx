@@ -20,6 +20,9 @@ const AntesDespues              = lazy(() => import('@/Components/public/product
 const FichaTecnica              = lazy(() => import('@/Components/public/product/ficha-tecnica'))
 const CaracteristicasDestacadas = lazy(() => import('@/Components/public/product/caracteristicas-destacadas'))
 const ComoFunciona              = lazy(() => import('@/Components/public/product/como-funciona'))
+const TransformacionPasos       = lazy(() => import('@/Components/public/product/transformacion-pasos'))
+const ImagenEstatica            = lazy(() => import('@/Components/public/product/imagen-estatica'))
+const ResenasImagen             = lazy(() => import('@/Components/public/product/resenas-imagen'))
 const ResenasClientes           = lazy(() => import('@/Components/public/product/resenas-clientes'))
 const GaleriaResultados         = lazy(() => import('@/Components/public/product/galeria-resultados'))
 const Garantia                  = lazy(() => import('@/Components/public/product/garantia'))
@@ -38,6 +41,11 @@ const MIN_H: Record<string, string> = {
     ficha_tecnica:              '360px',
     caracteristicas_destacadas: '400px',
     como_funciona:              '440px',
+    transformacion_pasos:       '440px',
+    imagen_promesa:             '240px',
+    imagen_intermedia:          '240px',
+    imagen_cierre:              '240px',
+    resenas_imagen:             '420px',
     resenas_clientes:           '480px',
     galeria_resultados:         '380px',
     garantia:                   '280px',
@@ -82,6 +90,11 @@ const ORDEN_DEFAULT = [
     'ficha_tecnica',
     'caracteristicas_destacadas',
     'como_funciona',
+    'transformacion_pasos',
+    'imagen_promesa',
+    'imagen_intermedia',
+    'imagen_cierre',
+    'resenas_imagen',
     'resenas_clientes',
     'galeria_resultados',
     'garantia',
@@ -219,6 +232,14 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                 return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><CaracteristicasDestacadas config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'como_funciona':
                 return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><ComoFunciona config={h.config} /></BloqueProducto></LazyOnVisible>
+            case 'transformacion_pasos':
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><TransformacionPasos config={h.config} /></BloqueProducto></LazyOnVisible>
+            case 'imagen_promesa':
+            case 'imagen_intermedia':
+            case 'imagen_cierre':
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><ImagenEstatica config={h.config} /></BloqueProducto></LazyOnVisible>
+            case 'resenas_imagen':
+                return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><ResenasImagen config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'resenas_clientes':
                 return <LazyOnVisible key={key} minHeight={minH}><BloqueProducto><ResenasClientes config={h.config} /></BloqueProducto></LazyOnVisible>
             case 'galeria_resultados':

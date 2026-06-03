@@ -11,6 +11,9 @@ import ModalComparacionVisual from './hooks/ModalComparacionVisual'
 import ModalFichaTecnica      from './hooks/ModalFichaTecnica'
 import ModalCaracteristicas   from './hooks/ModalCaracteristicas'
 import ModalComoFunciona      from './hooks/ModalComoFunciona'
+import ModalTransformacionPasos from './hooks/ModalTransformacionPasos'
+import { ModalImagenPromesa, ModalImagenIntermedia, ModalImagenCierre } from './hooks/ModalImagenEstatica'
+import ModalResenasImagen     from './hooks/ModalResenasImagen'
 import ModalResenasClientes   from './hooks/ModalResenasClientes'
 import ModalGaleriaResultados from './hooks/ModalGaleriaResultados'
 import ModalGarantia          from './hooks/ModalGarantia'
@@ -43,6 +46,11 @@ const MODAL_MAP: Partial<Record<string, ComponentType<HookModalProps>>> = {
     ficha_tecnica:              ModalFichaTecnica,
     caracteristicas_destacadas: ModalCaracteristicas,
     como_funciona:              ModalComoFunciona,
+    transformacion_pasos:       ModalTransformacionPasos,
+    imagen_promesa:             ModalImagenPromesa,
+    imagen_intermedia:          ModalImagenIntermedia,
+    imagen_cierre:              ModalImagenCierre,
+    resenas_imagen:             ModalResenasImagen,
     resenas_clientes:           ModalResenasClientes,
     galeria_resultados:         ModalGaleriaResultados,
     garantia:                   ModalGarantia,

@@ -16,6 +16,11 @@ enum LinkiuHook: string
     case FichaTecnica        = 'ficha_tecnica';
     case CaracteristicasDestacadas = 'caracteristicas_destacadas';
     case ComoFunciona        = 'como_funciona';
+    case TransformacionPasos = 'transformacion_pasos';
+    case ImagenPromesa       = 'imagen_promesa';
+    case ImagenIntermedia    = 'imagen_intermedia';
+    case ImagenCierre        = 'imagen_cierre';
+    case ResenasImagen       = 'resenas_imagen';
     case ResenasClientes     = 'resenas_clientes';
     case GaleriaResultados   = 'galeria_resultados';
     case Garantia            = 'garantia';
@@ -41,6 +46,11 @@ enum LinkiuHook: string
             self::FichaTecnica             => 'Ficha técnica',
             self::CaracteristicasDestacadas => 'Características destacadas',
             self::ComoFunciona             => 'Cómo funciona',
+            self::TransformacionPasos      => 'Transformación en pasos',
+            self::ImagenPromesa            => 'Imagen — promesa',
+            self::ImagenIntermedia         => 'Imagen — intermedia',
+            self::ImagenCierre             => 'Imagen — cierre',
+            self::ResenasImagen            => 'Reseñas por imagen',
             self::ResenasClientes          => 'Reseñas de clientes',
             self::GaleriaResultados        => 'Galería de resultados',
             self::Garantia                 => 'Garantía',
@@ -76,6 +86,11 @@ enum LinkiuHook: string
             self::FichaTecnica             => 'Componentes principales + lista de lo que no contiene.',
             self::CaracteristicasDestacadas => 'Cards con ícono, descripción y tags por característica. Máx. 4.',
             self::ComoFunciona             => 'Timeline de pasos con ícono, descripción y nota. Máx. 4.',
+            self::TransformacionPasos      => 'Grid de tarjetas con pasos numerados. Variante visual de Cómo funciona. Máx. 4.',
+            self::ImagenPromesa            => 'Imagen estática con link opcional. Ideal para banner de promesa.',
+            self::ImagenIntermedia         => 'Imagen estática con link opcional. Ideal entre bloques densos.',
+            self::ImagenCierre             => 'Imagen estática con link opcional. Ideal antes del CTA final.',
+            self::ResenasImagen            => 'Slider de capturas de reseñas. Alto adaptable a cada imagen. Máx. 10.',
             self::ResenasClientes          => 'Slider de reseñas con rating automático calculado. Máx. 15.',
             self::GaleriaResultados        => 'Slider 9:16 de fotos de resultados reales, chats y testimonios visuales.',
             self::Garantia                 => 'Bloque de garantía con título, descripción y botón.',

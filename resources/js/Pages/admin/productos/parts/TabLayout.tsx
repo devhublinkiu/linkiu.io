@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { GripVertical, PackageOpen, Flame, Images, TableProperties, Columns2, FileText, Star, Workflow, MessageSquare, ShieldCheck, HelpCircle, Zap, GalleryHorizontal, Package, BadgeCheck, Timer } from 'lucide-react'
+import { GripVertical, PackageOpen, Flame, Images, TableProperties, Columns2, FileText, Star, Workflow, MessageSquare, MessageSquareQuote, ShieldCheck, HelpCircle, Zap, GalleryHorizontal, Package, BadgeCheck, Timer, Sparkles, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/Components/ui/Button'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
@@ -17,6 +17,11 @@ const ICON_MAP: Record<string, React.ElementType> = {
     ficha_tecnica:               FileText,
     caracteristicas_destacadas:  Star,
     como_funciona:               Workflow,
+    transformacion_pasos:        Sparkles,
+    imagen_promesa:              ImageIcon,
+    imagen_intermedia:           ImageIcon,
+    imagen_cierre:               ImageIcon,
+    resenas_imagen:              MessageSquareQuote,
     urgencia_stock:              Timer,
     que_incluye:                 Package,
     sellos_confianza:            BadgeCheck,

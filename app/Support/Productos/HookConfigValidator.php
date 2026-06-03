@@ -33,6 +33,7 @@ class HookConfigValidator
     public const MAX_COMO_FUNCIONA_PASOS    = 4;
     public const MAX_RESENAS                = 15;
     public const MAX_GALERIA_IMAGENES       = 10;
+    public const MAX_RESENAS_IMAGEN         = 10;
     public const MAX_FAQ                    = 10;
     public const MAX_FICHA_SPECS            = 20;
     public const MAX_FICHA_SIN_LISTA        = 20;
@@ -118,6 +119,41 @@ class HookConfigValidator
             'pasos'                 => 'array|max:'.self::MAX_COMO_FUNCIONA_PASOS,
             'pasos.*.titulo'        => 'required|string|max:120',
             'pasos.*.descripcion'   => 'nullable|string|max:500',
+        ],
+        'transformacion_pasos' => [
+            'titulo'                => 'required|string|max:120',
+            'descripcion'           => 'nullable|string|max:500',
+            'pasos'                 => 'array|max:'.self::MAX_COMO_FUNCIONA_PASOS,
+            'pasos.*.titulo'        => 'required|string|max:120',
+            'pasos.*.descripcion'   => 'nullable|string|max:500',
+        ],
+        'imagen_promesa' => [
+            'url'        => 'required|string|max:'.self::MAX_RUTA_LENGTH,
+            'ruta'       => 'required|string|max:'.self::MAX_RUTA_LENGTH,
+            'alt'        => 'nullable|string|max:'.self::MAX_TITULO_CORTO,
+            'link_url'   => 'nullable|string|max:'.self::MAX_RUTA_LENGTH,
+            'ancho_max'  => 'nullable|integer|min:320|max:1200',
+        ],
+        'imagen_intermedia' => [
+            'url'        => 'required|string|max:'.self::MAX_RUTA_LENGTH,
+            'ruta'       => 'required|string|max:'.self::MAX_RUTA_LENGTH,
+            'alt'        => 'nullable|string|max:'.self::MAX_TITULO_CORTO,
+            'link_url'   => 'nullable|string|max:'.self::MAX_RUTA_LENGTH,
+            'ancho_max'  => 'nullable|integer|min:320|max:1200',
+        ],
+        'imagen_cierre' => [
+            'url'        => 'required|string|max:'.self::MAX_RUTA_LENGTH,
+            'ruta'       => 'required|string|max:'.self::MAX_RUTA_LENGTH,
+            'alt'        => 'nullable|string|max:'.self::MAX_TITULO_CORTO,
+            'link_url'   => 'nullable|string|max:'.self::MAX_RUTA_LENGTH,
+            'ancho_max'  => 'nullable|integer|min:320|max:1200',
+        ],
+        'resenas_imagen' => [
+            'imagenes'         => 'array|max:'.self::MAX_RESENAS_IMAGEN,
+            'imagenes.*.url'   => 'required|string|max:'.self::MAX_RUTA_LENGTH,
+            'imagenes.*.ruta'  => 'required|string|max:'.self::MAX_RUTA_LENGTH,
+            'autoplay'         => 'nullable|boolean',
+            'intervalo'        => 'nullable|integer|min:3|max:10',
         ],
         'boton_compra' => [
             'texto'             => 'nullable|string|max:30',
