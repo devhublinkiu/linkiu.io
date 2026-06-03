@@ -21,7 +21,7 @@ function formatPrecio(n: number) {
  */
 export function TopProductos({ productos }: Props) {
     return (
-        <div className="rounded-lg border border-slate-200 bg-white p-4">
+        <div className="rounded-lg border border-slate-200 bg-white p-4 h-full">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200">
                 <Trophy className="size-4 text-amber-500" />
                 <h3 className="text-sm font-semibold text-slate-900">Top 5 productos hoy</h3>

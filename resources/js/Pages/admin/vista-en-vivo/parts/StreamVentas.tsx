@@ -7,11 +7,11 @@ export interface VentaItem {
     ciudad:     string | null
     total:      number
     created_at: string | null
-    nuevo?:     boolean
 }
 
 interface Props {
-    ventas: VentaItem[]
+    ventas:     VentaItem[]
+    idsNuevas?: Set<number>
 }
 
 function formatPrecio(n: number) {
@@ -32,7 +32,7 @@ function tiempoRelativo(iso: string | null): string {
  * Stream lateral de las últimas ventas del día — las nuevas (recibidas por
  * Ably) entran con animación slide-in.
  */
-export function StreamVentas({ ventas }: Props) {
+export function StreamVentas({ ventas, idsNuevas }: Props) {
     return (
         <div className="rounded-lg border border-slate-200 bg-white p-4 h-full flex flex-col">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200">
@@ -47,11 +47,13 @@ export function StreamVentas({ ventas }: Props) {
                 </div>
             ) : (
                 <div className="space-y-3 flex-1 overflow-y-auto">
-                    {ventas.map((v) => (
+                    {ventas.map((v) => {
+                        const esNueva = idsNuevas?.has(v.id) ?? false
+                        return (
                         <div
                             key={v.id}
                             className={`flex items-start gap-3 p-2.5 rounded-md transition-all duration-500 ${
-                                v.nuevo ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'hover:bg-slate-50'
+                                esNueva ? 'bg-emerald-50 ring-1 ring-emerald-200' : 'hover:bg-slate-50'
                             }`}
                         >
                             <span className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
@@ -68,7 +70,7 @@ export function StreamVentas({ ventas }: Props) {
                                 <p className="text-sm font-semibold text-emerald-600 mt-0.5">{formatPrecio(v.total)}</p>
                             </div>
                         </div>
-                    ))}
+                    )})}
                 </div>
             )}
         </div>

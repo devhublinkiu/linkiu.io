@@ -37,19 +37,38 @@ function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion =
     const [onlineLive, setOnlineLive]     = useState(online)
     const [ciudadesLive, setCiudadesLive] = useState(ciudades)
 
+    // IDs de ventas marcadas como "nuevas" — se destacan visualmente con fondo
+    // verde por 5s y despues vuelven al estado normal.
+    const [idsNuevas, setIdsNuevas] = useState<Set<number>>(new Set())
+
     // Sync cuando Inertia recarga (ej. al volver de otra ruta).
     useEffect(() => { setOnlineLive(online) },     [online])
     useEffect(() => { setCiudadesLive(ciudades) }, [ciudades])
 
     // Push real-time via Ably — reutiliza el canal `admin-orders` ya activo
     // para notificaciones del navbar:
-    //   - 'orden.nueva' → recarga widgets de BD (ventas, revenue, top, stream).
+    //   - 'orden.nueva' → recarga widgets de BD (ventas, revenue, top, stream)
+    //                    y marca el ID como "nuevo" durante 5s.
     //   - 'presencia.actualizada' → actualiza state local sin request al server.
     useEffect(() => {
         const client = getAblyClient()
         const canal  = client.channels.get('admin-orders')
 
-        const onOrden = () => {
+        const onOrden = (msg: { data: { id: number } }) => {
+            const id = msg.data.id
+            setIdsNuevas(prev => {
+                const next = new Set(prev)
+                next.add(id)
+                return next
+            })
+            setTimeout(() => {
+                setIdsNuevas(prev => {
+                    const next = new Set(prev)
+                    next.delete(id)
+                    return next
+                })
+            }, 5_000)
+
             router.reload({
                 only: ['ventas_hoy', 'revenue_hoy', 'conversion', 'top_productos', 'ultimas_ventas'],
                 preserveScroll: true,
@@ -129,18 +148,12 @@ function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion =
                     />
                 </div>
 
-                {/* Ciudades + Stream */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-                    <div className="lg:col-span-3">
-                        <CiudadesActivas ciudades={ciudadesLive} />
-                    </div>
-                    <div className="lg:col-span-2">
-                        <StreamVentas ventas={ultimas_ventas} />
-                    </div>
+                {/* 3 columnas: Ciudades · Ventas en vivo · Top 5 productos */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <CiudadesActivas ciudades={ciudadesLive} />
+                    <StreamVentas ventas={ultimas_ventas} idsNuevas={idsNuevas} />
+                    <TopProductos productos={top_productos} />
                 </div>
-
-                {/* Top productos */}
-                <TopProductos productos={top_productos} />
             </div>
         </>
     )

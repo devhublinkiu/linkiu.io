@@ -18,8 +18,7 @@ use Illuminate\Support\Facades\Redis;
  */
 class VistaEnVivoData
 {
-    private const KEY_ONLINE   = 'vivo:online';
-    private const KEY_CIUDADES = 'vivo:ciudades';
+    private const KEY_ONLINE = 'vivo:online';
 
     public function todo(): array
     {
@@ -114,19 +113,32 @@ class VistaEnVivoData
     }
 
     /**
-     * Lista de ciudades con count, ordenado desc. Top 10.
-     * Devuelve [] si Redis no esta disponible.
+     * Ciudades de IPs CONECTADAS AHORA. Agrupa las ciudades del hash
+     * tomando solo IPs que estan en el sorted set de presencia (filtra
+     * fantasmas). Top 10 por cantidad.
+     *
+     * Cuando una persona cierra su pestana en Bogota, ese count baja
+     * inmediatamente — antes solo subia.
      */
     public function ciudadesActivas(): array
     {
         try {
-            $hash = Redis::hgetall(self::KEY_CIUDADES) ?: [];
+            $umbral     = time() - \App\Http\Controllers\Public\HeartbeatController::TTL_PRESENCIA;
+            $ipsActivas = Redis::zrangebyscore(self::KEY_ONLINE, $umbral, '+inf') ?: [];
+            if (empty($ipsActivas)) return [];
 
-            $items = [];
-            foreach ($hash as $ciudad => $count) {
-                $items[] = ['ciudad' => $ciudad, 'count' => (int) $count];
+            $ciudades = Redis::hmget(\App\Http\Controllers\Public\HeartbeatController::KEY_IP_CIUDAD, $ipsActivas) ?: [];
+
+            $counts = [];
+            foreach ($ciudades as $ciudad) {
+                if (! $ciudad) continue;
+                $counts[$ciudad] = ($counts[$ciudad] ?? 0) + 1;
             }
 
+            $items = [];
+            foreach ($counts as $ciudad => $count) {
+                $items[] = ['ciudad' => $ciudad, 'count' => $count];
+            }
             usort($items, fn ($a, $b) => $b['count'] <=> $a['count']);
 
             return array_slice($items, 0, 10);
