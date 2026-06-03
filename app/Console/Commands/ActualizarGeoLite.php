@@ -24,9 +24,10 @@ class ActualizarGeoLite extends Command
 
     public function handle(): int
     {
-        $licenseKey = env('MAXMIND_LICENSE_KEY');
+        $licenseKey = config('services.maxmind.license_key');
         if (! $licenseKey) {
             $this->error('Falta MAXMIND_LICENSE_KEY en .env. Crear cuenta gratis en https://www.maxmind.com/en/geolite2/signup');
+            $this->line('Si la pusiste y sigue fallando: php artisan config:clear');
             return self::FAILURE;
         }
 

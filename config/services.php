@@ -41,6 +41,10 @@ return [
         'webhook_secret' => env('MP_WEBHOOK_SECRET'),
     ],
 
+    'maxmind' => [
+        'license_key' => env('MAXMIND_LICENSE_KEY'),
+    ],
+
     'mipaquete' => [
         'base_url'        => env('MIPAQUETE_BASE_URL', 'https://api-v2.mpr.mipaquete.com'),
         // El session-tracker es público y aparece literal en la documentación
