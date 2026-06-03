@@ -15,7 +15,6 @@ import { router } from '@inertiajs/react'
 
 const SESSION_KEY_INICIO  = 'vivo:iniciado_en'
 const STORAGE_KEY_ORIGEN  = 'vivo:origen-v2'   // v2 marca el nuevo formato {origen, ts}
-const SESSION_KEY_SECCION = 'vivo:seccion'
 const TTL_ORIGEN_MS       = 30 * 24 * 60 * 60 * 1000  // 30 dias
 
 type Origen = 'facebook' | 'instagram' | 'google' | 'direct' | 'otros'

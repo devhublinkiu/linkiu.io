@@ -42,6 +42,13 @@ return [
         ],
     ],
 
+    'generador_enlaces' => [
+        'label'   => 'Generador de enlaces',
+        'actions' => [
+            'ver' => 'Ver',
+        ],
+    ],
+
     'usuarios' => [
         'label'   => 'Usuarios',
         'actions' => [

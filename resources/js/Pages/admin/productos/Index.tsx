@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
-import { Plus, Search, Pencil, Eye, Zap, PackageOpen, Package, Trash2, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Plus, Search, Pencil, Eye, Zap, PackageOpen, Package, Trash2, ShoppingBag, ChevronLeft, ChevronRight, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Button } from '@/Components/ui/Button'
@@ -20,6 +20,10 @@ import {
     AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
     AlertDialogHeader, AlertDialogTitle,
 } from '@/Components/ui/AlertDialog'
+import {
+    Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '@/Components/ui/Dialog'
+import { FormularioUTM } from '@/Pages/admin/analytics/generador-enlaces/parts/FormularioUTM'
 import { rangoPaginacion } from '@/lib/utils'
 import { GlosarioPerformance } from './parts/performance/GlosarioPerformance'
 import { ScoreBadge } from './parts/performance/ScoreBadge'
@@ -78,6 +82,7 @@ export default function ProductosIndex({ productos, filtros }: Props) {
     const [busqueda,        setBusqueda]        = useState(filtros.busqueda)
     const [filtro,          setFiltro]          = useState(filtros.filtro)
     const [productoEliminar, setProductoEliminar] = useState<Producto | null>(null)
+    const [productoEnlace,   setProductoEnlace]   = useState<Producto | null>(null)
     const mounted = useRef(false)
 
     const puede = (permiso: string) =>
@@ -354,6 +359,19 @@ export default function ProductosIndex({ productos, filtros }: Props) {
 
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setProductoEnlace(p)}
+                                                                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors duration-200"
+                                                            >
+                                                                <Link2 className="size-3.5" />
+                                                            </button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Generar enlace para campaña</TooltipContent>
+                                                    </Tooltip>
+
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
                                                             <span>
                                                                 <button
                                                                     type="button"
@@ -443,6 +461,24 @@ export default function ProductosIndex({ productos, filtros }: Props) {
                     )}
                 </>
             )}
+
+            {/* Modal generador de enlace UTM contextual al producto */}
+            <Dialog open={!!productoEnlace} onOpenChange={open => { if (!open) setProductoEnlace(null) }}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Generar enlace para campaña</DialogTitle>
+                        <DialogDescription>
+                            Armá una URL con UTM para trackear de qué fuente viene cada visitante a este producto.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {productoEnlace && (
+                        <FormularioUTM
+                            paginaPreseleccionada={`/productos/${productoEnlace.slug}`}
+                            paginaFijaNombre={`Producto: ${productoEnlace.nombre}`}
+                        />
+                    )}
+                </DialogContent>
+            </Dialog>
 
             {/* AlertDialog eliminar */}
             <AlertDialog open={!!productoEliminar} onOpenChange={open => { if (!open) setProductoEliminar(null) }}>

@@ -3,7 +3,7 @@ import {
     LayoutDashboard, Package, Tag, ShoppingCart, Users, Ticket,
     Hammer, Webhook, FileText, Shield, ShieldCheck, UserCog, BarChart2, Plug, Languages,
     ChevronLeft, ChevronRight,
-    Flame, MousePointer, Video, Activity,
+    Flame, MousePointer, Video, Activity, Link2,
     Wallet, CreditCard, Sparkles, Truck, Crosshair, Store,
     Palette, AlignJustify, LayoutGrid, Home, Info, Phone,
 } from 'lucide-react'
@@ -71,6 +71,7 @@ const NAV: NavEntry[] = [
             { label: 'Firemaps',             icon: Flame,        routeName: null },
             { label: 'Scrollink',            icon: MousePointer, routeName: null },
             { label: 'Funelinks',            icon: BarChart2,    routeName: 'admin.analytics.funelinks', permiso: 'funelinks.ver' },
+            { label: 'Generador de enlaces', icon: Link2,        routeName: 'admin.analytics.generador-enlaces', permiso: 'generador_enlaces.ver' },
             { label: 'RecordLink',           icon: Video,        routeName: null },
         ],
     },
