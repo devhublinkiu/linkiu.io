@@ -107,9 +107,14 @@ class FunelinksData
         $total = $sesiones->count();
         if ($total === 0) return [];
 
+        // Orden del funnel: si hay producto seleccionado, usar SU layout_orden
+        // real (lo que el admin configuro en el editor). Si no hay producto o
+        // no tiene layout custom, usar ORDEN_DEFAULT.
+        $orden = $this->ordenDeProducto($productoId);
+
         // Contar visitas por seccion
         $countPorSeccion = [];
-        foreach (self::ORDEN_DEFAULT as $key) {
+        foreach ($orden as $key) {
             $countPorSeccion[$key] = 0;
         }
         foreach ($sesiones as $s) {
@@ -132,7 +137,7 @@ class FunelinksData
         $previo     = $total;
         $items      = [];
 
-        foreach (self::ORDEN_DEFAULT as $key) {
+        foreach ($orden as $key) {
             $count = $countPorSeccion[$key];
             $pct   = $total > 0 ? round(($count / $total) * 100, 1) : 0;
             $drop  = $previo > 0 ? round((($previo - $count) / $previo) * 100, 1) : 0;
@@ -195,6 +200,26 @@ class FunelinksData
     }
 
     // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Devuelve el orden de hooks que aplica al funnel. Si hay producto
+     * seleccionado, lee su layout_orden (lo que el admin configuro). Si no
+     * tiene layout o no hay producto, devuelve ORDEN_DEFAULT.
+     *
+     * Filtramos a solo las keys que conocemos en NOMBRE_SECCION (defensive
+     * contra hooks que ya no existen o fueron renombrados).
+     */
+    private function ordenDeProducto(?int $productoId): array
+    {
+        if ($productoId) {
+            $orden = Producto::query()->where('id', $productoId)->value('layout_orden');
+            if (is_array($orden) && ! empty($orden)) {
+                $valido = array_values(array_intersect($orden, array_keys(self::NOMBRE_SECCION)));
+                if (! empty($valido)) return $valido;
+            }
+        }
+        return self::ORDEN_DEFAULT;
+    }
 
     private function baseQuery(?int $productoId, string $periodo, ?string $origen)
     {

@@ -14,34 +14,54 @@ import { router } from '@inertiajs/react'
  */
 
 const SESSION_KEY_INICIO  = 'vivo:iniciado_en'
-const SESSION_KEY_ORIGEN  = 'vivo:origen'
+const STORAGE_KEY_ORIGEN  = 'vivo:origen-v2'   // v2 marca el nuevo formato {origen, ts}
 const SESSION_KEY_SECCION = 'vivo:seccion'
+const TTL_ORIGEN_MS       = 30 * 24 * 60 * 60 * 1000  // 30 dias
 
 type Origen = 'facebook' | 'instagram' | 'google' | 'direct' | 'otros'
 type Dispositivo = 'movil' | 'desktop' | 'tablet'
 
+/**
+ * Detecta el origen del visitante con 5 niveles de confianza:
+ *  1. UTM source explicito (incluye 'fb', 'ig' que Meta usa con {{site_source_name}}).
+ *  2. Click IDs de cada plataforma (fbclid, igshid, gclid, ttclid, msclkid).
+ *  3. Referer ampliado (incluye subdominios l/m/lm.facebook.com, fb.me, fbcdn.net,
+ *     instagram.com, instagr.am, cdninstagram, google.*).
+ *  4. Referer interno (mismo dominio) -> direct.
+ *  5. Sin referer -> direct.
+ */
 function detectarOrigen(): Origen {
     try {
         const params = new URLSearchParams(window.location.search)
-        const utmSource = (params.get('utm_source') || '').toLowerCase()
 
-        if (utmSource.includes('facebook') || utmSource === 'fb')  return 'facebook'
-        if (utmSource.includes('instagram') || utmSource === 'ig') return 'instagram'
-        if (utmSource.includes('google'))                          return 'google'
-        if (utmSource)                                             return 'otros'
+        // 1. UTM source — clasificacion amplia
+        const utm = (params.get('utm_source') || '').toLowerCase().trim()
+        if (utm) {
+            if (utm.includes('facebook') || utm === 'fb')  return 'facebook'
+            if (utm.includes('instagram') || utm === 'ig') return 'instagram'
+            if (utm.includes('google'))                    return 'google'
+            return 'otros'
+        }
 
+        // 2. Click IDs especificos de cada plataforma
+        if (params.has('fbclid'))  return 'facebook'   // Meta (FB + IG)
+        if (params.has('igshid'))  return 'instagram'  // Instagram share
+        if (params.has('gclid'))   return 'google'     // Google Ads
+        if (params.has('ttclid'))  return 'otros'      // TikTok
+        if (params.has('msclkid')) return 'otros'      // Microsoft Ads
+
+        // 3. Referer ampliado
         const ref = (document.referrer || '').toLowerCase()
-        if (! ref)                                                 return 'direct'
-        if (ref.includes('facebook.com') || ref.includes('fb.me')) return 'facebook'
-        if (ref.includes('instagram.com'))                         return 'instagram'
-        if (ref.includes('google.'))                               return 'google'
+        if (! ref) return 'direct'
 
-        // Si el referer es del mismo dominio, lo consideramos navegacion interna -> direct.
+        if (ref.match(/(?:^|\.)facebook\.com|fb\.me|fbcdn\.net|l\.facebook|m\.facebook|lm\.facebook/)) return 'facebook'
+        if (ref.match(/(?:^|\.)instagram\.com|instagr\.am|cdninstagram/))                              return 'instagram'
+        if (ref.match(/(?:^|\.)google\./))                                                              return 'google'
+
+        // 4. Referer del mismo dominio = navegacion interna
         try {
-            const refHost  = new URL(document.referrer).hostname
-            const propHost = window.location.hostname
-            if (refHost === propHost) return 'direct'
-        } catch { /* referer invalido */ }
+            if (new URL(document.referrer).hostname === window.location.hostname) return 'direct'
+        } catch { /* malformed referer */ }
 
         return 'otros'
     } catch {
@@ -69,16 +89,28 @@ function leerInicio(): number {
     }
 }
 
+/**
+ * Persiste el origen en localStorage con TTL 30 dias. Si el visitante
+ * vuelve antes de 30 dias sin hacer click en otro anuncio, mantiene su
+ * origen original. Despues de 30 dias se re-detecta.
+ *
+ * Cambio importante vs version anterior: era sessionStorage (1 pestana).
+ * Ahora persiste cross-tab y cross-visit pero con expiracion clara.
+ */
 function leerOrigen(): Origen {
     try {
-        const cached = sessionStorage.getItem(SESSION_KEY_ORIGEN) as Origen | null
-        if (cached) return cached
-        const detectado = detectarOrigen()
-        sessionStorage.setItem(SESSION_KEY_ORIGEN, detectado)
-        return detectado
-    } catch {
-        return detectarOrigen()
-    }
+        const raw = localStorage.getItem(STORAGE_KEY_ORIGEN)
+        if (raw) {
+            const parsed = JSON.parse(raw) as { origen: Origen; ts: number }
+            if (Date.now() - parsed.ts < TTL_ORIGEN_MS) return parsed.origen
+        }
+    } catch { /* malformed o no disponible */ }
+
+    const detectado = detectarOrigen()
+    try {
+        localStorage.setItem(STORAGE_KEY_ORIGEN, JSON.stringify({ origen: detectado, ts: Date.now() }))
+    } catch { /* localStorage lleno o deshabilitado */ }
+    return detectado
 }
 
 export function useVisitante() {
