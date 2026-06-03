@@ -133,27 +133,55 @@ function GoogleAdsScript() {
     return null
 }
 
-// Heartbeat de presencia para Vista en Vivo del admin. Ping cada 30s mientras
-// la pestaña este visible. Pausa si el visitante cambia de tab — su presencia
-// expira a los 60s en el server y desaparece del "online ahora".
+// Heartbeat de presencia para Vista en tiempo real del admin. Avisa cada 30s
+// mientras la pestaña este visible. Cuando el visitante cierra/oculta la
+// pestaña, manda un beacon de desconexion para que el conteo baje al instante
+// (sin esperar al TTL de 35s en el server).
 function HeartbeatPresencia() {
     useEffect(() => {
-        let timer: ReturnType<typeof setInterval> | null = null
+        function obtenerCsrf() {
+            return (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? ''
+        }
 
         function tick() {
             if (document.visibilityState !== 'visible') return
-            const csrf = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? ''
             fetch('/api/heartbeat', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                method:    'POST',
+                headers:   { 'X-CSRF-TOKEN': obtenerCsrf(), 'Accept': 'application/json' },
                 keepalive: true,
             }).catch(() => {})
         }
 
-        tick()
-        timer = setInterval(tick, 30_000)
+        function desconectar() {
+            // sendBeacon es mas fiable que fetch durante beforeunload/visibilitychange:
+            // el navegador garantiza el envio incluso si la pagina ya esta cerrando.
+            const url  = '/api/heartbeat/disconnect'
+            const blob = new Blob([JSON.stringify({ _token: obtenerCsrf() })], { type: 'application/json' })
+            const enviado = navigator.sendBeacon(url, blob)
+            if (! enviado) {
+                fetch(url, {
+                    method:    'POST',
+                    headers:   { 'X-CSRF-TOKEN': obtenerCsrf(), 'Accept': 'application/json' },
+                    keepalive: true,
+                }).catch(() => {})
+            }
+        }
 
-        return () => { if (timer) clearInterval(timer) }
+        function onVisibility() {
+            if (document.visibilityState === 'hidden') desconectar()
+            else tick()
+        }
+
+        tick()
+        const timer = setInterval(tick, 30_000)
+        window.addEventListener('beforeunload', desconectar)
+        document.addEventListener('visibilitychange', onVisibility)
+
+        return () => {
+            clearInterval(timer)
+            window.removeEventListener('beforeunload', desconectar)
+            document.removeEventListener('visibilitychange', onVisibility)
+        }
     }, [])
 
     return null

@@ -26,7 +26,9 @@ class HeartbeatController extends Controller
     private const KEY_ONLINE     = 'vivo:online';
     private const KEY_CIUDADES   = 'vivo:ciudades';
     private const KEY_PUBLISH_LOCK = 'vivo:publish-lock';
-    private const TTL_PRESENCIA  = 60;    // 1min — si no hay heartbeat en este tiempo, sale del set
+    public  const TTL_PRESENCIA  = 35;    // 35s — heartbeat cada 30s + 5s de gracia. Si no llega
+                                          // en este tiempo se considera desconectado. Combinado
+                                          // con el disconnect() explicito da casi-instantaneo.
     private const TTL_CIUDADES   = 14400; // 4h — la lista de ciudades del dia se mantiene
     private const DEBOUNCE_PUBLISH = 5;   // seg — minimo entre publishes de presencia a Ably
 
@@ -36,7 +38,7 @@ class HeartbeatController extends Controller
         'curl', 'wget', 'python-requests', 'go-http-client',
     ];
 
-    public function __invoke(Request $request, GeoService $geo): Response
+    public function tick(Request $request, GeoService $geo): Response
     {
         $ua = strtolower($request->userAgent() ?? '');
         if ($ua === '' || $this->esBot($ua)) {
@@ -76,6 +78,26 @@ class HeartbeatController extends Controller
             $this->publicarPresenciaSiToca();
         } catch (\Throwable $e) {
             Log::debug('Heartbeat — Redis no disponible', ['msg' => $e->getMessage()]);
+        }
+
+        return response()->noContent();
+    }
+
+    /**
+     * Llamado por sendBeacon cuando el visitante cierra la pestaña o pasa
+     * a background. Elimina la IP del set para que el conteo de "Personas
+     * conectadas" baje al instante, sin esperar al TTL.
+     */
+    public function disconnect(Request $request): Response
+    {
+        $ip = $request->ip();
+        if (! $ip) return response()->noContent();
+
+        try {
+            Redis::zrem(self::KEY_ONLINE, $ip);
+            $this->publicarPresenciaSiToca();
+        } catch (\Throwable $e) {
+            Log::debug('Heartbeat disconnect — Redis no disponible', ['msg' => $e->getMessage()]);
         }
 
         return response()->noContent();

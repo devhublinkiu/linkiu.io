@@ -95,9 +95,12 @@ Route::get('/orden/{order:acceso_token}',         [OrderController::class, 'segu
 
 Route::post('/track/product-view', [ProductViewsController::class, 'track'])->name('track.product-view');
 
-Route::post('/api/heartbeat', \App\Http\Controllers\Public\HeartbeatController::class)
+Route::post('/api/heartbeat', [\App\Http\Controllers\Public\HeartbeatController::class, 'tick'])
     ->middleware('throttle:5,1')
     ->name('heartbeat');
+Route::post('/api/heartbeat/disconnect', [\App\Http\Controllers\Public\HeartbeatController::class, 'disconnect'])
+    ->middleware('throttle:10,1')
+    ->name('heartbeat.disconnect');
 
 Route::get('/api/fomo',  [FomoController::class, 'index']  )->name('fomo.index');
 Route::post('/api/fomo-view', [FomoController::class, 'logView'])->name('fomo.log-view');

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { getAblyClient } from '@/ably'
-import { Users, ShoppingBag, DollarSign, TrendingUp } from 'lucide-react'
+import { Users, ShoppingBag, DollarSign, TrendingUp, Activity } from 'lucide-react'
 import { EstadisticaCard } from './parts/EstadisticaCard'
 import { CiudadesActivas } from './parts/CiudadesActivas'
 import { StreamVentas, type VentaItem } from './parts/StreamVentas'
@@ -72,45 +72,59 @@ function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion =
 
     return (
         <>
-            <Head title="Vista en vivo" />
+            <Head title="Vista en tiempo real" />
 
             <div className="space-y-4">
-                {/* Indicador "en vivo" */}
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                    </span>
-                    En vivo — Ably push (ventas + presencia ≤5s)
+                {/* Header canonical del modulo (AGENTS.md) */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                            <Activity className="w-4 h-4 text-slate-600" />
+                        </span>
+                        <div>
+                            <h1 className="text-lg font-bold text-slate-900">Vista en tiempo real</h1>
+                            <p className="text-xs text-slate-500">
+                                {onlineLive} {onlineLive === 1 ? 'persona' : 'personas'} viendo · {ventas_hoy} {ventas_hoy === 1 ? 'venta' : 'ventas'} hoy
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
+                        Datos en tiempo real
+                    </div>
                 </div>
 
                 {/* 4 cards principales */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <EstadisticaCard
                         icono={<Users className="size-5" />}
-                        label="Online ahora"
+                        label="Personas conectadas"
                         valor={String(onlineLive)}
-                        sublabel="visitantes activos"
+                        sublabel="viendo la tienda ahora"
                         color="blue"
                     />
                     <EstadisticaCard
                         icono={<ShoppingBag className="size-5" />}
                         label="Ventas hoy"
                         valor={String(ventas_hoy)}
-                        sublabel={ventas_hoy === 1 ? 'orden' : 'ordenes'}
+                        sublabel={ventas_hoy === 1 ? 'pedido confirmado' : 'pedidos confirmados'}
                         color="emerald"
                     />
                     <EstadisticaCard
                         icono={<DollarSign className="size-5" />}
-                        label="Revenue hoy"
+                        label="Ingresos hoy"
                         valor={formatRevenue(revenue_hoy)}
-                        color="violet"
+                        color="emerald"
                     />
                     <EstadisticaCard
                         icono={<TrendingUp className="size-5" />}
                         label="Conversión"
                         valor={`${conversion}%`}
-                        sublabel="ventas / vistas hoy"
+                        sublabel="del total de visitas"
                         color="amber"
                     />
                 </div>
@@ -132,6 +146,6 @@ function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion =
     )
 }
 
-VistaEnVivo.layout = (page: ReactNode) => <AdminLayout titulo="Vista en vivo">{page}</AdminLayout>
+VistaEnVivo.layout = (page: ReactNode) => <AdminLayout titulo="Vista en tiempo real">{page}</AdminLayout>
 
 export default VistaEnVivo

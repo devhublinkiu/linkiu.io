@@ -31,7 +31,6 @@ type NavEntry = NavDirectItem | NavExpandableItem
 
 const NAV: NavEntry[] = [
     { type: 'item',  label: 'Dashboard',        icon: LayoutDashboard, routeName: 'admin.dashboard' },
-    { type: 'item',  label: 'Vista en vivo',    icon: Activity,        routeName: 'admin.vista-en-vivo', permiso: 'vista_en_vivo.ver' },
     { type: 'item',  label: 'Productos',         icon: Package,         routeName: 'admin.productos.index', permiso: 'productos.ver' },
     { type: 'item',  label: 'Categorías',        icon: Tag,             routeName: 'admin.categorias.index', permiso: 'categorias.ver' },
     { type: 'item',  label: 'Órdenes',           icon: ShoppingCart,    routeName: 'admin.ordenes.index', permiso: 'ordenes.ver' },
@@ -68,9 +67,10 @@ const NAV: NavEntry[] = [
         label: 'Analytics',
         icon: BarChart2,
         children: [
-            { label: 'Firemaps',    icon: Flame,        routeName: null },
-            { label: 'Scrollink',   icon: MousePointer, routeName: null },
-            { label: 'RecordLink',  icon: Video,        routeName: null },
+            { label: 'Vista en vivo',        icon: Activity,     routeName: 'admin.vista-en-vivo', permiso: 'vista_en_vivo.ver' },
+            { label: 'Firemaps',             icon: Flame,        routeName: null },
+            { label: 'Scrollink',            icon: MousePointer, routeName: null },
+            { label: 'RecordLink',           icon: Video,        routeName: null },
         ],
     },
     {

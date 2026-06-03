@@ -42,8 +42,8 @@ class VistaEnVivoData
     public function online(): int
     {
         try {
-            $hace60s = time() - 60;
-            return (int) Redis::zcount(self::KEY_ONLINE, $hace60s, '+inf');
+            $umbral = time() - \App\Http\Controllers\Public\HeartbeatController::TTL_PRESENCIA;
+            return (int) Redis::zcount(self::KEY_ONLINE, $umbral, '+inf');
         } catch (\Throwable $e) {
             Log::debug('VistaEnVivo::online — Redis no disponible', ['msg' => $e->getMessage()]);
             return 0;

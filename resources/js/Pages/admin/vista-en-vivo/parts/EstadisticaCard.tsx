@@ -5,19 +5,20 @@ interface Props {
     label:     string
     valor:     string
     sublabel?: string
-    color:     'blue' | 'emerald' | 'violet' | 'amber'
+    color:     'blue' | 'emerald' | 'slate' | 'amber'
 }
 
 /**
- * Card grande para las 4 métricas principales arriba (online, ventas,
- * revenue, conversión). Acento de color por tipo.
+ * Card para las 4 metricas principales del modulo Vista en tiempo real.
+ * Acento de color por tipo siguiendo DESIGN.md (paleta permitida: slate,
+ * gray, red, emerald, blue, amber, orange).
  */
 export function EstadisticaCard({ icono, label, valor, sublabel, color }: Props) {
     const colorMap = {
-        blue:    { bg: 'bg-blue-50',    text: 'text-blue-600',    label: 'text-blue-700' },
-        emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', label: 'text-emerald-700' },
-        violet:  { bg: 'bg-violet-50',  text: 'text-violet-600',  label: 'text-violet-700' },
-        amber:   { bg: 'bg-amber-50',   text: 'text-amber-600',   label: 'text-amber-700' },
+        blue:    { bg: 'bg-blue-50',    text: 'text-blue-500',    label: 'text-blue-700' },
+        emerald: { bg: 'bg-emerald-50', text: 'text-emerald-500', label: 'text-emerald-700' },
+        slate:   { bg: 'bg-slate-100',  text: 'text-slate-600',   label: 'text-slate-700' },
+        amber:   { bg: 'bg-amber-50',   text: 'text-amber-500',   label: 'text-amber-700' },
     }
     const c = colorMap[color]
 
@@ -29,7 +30,7 @@ export function EstadisticaCard({ icono, label, valor, sublabel, color }: Props)
                     {icono}
                 </span>
             </div>
-            <p className="text-3xl font-bold text-slate-900">{valor}</p>
+            <p className="text-2xl font-bold text-slate-900">{valor}</p>
             {sublabel && <p className={`text-xs ${c.label} mt-1 font-medium`}>{sublabel}</p>}
         </div>
     )
