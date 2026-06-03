@@ -5,6 +5,7 @@ namespace App\Support\VistaEnVivo;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductView;
+use App\Support\VistaEnVivo\Visitante;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -23,14 +24,45 @@ class VistaEnVivoData
     public function todo(): array
     {
         return [
-            'online'       => $this->online(),
-            'ventas_hoy'   => $this->ventasHoy(),
-            'revenue_hoy'  => $this->revenueHoy(),
-            'conversion'   => $this->conversionHoy(),
-            'top_productos' => $this->top5Productos(),
-            'ciudades'     => $this->ciudadesActivas(),
+            'online'         => $this->online(),
+            'ventas_hoy'     => $this->ventasHoy(),
+            'revenue_hoy'    => $this->revenueHoy(),
+            'conversion'     => $this->conversionHoy(),
+            'top_productos'  => $this->top5Productos(),
+            'ciudades'       => $this->ciudadesActivas(),
             'ultimas_ventas' => $this->ultimasVentas(),
+            'visitantes'     => $this->visitantesActivos(),
         ];
+    }
+
+    /**
+     * Lista de visitantes activos con su metadata (origen, dispositivo,
+     * pagina, seccion, etc.). Devuelve [] si Redis no esta disponible.
+     */
+    public function visitantesActivos(): array
+    {
+        try {
+            $umbral  = time() - \App\Http\Controllers\Public\HeartbeatController::TTL_PRESENCIA;
+            $activos = Redis::zrangebyscore(self::KEY_ONLINE, $umbral, '+inf') ?: [];
+            if (empty($activos)) return [];
+
+            $jsons = Redis::hmget(\App\Http\Controllers\Public\HeartbeatController::KEY_VISITANTES, $activos) ?: [];
+
+            $items = [];
+            foreach ($jsons as $json) {
+                if (! $json) continue;
+                $v = Visitante::fromJson((string) $json);
+                if ($v) $items[] = $v->toArray();
+            }
+
+            // Ordenamos por mas reciente conexion para que los nuevos aparezcan arriba.
+            usort($items, fn ($a, $b) => $b['iniciado_en'] <=> $a['iniciado_en']);
+
+            return $items;
+        } catch (\Throwable $e) {
+            Log::debug('VistaEnVivo::visitantesActivos — Redis no disponible', ['msg' => $e->getMessage()]);
+            return [];
+        }
     }
 
     /**
@@ -131,7 +163,7 @@ class VistaEnVivoData
 
             $counts = [];
             foreach ($ciudades as $ciudad) {
-                if (! $ciudad) continue;
+                if (! $ciudad || ! \App\Http\Controllers\Public\HeartbeatController::esCiudadValida($ciudad)) continue;
                 $counts[$ciudad] = ($counts[$ciudad] ?? 0) + 1;
             }
 

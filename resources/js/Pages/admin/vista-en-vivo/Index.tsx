@@ -7,6 +7,7 @@ import { EstadisticaCard } from './parts/EstadisticaCard'
 import { CiudadesActivas } from './parts/CiudadesActivas'
 import { StreamVentas, type VentaItem } from './parts/StreamVentas'
 import { TopProductos } from './parts/TopProductos'
+import { VisitantesActivos, type VisitanteItem } from './parts/VisitantesActivos'
 
 interface Props {
     online:         number
@@ -22,6 +23,7 @@ interface Props {
     }[]
     ciudades:       { ciudad: string; count: number }[]
     ultimas_ventas: VentaItem[]
+    visitantes:     VisitanteItem[]
 }
 
 function formatRevenue(n: number): string {
@@ -30,20 +32,22 @@ function formatRevenue(n: number): string {
     return `$${n}`
 }
 
-function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion = 0, top_productos = [], ciudades = [], ultimas_ventas = [] }: Props) {
+function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion = 0, top_productos = [], ciudades = [], ultimas_ventas = [], visitantes = [] }: Props) {
 
-    // online y ciudades llegan por push de Ably (server-side debounce 5s).
+    // online, ciudades y visitantes llegan por push de Ably (debounce 5s).
     // Mantenemos copia local para actualizarla sin tocar Inertia props.
-    const [onlineLive, setOnlineLive]     = useState(online)
-    const [ciudadesLive, setCiudadesLive] = useState(ciudades)
+    const [onlineLive, setOnlineLive]         = useState(online)
+    const [ciudadesLive, setCiudadesLive]     = useState(ciudades)
+    const [visitantesLive, setVisitantesLive] = useState(visitantes)
 
     // IDs de ventas marcadas como "nuevas" — se destacan visualmente con fondo
     // verde por 5s y despues vuelven al estado normal.
     const [idsNuevas, setIdsNuevas] = useState<Set<number>>(new Set())
 
     // Sync cuando Inertia recarga (ej. al volver de otra ruta).
-    useEffect(() => { setOnlineLive(online) },     [online])
-    useEffect(() => { setCiudadesLive(ciudades) }, [ciudades])
+    useEffect(() => { setOnlineLive(online) },          [online])
+    useEffect(() => { setCiudadesLive(ciudades) },      [ciudades])
+    useEffect(() => { setVisitantesLive(visitantes) },  [visitantes])
 
     // Push real-time via Ably — reutiliza el canal `admin-orders` ya activo
     // para notificaciones del navbar:
@@ -75,9 +79,10 @@ function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion =
             })
         }
 
-        const onPresencia = (msg: { data: { online: number; ciudades: { ciudad: string; count: number }[] } }) => {
+        const onPresencia = (msg: { data: { online: number; ciudades: { ciudad: string; count: number }[]; visitantes?: VisitanteItem[] } }) => {
             setOnlineLive(msg.data.online)
             setCiudadesLive(msg.data.ciudades ?? [])
+            setVisitantesLive(msg.data.visitantes ?? [])
         }
 
         canal.subscribe('orden.nueva',          onOrden)
@@ -154,6 +159,9 @@ function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion =
                     <StreamVentas ventas={ultimas_ventas} idsNuevas={idsNuevas} />
                     <TopProductos productos={top_productos} />
                 </div>
+
+                {/* Tabla de visitantes activos con su recorrido */}
+                <VisitantesActivos visitantes={visitantesLive} />
             </div>
         </>
     )
