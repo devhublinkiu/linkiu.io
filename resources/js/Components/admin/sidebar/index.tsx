@@ -70,6 +70,7 @@ const NAV: NavEntry[] = [
             { label: 'Vista en vivo',        icon: Activity,     routeName: 'admin.vista-en-vivo', permiso: 'vista_en_vivo.ver' },
             { label: 'Firemaps',             icon: Flame,        routeName: null },
             { label: 'Scrollink',            icon: MousePointer, routeName: null },
+            { label: 'Funelinks',            icon: BarChart2,    routeName: 'admin.analytics.funelinks', permiso: 'funelinks.ver' },
             { label: 'RecordLink',           icon: Video,        routeName: null },
         ],
     },

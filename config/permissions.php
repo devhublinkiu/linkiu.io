@@ -35,6 +35,13 @@ return [
         ],
     ],
 
+    'funelinks' => [
+        'label'   => 'Funelinks',
+        'actions' => [
+            'ver' => 'Ver',
+        ],
+    ],
+
     'usuarios' => [
         'label'   => 'Usuarios',
         'actions' => [

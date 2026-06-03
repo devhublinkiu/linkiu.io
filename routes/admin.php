@@ -78,6 +78,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
         ->name('vista-en-vivo')
         ->middleware('can:vista_en_vivo.ver');
 
+    Route::get('/analytics/funelinks', [\App\Http\Controllers\Admin\FunelinksController::class, 'index'])
+        ->name('analytics.funelinks')
+        ->middleware('can:funelinks.ver');
+
     // Perfil
     Route::get('/perfil',          [PerfilController::class, 'show']           )->name('perfil')          ->middleware('can:perfil.ver');
     Route::post('/perfil/personal',[PerfilController::class, 'updatePersonal'] )->name('perfil.personal') ->middleware(['can:perfil.editar', 'throttle:perfil-update']);
