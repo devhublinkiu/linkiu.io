@@ -44,6 +44,18 @@ class HeartbeatController extends Controller
 
     public function tick(Request $request, GeoService $geo): Response
     {
+        // Validacion permisiva: cualquier input invalido cae al default sin
+        // bloquear el heartbeat. Este endpoint debe ser ultra-tolerante
+        // — el frontend no espera respuesta y un 422 ensucia la consola
+        // del visitante sin ningun beneficio.
+        $request->merge([
+            'pagina'      => substr((string) $request->input('pagina', '/'), 0, 200),
+            'seccion'     => $request->input('seccion') ? substr((string) $request->input('seccion'), 0, 60) : null,
+            'dispositivo' => in_array($request->input('dispositivo'), ['movil', 'desktop', 'tablet'], true) ? $request->input('dispositivo') : 'desktop',
+            'origen'      => in_array($request->input('origen'), ['facebook', 'instagram', 'google', 'direct', 'otros'], true) ? $request->input('origen') : 'otros',
+            'iniciado_en' => (int) $request->input('iniciado_en', time()),
+        ]);
+
         $ua = strtolower($request->userAgent() ?? '');
         if ($ua === '' || $this->esBot($ua)) {
             return response()->noContent();
