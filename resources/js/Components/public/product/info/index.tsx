@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { router } from '@inertiajs/react'
+import { Flame } from 'lucide-react'
 import type { VariableGrupo, VariableItem } from '@/Pages/public/Product'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -28,6 +29,33 @@ type Props = {
     botonCompraActivo?:   boolean
 }
 
+// Contador ficticio de "personas compraron hoy" — empieza en 8 y crece con
+// incrementos pequeños (+1 / +2 / +3) cada 10-15s. Hook de incentivo visual,
+// no metrica real. El badge "+N" se mantiene 2.5s para que el visitante lo vea.
+function usePersonasHoy() {
+    const [count, setCount] = useState(8)
+    const [bump, setBump]   = useState(false)
+    const [ultimo, setUlt]  = useState(0)
+
+    useEffect(() => {
+        let timeout: ReturnType<typeof setTimeout>
+        function programarSiguiente() {
+            timeout = setTimeout(() => {
+                const inc = Math.floor(Math.random() * 3) + 1  // 1-3
+                setUlt(inc)
+                setCount(c => c + inc)
+                setBump(true)
+                setTimeout(() => setBump(false), 2500)
+                programarSiguiente()
+            }, Math.random() * 5000 + 10000)  // 10-15s
+        }
+        programarSiguiente()
+        return () => clearTimeout(timeout)
+    }, [])
+
+    return { count, bump, ultimo }
+}
+
 function formatPrecio(n: number) {
     return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n)
 }
@@ -37,6 +65,7 @@ function pluralizar(palabra: string): string {
 }
 
 export default function Info({ ctaRef, selectorRef, onPrecio, productoId, nombre, descripcion = null, precioBase, imagenPrincipal, grupos, cantidades, unidad, urgenciaStockConfig = null, botonCompraConfig = null, botonCompraActivo = false }: Props) {
+    const personas = usePersonasHoy()
     const { items, addItem, replaceItem } = useCart()
 
     const tieneBundles = cantidades.length > 0
@@ -190,6 +219,23 @@ export default function Info({ ctaRef, selectorRef, onPrecio, productoId, nombre
                 <h1 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
                     {nombre}
                 </h1>
+
+                {/* Hook de incentivo: contador ficticio que sube +1/+2/+3 cada 10-15s. */}
+                <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <Flame className="size-3.5 text-orange-500 shrink-0" />
+                    <span>
+                        <span className={cn('font-semibold text-slate-900 tabular-nums', personas.bump && 'animate-cart-bump inline-block')}>
+                            {personas.count} personas
+                        </span>
+                        {' '}compraron este producto hoy
+                    </span>
+                    {personas.bump && personas.ultimo > 0 && (
+                        <span className="text-[11px] font-semibold text-orange-600 animate-fade-slide-up leading-none">
+                            +{personas.ultimo}
+                        </span>
+                    )}
+                </div>
+
                 {descripcion && (
                     <div
                         className="prose prose-sm max-w-none text-slate-600 prose-headings:text-slate-900 prose-headings:font-bold prose-p:leading-relaxed prose-ul:my-2 prose-li:my-0"

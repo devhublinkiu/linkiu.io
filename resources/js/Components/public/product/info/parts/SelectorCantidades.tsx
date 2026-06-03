@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface CantidadPublica {
@@ -24,28 +23,11 @@ interface Props {
     onSeleccionar:   (opcion: OpcionCantidad) => void
 }
 
-const PERSONAS_PROMO = [8, 12, 7, 15, 11, 9, 13, 6]
-
-function usePersonasComprando() {
-    const [idx, setIdx] = useState(0)
-    const [key, setKey] = useState(0)
-    useEffect(() => {
-        const t = setInterval(() => {
-            setIdx(i => (i + 1) % PERSONAS_PROMO.length)
-            setKey(k => k + 1)
-        }, 3500)
-        return () => clearInterval(t)
-    }, [])
-    return { count: PERSONAS_PROMO[idx], key }
-}
-
 function formatPrecio(n: number) {
     return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n)
 }
 
 export default function SelectorCantidades({ opciones, cantidadActiva, imagenPrincipal, onSeleccionar }: Props) {
-    const personas = usePersonasComprando()
-
     if (opciones.length === 0) return null
 
     return (
@@ -125,11 +107,6 @@ export default function SelectorCantidades({ opciones, cantidadActiva, imagenPri
                                         <p className={cn('text-xs', activo && (esShimmer || opcion.destacado) ? 'text-emerald-100' : 'text-slate-400')}>
                                             {formatPrecio(opcion.precioPorFrasco)} / frasco
                                         </p>
-                                        {esShimmer && (
-                                            <p key={personas.key} className={cn('text-[10px] font-medium mt-0.5 animate-fade-slide-up', activo ? 'text-emerald-100' : 'text-emerald-600')}>
-                                                🔥 {personas.count} personas compraron esta promo hoy
-                                            </p>
-                                        )}
                                     </div>
 
                                     {/* Precio */}

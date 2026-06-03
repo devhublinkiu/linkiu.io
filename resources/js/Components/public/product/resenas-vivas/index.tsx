@@ -7,17 +7,23 @@ interface Props {
     resenasConfig: Record<string, unknown> | null
 }
 
+// Contador escalable de reseñas: incrementos variativos (+1 a +4) cada 10-18s
+// para simular flujo real (50, 54, 62, 66, 70...). El badge "+N nueva(s)" se
+// mantiene 2.5s para que el visitante alcance a leerlo.
 function useResenasVivas(inicial: number) {
-    const [count, setCount] = useState(inicial)
-    const [bump,  setBump]  = useState(false)
+    const [count, setCount]   = useState(inicial)
+    const [bump, setBump]     = useState(false)
+    const [ultimo, setUltimo] = useState(1)
 
     useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>
         function programarSiguiente() {
             timeout = setTimeout(() => {
-                setCount(c => c + 1)
+                const inc = Math.floor(Math.random() * 4) + 1  // 1-4
+                setUltimo(inc)
+                setCount(c => c + inc)
                 setBump(true)
-                setTimeout(() => setBump(false), 400)
+                setTimeout(() => setBump(false), 2500)
                 programarSiguiente()
             }, Math.random() * 8000 + 10000)
         }
@@ -25,7 +31,7 @@ function useResenasVivas(inicial: number) {
         return () => clearTimeout(timeout)
     }, [])
 
-    return { count, bump }
+    return { count, bump, ultimo }
 }
 
 export default function ResenasVivas({ resenasConfig }: Props) {
@@ -35,7 +41,7 @@ export default function ResenasVivas({ resenasConfig }: Props) {
         ? Math.round((resenasArr.reduce((s, r) => s + r.estrellas, 0) / resenasArr.length) * 10) / 10
         : 4.7
 
-    const { count, bump } = useResenasVivas(inicial)
+    const { count, bump, ultimo } = useResenasVivas(inicial)
 
     return (
         <div className="flex items-center gap-2 flex-wrap">
@@ -54,7 +60,7 @@ export default function ResenasVivas({ resenasConfig }: Props) {
             </span>
             {bump && (
                 <span className="text-[11px] font-semibold text-emerald-600 animate-fade-slide-up leading-none">
-                    +1 nueva
+                    +{ultimo} {ultimo === 1 ? 'nueva' : 'nuevas'}
                 </span>
             )}
         </div>
