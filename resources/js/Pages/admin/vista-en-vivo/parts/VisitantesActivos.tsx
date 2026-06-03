@@ -48,6 +48,38 @@ const ORIGEN_LABEL: Record<VisitanteItem['origen'], string> = {
     otros:     'Otros',
 }
 
+/**
+ * Traduce un path a nombre legible para el admin (es-CO).
+ * Ej: '/' -> 'Inicio', '/productos/melatonina' -> 'Producto: melatonina'.
+ */
+function nombrarPagina(path: string): string {
+    if (! path || path === '/')                            return 'Inicio'
+    if (path === '/productos')                             return 'Catálogo'
+    if (path === '/checkout')                              return 'Checkout'
+    if (path === '/blog')                                  return 'Blog'
+    if (path === '/quienes-somos')                         return 'Quiénes somos'
+    if (path === '/contacto')                              return 'Contacto'
+    if (path.startsWith('/productos/categoria/')) {
+        const slug = path.replace('/productos/categoria/', '').split('/')[0] || ''
+        return `Categoría: ${formatSlug(slug)}`
+    }
+    if (path.startsWith('/productos/')) {
+        const slug = path.replace('/productos/', '').split('/')[0] || ''
+        return `Producto: ${formatSlug(slug)}`
+    }
+    if (path.startsWith('/blog/')) {
+        const slug = path.replace('/blog/', '').split('/')[0] || ''
+        return `Blog: ${formatSlug(slug)}`
+    }
+    if (path.match(/^\/orden\/[^/]+\/gracias/))            return 'Gracias por la compra'
+    if (path.match(/^\/orden\/[^/]+/))                     return 'Seguimiento de orden'
+    return path
+}
+
+function formatSlug(slug: string): string {
+    return slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+}
+
 // Color de Badge segun origen (paleta DESIGN.md).
 const ORIGEN_BADGE: Record<VisitanteItem['origen'], string> = {
     facebook:  'bg-blue-50 text-blue-700',
@@ -146,8 +178,8 @@ export function VisitantesActivos({ visitantes }: Props) {
 
                             <TableCell><IconoDispositivo tipo={v.dispositivo} /></TableCell>
 
-                            <TableCell className="font-mono text-xs text-slate-600 max-w-[260px] truncate">
-                                {v.pagina}
+                            <TableCell className="text-xs text-slate-700 max-w-[260px] truncate">
+                                {nombrarPagina(v.pagina)}
                             </TableCell>
 
                             <TableCell className="text-xs text-slate-700">

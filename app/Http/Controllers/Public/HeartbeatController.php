@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Actions\VistaEnVivo\PersistirSesion;
 use App\Http\Controllers\Controller;
 use App\Services\GeoService;
 use App\Support\VistaEnVivo\Visitante;
@@ -106,24 +107,39 @@ class HeartbeatController extends Controller
     }
 
     /**
-     * Guarda/actualiza el visitante en el hash vivo:visitantes. Lee del body
-     * del request los campos del recorrido (pagina, seccion, dispositivo,
-     * origen, iniciado_en). Si no llegan, usa defaults razonables.
+     * Guarda/actualiza el visitante en el hash vivo:visitantes. Si ya existe,
+     * preserva su pagina_entrada y recorrido acumulado — solo aplica las
+     * actualizaciones (pagina_actual, seccion, ciudad si recien resolvio).
      */
     private function guardarVisitante(Request $request, string $cliente, ?string $ciudad): void
     {
-        $visitante = Visitante::desdeRequest(
-            sessionId:   $cliente,
-            pagina:      (string) $request->input('pagina',      '/'),
-            seccion:     $request->input('seccion'),
-            dispositivo: (string) $request->input('dispositivo', 'desktop'),
-            origen:      (string) $request->input('origen',      'otros'),
-            iniciadoEn:  (int)    $request->input('iniciado_en', time()),
-            ciudad:      $ciudad,
-        );
+        $pagina  = (string) $request->input('pagina', '/');
+        $seccion = $request->input('seccion');
 
-        Redis::hset(self::KEY_VISITANTES, $cliente, $visitante->toJson());
-        Redis::expire(self::KEY_VISITANTES, self::TTL_PRESENCIA * 4);
+        $existente = Redis::hget(self::KEY_VISITANTES, $cliente);
+
+        if ($existente) {
+            $v = Visitante::fromJson((string) $existente);
+            if ($v) {
+                $v->actualizar(pagina: $pagina, seccion: $seccion, ciudad: $ciudad, pais: null);
+            }
+        } else {
+            $v = Visitante::nuevo(
+                sessionId:   $cliente,
+                pagina:      $pagina,
+                seccion:     $seccion,
+                dispositivo: (string) $request->input('dispositivo', 'desktop'),
+                origen:      (string) $request->input('origen',      'otros'),
+                iniciadoEn:  (int)    $request->input('iniciado_en', time()),
+                ciudad:      $ciudad,
+                pais:        null,
+            );
+        }
+
+        if ($v) {
+            Redis::hset(self::KEY_VISITANTES, $cliente, $v->toJson());
+            Redis::expire(self::KEY_VISITANTES, self::TTL_PRESENCIA * 4);
+        }
     }
 
     /**
@@ -131,12 +147,20 @@ class HeartbeatController extends Controller
      * a background. Elimina la IP del set para que el conteo de "Personas
      * conectadas" baje al instante, sin esperar al TTL.
      */
-    public function disconnect(Request $request): Response
+    public function disconnect(Request $request, PersistirSesion $persistir): Response
     {
         $cliente = $request->session()->getId() ?: $request->ip();
         if (! $cliente) return response()->noContent();
 
         try {
+            // Persistir la sesion antes de limpiar el hash — para que el
+            // recorrido completo quede en BD para analisis posterior.
+            $json = Redis::hget(self::KEY_VISITANTES, $cliente);
+            if ($json) {
+                $v = Visitante::fromJson((string) $json);
+                if ($v) $persistir->execute($v);
+            }
+
             Redis::zrem(self::KEY_ONLINE, $cliente);
             Redis::hdel(self::KEY_IP_CIUDAD, $cliente);
             Redis::hdel(self::KEY_VISITANTES, $cliente);

@@ -9,7 +9,6 @@ import ResenasVivas from '@/Components/public/product/resenas-vivas'
 import LazyOnVisible from '@/Components/public/LazyOnVisible'
 import { trackFb } from '@/lib/usePixel'
 import { usePage } from '@inertiajs/react'
-import { reportarSeccion } from '@/lib/useVisitante'
 
 // Hooks below-the-fold — se montan vía IntersectionObserver cuando el bloque
 // se acerca al viewport. Vite genera 1 chunk separado por componente.
@@ -141,32 +140,9 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
         })
     }, [producto_id])
 
-    // Detecta que hook esta visible para reportarlo a Vista en Vivo del admin.
-    // Cuando el visitante scrollea por las secciones del producto, el ultimo
-    // hook que entra al viewport se reporta como 'seccion actual'.
-    useEffect(() => {
-        const elementos = document.querySelectorAll<HTMLElement>('[data-hook]')
-        if (elementos.length === 0) return
-
-        const io = new IntersectionObserver(
-            entries => {
-                entries.forEach(e => {
-                    if (e.isIntersecting) {
-                        const key = (e.target as HTMLElement).dataset.hook
-                        if (key) reportarSeccion(key)
-                    }
-                })
-            },
-            { threshold: 0.3 }
-        )
-
-        elementos.forEach(el => io.observe(el))
-
-        return () => {
-            io.disconnect()
-            reportarSeccion(null)  // al salir del producto, limpiar seccion
-        }
-    }, [producto_id])
+    // Los bloques de hook se renderizan con data-hook="{key}". El hook
+    // useVisitante en WebLayout detecta automaticamente cual esta en el
+    // centro del viewport via scroll listener y lo reporta al backend.
 
     function hook(key: string) {
         return hooks.find(h => h.key === key)

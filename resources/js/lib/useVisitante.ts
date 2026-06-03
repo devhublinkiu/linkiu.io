@@ -139,24 +139,41 @@ export function useVisitante() {
             tick()
         })
 
-        // Custom event que cualquier componente puede disparar para reportar
-        // la seccion actual (ej. Product.tsx con IntersectionObserver).
+        // Custom event para reporte manual de seccion desde otras paginas.
         function onSeccion(e: Event) {
             const detail = (e as CustomEvent<{ seccion: string | null }>).detail
             const nueva = detail?.seccion ?? null
             if (nueva === seccionRef.current) return
             seccionRef.current = nueva
-            tick()  // heartbeat inmediato con la nueva seccion
+            tick()
         }
         window.addEventListener('vivo:seccion', onSeccion)
+
+        // Detector de seccion via scroll: cuando el visitante para de
+        // scrollear durante 500ms, calculamos cual seccion esta en el
+        // centro del viewport. Solo reportamos si cambio respecto a la
+        // ultima. Esto filtra scroll de paso (la persona no la miro).
+        let scrollTimer: ReturnType<typeof setTimeout> | null = null
+        function onScroll() {
+            if (scrollTimer) clearTimeout(scrollTimer)
+            scrollTimer = setTimeout(() => {
+                const nueva = seccionEnCentroViewport()
+                if (nueva === seccionRef.current) return
+                seccionRef.current = nueva
+                tick()
+            }, 500)
+        }
+        window.addEventListener('scroll', onScroll, { passive: true })
 
         window.addEventListener('beforeunload', desconectar)
         document.addEventListener('visibilitychange', onVisibility)
 
         return () => {
             clearInterval(timer)
+            if (scrollTimer) clearTimeout(scrollTimer)
             unsubNav()
             window.removeEventListener('vivo:seccion', onSeccion)
+            window.removeEventListener('scroll', onScroll)
             window.removeEventListener('beforeunload', desconectar)
             document.removeEventListener('visibilitychange', onVisibility)
         }
@@ -164,9 +181,41 @@ export function useVisitante() {
 }
 
 /**
- * Helper para disparar el evento desde componentes que detectan la seccion
- * (ej. Product.tsx con IntersectionObserver).
+ * Helper para disparar el evento desde componentes que detectan la seccion.
+ * Hoy ya no se usa desde Product.tsx — la deteccion vive en useVisitante
+ * mediante scroll listener (deteccion por centro de viewport). Se exporta
+ * por si otra pagina con secciones quiere reportar manualmente.
  */
 export function reportarSeccion(seccion: string | null) {
     window.dispatchEvent(new CustomEvent('vivo:seccion', { detail: { seccion } }))
+}
+
+/**
+ * Encuentra la seccion [data-hook] mas cercana al centro vertical del viewport.
+ * Devuelve null si no hay ninguna visible. Se llama desde scroll handler
+ * con throttle para reportar la seccion que el visitante esta mirando ahora.
+ */
+function seccionEnCentroViewport(): string | null {
+    const elementos = document.querySelectorAll<HTMLElement>('[data-hook]')
+    if (elementos.length === 0) return null
+
+    const centroViewport = window.innerHeight / 2
+    let mejor: string | null = null
+    let mejorDistancia      = Infinity
+
+    elementos.forEach(el => {
+        const rect = el.getBoundingClientRect()
+        // Filtra los que no estan visibles para nada
+        if (rect.bottom < 0 || rect.top > window.innerHeight) return
+
+        const centroElemento = rect.top + rect.height / 2
+        const distancia      = Math.abs(centroElemento - centroViewport)
+
+        if (distancia < mejorDistancia) {
+            mejorDistancia = distancia
+            mejor          = el.dataset.hook ?? null
+        }
+    })
+
+    return mejor
 }
