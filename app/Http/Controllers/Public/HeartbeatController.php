@@ -46,36 +46,36 @@ class HeartbeatController extends Controller
             return response()->noContent();
         }
 
-        $ip = $request->ip();
-        if (! $ip) return response()->noContent();
+        // Identificador del visitante: session ID de Laravel. Cada navegador
+        // tiene el suyo, todas las tabs lo comparten. Incognita = otra session.
+        // Fallback a IP solo si el visitante deshabilito cookies. La IP igual
+        // se usa para el geo lookup (para saber la ciudad).
+        $cliente = $request->session()->getId() ?: $request->ip();
+        $ip      = $request->ip();
+        if (! $cliente) return response()->noContent();
 
         // Si Redis no esta disponible (local sin redis instalado), respondemos
         // 204 igual — la presencia simplemente no se registra, pero las paginas
         // publicas no rompen.
         try {
-            // Presencia: agregamos IP al sorted set con score = timestamp.
-            // Asi podemos limpiar las viejas con ZREMRANGEBYSCORE periodicamente,
-            // y contar "online ahora" con ZCOUNT de los ultimos 60s.
+            // Presencia: agregamos al sorted set con score = timestamp.
             $ahora = time();
-            Redis::zadd(self::KEY_ONLINE, $ahora, $ip);
+            Redis::zadd(self::KEY_ONLINE, $ahora, $cliente);
             Redis::zremrangebyscore(self::KEY_ONLINE, '-inf', $ahora - self::TTL_PRESENCIA);
             Redis::expire(self::KEY_ONLINE, self::TTL_PRESENCIA * 2);
 
-            // Geo: lookup solo la primera vez por IP (cache 4h). Una vez
-            // resuelto, guardamos {ip => ciudad} en hash compartido. La
-            // ciudad de cada IP se mantiene mientras la IP siga conectada;
-            // cuando se desconecta (disconnect explicito o expira el TTL),
-            // se limpia el hash. Asi el contador de "Bogota: 12" baja
-            // cuando se va gente, no solo sube.
+            // Geo: lookup solo la primera vez por IP (cache 4h). Guardamos
+            // {cliente => ciudad} en hash compartido para que el conteo
+            // por ciudad refleje las personas REALMENTE conectadas ahora.
             $cacheGeoKey = self::KEY_GEO_CACHE . $ip;
-            $ciudadCache = Redis::get($cacheGeoKey);
-            if (! $ciudadCache) {
+            $ciudadCache = $ip ? Redis::get($cacheGeoKey) : null;
+            if ($ciudadCache === null) {
                 $datos = $geo->resolverPorIp($ip);
                 $ciudadCache = ($datos && $datos['ciudad']) ? $datos['ciudad'] : '';
-                Redis::setex($cacheGeoKey, self::TTL_GEO_CACHE, $ciudadCache);
+                if ($ip) Redis::setex($cacheGeoKey, self::TTL_GEO_CACHE, $ciudadCache);
             }
             if ($ciudadCache !== '') {
-                Redis::hset(self::KEY_IP_CIUDAD, $ip, $ciudadCache);
+                Redis::hset(self::KEY_IP_CIUDAD, $cliente, $ciudadCache);
                 Redis::expire(self::KEY_IP_CIUDAD, self::TTL_PRESENCIA * 4);
                 $this->limpiarIpsFantasma();
             }
@@ -99,12 +99,12 @@ class HeartbeatController extends Controller
      */
     public function disconnect(Request $request): Response
     {
-        $ip = $request->ip();
-        if (! $ip) return response()->noContent();
+        $cliente = $request->session()->getId() ?: $request->ip();
+        if (! $cliente) return response()->noContent();
 
         try {
-            Redis::zrem(self::KEY_ONLINE, $ip);
-            Redis::hdel(self::KEY_IP_CIUDAD, $ip);
+            Redis::zrem(self::KEY_ONLINE, $cliente);
+            Redis::hdel(self::KEY_IP_CIUDAD, $cliente);
             $this->publicarPresenciaSiToca();
         } catch (\Throwable $e) {
             Log::debug('Heartbeat disconnect — Redis no disponible', ['msg' => $e->getMessage()]);
@@ -114,17 +114,17 @@ class HeartbeatController extends Controller
     }
 
     /**
-     * Limpia del hash IPs que ya no estan en el sorted set de presencia
+     * Limpia del hash entradas que ya no estan en el sorted set de presencia
      * (porque expiraron sin disconnect explicito — ej. crash del navegador).
      * Best-effort: corre en cada heartbeat sin ser caro porque el hash es chico.
      */
     private function limpiarIpsFantasma(): void
     {
-        $ipsHash    = array_keys(Redis::hgetall(self::KEY_IP_CIUDAD) ?: []);
-        if (empty($ipsHash)) return;
+        $clientesHash = array_keys(Redis::hgetall(self::KEY_IP_CIUDAD) ?: []);
+        if (empty($clientesHash)) return;
 
-        $ipsActivas = Redis::zrangebyscore(self::KEY_ONLINE, time() - self::TTL_PRESENCIA, '+inf') ?: [];
-        $fantasmas  = array_diff($ipsHash, $ipsActivas);
+        $activos   = Redis::zrangebyscore(self::KEY_ONLINE, time() - self::TTL_PRESENCIA, '+inf') ?: [];
+        $fantasmas = array_diff($clientesHash, $activos);
 
         if (! empty($fantasmas)) {
             Redis::hdel(self::KEY_IP_CIUDAD, ...$fantasmas);
@@ -142,14 +142,15 @@ class HeartbeatController extends Controller
 
         $online = (int) Redis::zcount(self::KEY_ONLINE, time() - self::TTL_PRESENCIA, '+inf');
 
-        // Ciudades de IPs CONECTADAS AHORA — agrupamos las ciudades del hash
-        // tomando solo IPs que estan en el sorted set vivo (filtra fantasmas).
-        $ipsActivas = Redis::zrangebyscore(self::KEY_ONLINE, time() - self::TTL_PRESENCIA, '+inf') ?: [];
-        $ciudadesPorIp = $ipsActivas
-            ? (Redis::hmget(self::KEY_IP_CIUDAD, $ipsActivas) ?: [])
+        // Ciudades de clientes CONECTADOS AHORA — agrupamos las ciudades del
+        // hash tomando solo session IDs que estan en el sorted set (filtra
+        // fantasmas).
+        $activos      = Redis::zrangebyscore(self::KEY_ONLINE, time() - self::TTL_PRESENCIA, '+inf') ?: [];
+        $ciudadesRaw  = $activos
+            ? (Redis::hmget(self::KEY_IP_CIUDAD, $activos) ?: [])
             : [];
         $counts = [];
-        foreach ($ciudadesPorIp as $ciudad) {
+        foreach ($ciudadesRaw as $ciudad) {
             if (! $ciudad) continue;
             $counts[$ciudad] = ($counts[$ciudad] ?? 0) + 1;
         }

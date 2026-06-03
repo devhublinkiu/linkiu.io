@@ -32,15 +32,24 @@ class GeoService
                     return null;
                 }
 
-                $data = $res->json() ?: [];
-                $ciudad = $data['city'] ?? null;
-                $pais   = $data['country_code'] ?? null;
+                $data   = $res->json() ?: [];
+                $ciudad = trim((string) ($data['city'] ?? ''));
+                $pais   = trim((string) ($data['country_code'] ?? ''));
 
-                if (! $ciudad || ! $pais) return null;
+                // Sanitizar: ipapi.co a veces devuelve valores raros ("1", "",
+                // codigos cortos). Solo aceptamos strings que parecen un nombre
+                // de ciudad real (>=2 chars y no puramente numerico).
+                if (
+                    strlen($ciudad) < 2
+                    || ctype_digit($ciudad)
+                    || strlen($pais) !== 2
+                ) {
+                    return null;
+                }
 
                 return [
                     'ciudad' => substr($ciudad, 0, 80),
-                    'pais'   => substr($pais, 0, 2),
+                    'pais'   => strtoupper(substr($pais, 0, 2)),
                 ];
             } catch (\Throwable $e) {
                 Log::debug('GeoService falla', ['ip' => $ip, 'msg' => $e->getMessage()]);

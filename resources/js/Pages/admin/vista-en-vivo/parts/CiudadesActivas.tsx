@@ -21,7 +21,7 @@ export function CiudadesActivas({ ciudades }: Props) {
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200">
                 <MapPin className="size-4 text-slate-500" />
                 <h3 className="text-sm font-semibold text-slate-900">Ciudades activas</h3>
-                <span className="text-xs text-slate-500 ml-auto">últimas 4h</span>
+                <span className="text-xs text-slate-500 ml-auto">conectadas ahora</span>
             </div>
 
             {ciudades.length === 0 ? (
