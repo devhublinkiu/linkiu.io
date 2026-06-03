@@ -163,13 +163,6 @@ export function useVisitante() {
         tick()
         const timer = setInterval(tick, 30_000)
 
-        // Inertia 'success' se dispara cuando una navegacion SPA termina.
-        const unsubNav = router.on('success', () => {
-            // Al navegar a otra pagina, la seccion previa ya no aplica.
-            seccionRef.current = null
-            tick()
-        })
-
         // Custom event para reporte manual de seccion desde otras paginas.
         function onSeccion(e: Event) {
             const detail = (e as CustomEvent<{ seccion: string | null }>).detail
@@ -181,12 +174,15 @@ export function useVisitante() {
         window.addEventListener('vivo:seccion', onSeccion)
 
         // Detector de seccion via IntersectionObserver con permanencia.
-        // Una seccion se reporta solo cuando:
-        //   1. Ocupa al menos UMBRAL_VISIBLE (50%) del viewport, Y
-        //   2. Sigue cumpliendo eso durante TIEMPO_REPORTE (1.5s) continuos.
-        // Asi filtra scroll de paso (la persona no llego a leer) y cero
-        // consumo de CPU en scroll — el browser optimiza IO nativamente.
-        const UMBRAL_VISIBLE = 0.5
+        //
+        // Usamos rootMargin '-49% 0% -49% 0%' con threshold 0: el viewport
+        // "efectivo" para el observer es solo la franja central del 2%.
+        // Una seccion intersecta cuando cubre el centro vertical. Esto
+        // funciona independiente de la altura del elemento (un bloque de
+        // 1500px y uno de 300px se detectan igual cuando dominan el centro).
+        //
+        // TIEMPO_REPORTE: solo reporta si la seccion sigue dominando el
+        // centro durante 1.5s continuos. Filtra scroll de paso.
         const TIEMPO_REPORTE = 1500
         const timersIO = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -195,7 +191,7 @@ export function useVisitante() {
                 const key = (entry.target as HTMLElement).dataset.hook
                 if (! key) return
 
-                if (entry.isIntersecting && entry.intersectionRatio >= UMBRAL_VISIBLE) {
+                if (entry.isIntersecting) {
                     if (! timersIO.has(key)) {
                         const t = setTimeout(() => {
                             if (key !== seccionRef.current) {
@@ -211,9 +207,36 @@ export function useVisitante() {
                     if (t) { clearTimeout(t); timersIO.delete(key) }
                 }
             })
-        }, { threshold: [UMBRAL_VISIBLE] })
+        }, {
+            rootMargin: '-49% 0% -49% 0%',
+            threshold: 0,
+        })
 
-        document.querySelectorAll<HTMLElement>('[data-hook]').forEach(el => io.observe(el))
+        // Observamos los [data-hook] presentes ahora. Como WebLayout monta
+        // antes que el contenido de la pagina hija (Product, etc.), esperamos
+        // dos frames para que el SPA termine de renderizar.
+        function observarSecciones() {
+            document.querySelectorAll<HTMLElement>('[data-hook]').forEach(el => io.observe(el))
+        }
+        function setupObservacion() {
+            requestAnimationFrame(() => requestAnimationFrame(observarSecciones))
+        }
+
+        function resetSeccionTracking() {
+            timersIO.forEach(t => clearTimeout(t))
+            timersIO.clear()
+            seccionRef.current = null
+        }
+
+        setupObservacion()
+
+        // Inertia 'success' se dispara cuando una navegacion SPA termina.
+        // Re-observar los nuevos [data-hook] y limpiar timers viejos.
+        const unsubNav = router.on('success', () => {
+            resetSeccionTracking()
+            setupObservacion()
+            tick()
+        })
 
         window.addEventListener('beforeunload', desconectar)
         document.addEventListener('visibilitychange', onVisibility)
