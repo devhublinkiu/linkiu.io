@@ -26,6 +26,10 @@ class FunelinksData
 
     /** Mapa de keys de hook a nombres es-CO (espejo del frontend). */
     private const NOMBRE_SECCION = [
+        // Fijas arriba del fold del producto
+        'galeria'                    => 'Galería',
+        'detalle_compra'             => 'Detalle y compra',
+        // Hooks ordenables abajo del fold
         'gancho_promesa'             => 'Gancho de promesa',
         'slider_imagenes'            => 'Slider de imágenes',
         'que_incluye'                => 'Qué incluye',
@@ -41,8 +45,20 @@ class FunelinksData
         'sellos_confianza'           => 'Sellos de confianza',
     ];
 
-    /** Sigue el orden default de Product.tsx para el funnel. */
+    /** Secciones fijas que siempre van al inicio del funnel. */
+    private const FIJAS_INICIO = ['galeria', 'detalle_compra'];
+
+    /** Hooks ordenables por default (el admin puede customizar en cada producto). */
+    private const HOOKS_DEFAULT = [
+        'gancho_promesa', 'slider_imagenes', 'que_incluye', 'tabla_comparativa',
+        'comparacion_visual', 'ficha_tecnica', 'caracteristicas_destacadas',
+        'como_funciona', 'resenas_clientes', 'galeria_resultados',
+        'garantia', 'preguntas_frecuentes', 'sellos_confianza',
+    ];
+
+    /** Orden completo default = fijas + hooks default. */
     private const ORDEN_DEFAULT = [
+        'galeria', 'detalle_compra',
         'gancho_promesa', 'slider_imagenes', 'que_incluye', 'tabla_comparativa',
         'comparacion_visual', 'ficha_tecnica', 'caracteristicas_destacadas',
         'como_funciona', 'resenas_clientes', 'galeria_resultados',
@@ -202,23 +218,25 @@ class FunelinksData
     // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Devuelve el orden de hooks que aplica al funnel. Si hay producto
-     * seleccionado, lee su layout_orden (lo que el admin configuro). Si no
-     * tiene layout o no hay producto, devuelve ORDEN_DEFAULT.
+     * Devuelve el orden completo del funnel: fijas arriba del fold +
+     * hooks ordenables. Si el producto tiene layout_orden custom, lo
+     * usamos para los hooks. Sino, HOOKS_DEFAULT.
      *
-     * Filtramos a solo las keys que conocemos en NOMBRE_SECCION (defensive
-     * contra hooks que ya no existen o fueron renombrados).
+     * Las fijas (galeria, detalle_compra) siempre van primero.
      */
     private function ordenDeProducto(?int $productoId): array
     {
+        $hooks = self::HOOKS_DEFAULT;
+
         if ($productoId) {
-            $orden = Producto::query()->where('id', $productoId)->value('layout_orden');
-            if (is_array($orden) && ! empty($orden)) {
-                $valido = array_values(array_intersect($orden, array_keys(self::NOMBRE_SECCION)));
-                if (! empty($valido)) return $valido;
+            $layout = Producto::query()->where('id', $productoId)->value('layout_orden');
+            if (is_array($layout) && ! empty($layout)) {
+                $valido = array_values(array_intersect($layout, self::HOOKS_DEFAULT));
+                if (! empty($valido)) $hooks = $valido;
             }
         }
-        return self::ORDEN_DEFAULT;
+
+        return array_merge(self::FIJAS_INICIO, $hooks);
     }
 
     private function baseQuery(?int $productoId, string $periodo, ?string $origen)

@@ -181,31 +181,51 @@ export function useVisitante() {
         }
         window.addEventListener('vivo:seccion', onSeccion)
 
-        // Detector de seccion via scroll: cuando el visitante para de
-        // scrollear durante 500ms, calculamos cual seccion esta en el
-        // centro del viewport. Solo reportamos si cambio respecto a la
-        // ultima. Esto filtra scroll de paso (la persona no la miro).
-        let scrollTimer: ReturnType<typeof setTimeout> | null = null
-        function onScroll() {
-            if (scrollTimer) clearTimeout(scrollTimer)
-            scrollTimer = setTimeout(() => {
-                const nueva = seccionEnCentroViewport()
-                if (nueva === seccionRef.current) return
-                seccionRef.current = nueva
-                tick()
-            }, 500)
-        }
-        window.addEventListener('scroll', onScroll, { passive: true })
+        // Detector de seccion via IntersectionObserver con permanencia.
+        // Una seccion se reporta solo cuando:
+        //   1. Ocupa al menos UMBRAL_VISIBLE (50%) del viewport, Y
+        //   2. Sigue cumpliendo eso durante TIEMPO_REPORTE (1.5s) continuos.
+        // Asi filtra scroll de paso (la persona no llego a leer) y cero
+        // consumo de CPU en scroll — el browser optimiza IO nativamente.
+        const UMBRAL_VISIBLE = 0.5
+        const TIEMPO_REPORTE = 1500
+        const timersIO = new Map<string, ReturnType<typeof setTimeout>>()
+
+        const io = new IntersectionObserver(entries => {
+            entries.forEach(entry => {
+                const key = (entry.target as HTMLElement).dataset.hook
+                if (! key) return
+
+                if (entry.isIntersecting && entry.intersectionRatio >= UMBRAL_VISIBLE) {
+                    if (! timersIO.has(key)) {
+                        const t = setTimeout(() => {
+                            if (key !== seccionRef.current) {
+                                seccionRef.current = key
+                                tick()
+                            }
+                            timersIO.delete(key)
+                        }, TIEMPO_REPORTE)
+                        timersIO.set(key, t)
+                    }
+                } else {
+                    const t = timersIO.get(key)
+                    if (t) { clearTimeout(t); timersIO.delete(key) }
+                }
+            })
+        }, { threshold: [UMBRAL_VISIBLE] })
+
+        document.querySelectorAll<HTMLElement>('[data-hook]').forEach(el => io.observe(el))
 
         window.addEventListener('beforeunload', desconectar)
         document.addEventListener('visibilitychange', onVisibility)
 
         return () => {
             clearInterval(timer)
-            if (scrollTimer) clearTimeout(scrollTimer)
+            io.disconnect()
+            timersIO.forEach(t => clearTimeout(t))
+            timersIO.clear()
             unsubNav()
             window.removeEventListener('vivo:seccion', onSeccion)
-            window.removeEventListener('scroll', onScroll)
             window.removeEventListener('beforeunload', desconectar)
             document.removeEventListener('visibilitychange', onVisibility)
         }
@@ -213,41 +233,12 @@ export function useVisitante() {
 }
 
 /**
- * Helper para disparar el evento desde componentes que detectan la seccion.
- * Hoy ya no se usa desde Product.tsx — la deteccion vive en useVisitante
- * mediante scroll listener (deteccion por centro de viewport). Se exporta
- * por si otra pagina con secciones quiere reportar manualmente.
+ * Helper para disparar el evento desde componentes que detectan la seccion
+ * manualmente (raro — la deteccion automatica via IntersectionObserver
+ * cubre el 99% de los casos). Se exporta por si una pagina con un layout
+ * inusual necesita reportar a mano.
  */
 export function reportarSeccion(seccion: string | null) {
     window.dispatchEvent(new CustomEvent('vivo:seccion', { detail: { seccion } }))
 }
 
-/**
- * Encuentra la seccion [data-hook] mas cercana al centro vertical del viewport.
- * Devuelve null si no hay ninguna visible. Se llama desde scroll handler
- * con throttle para reportar la seccion que el visitante esta mirando ahora.
- */
-function seccionEnCentroViewport(): string | null {
-    const elementos = document.querySelectorAll<HTMLElement>('[data-hook]')
-    if (elementos.length === 0) return null
-
-    const centroViewport = window.innerHeight / 2
-    let mejor: string | null = null
-    let mejorDistancia      = Infinity
-
-    elementos.forEach(el => {
-        const rect = el.getBoundingClientRect()
-        // Filtra los que no estan visibles para nada
-        if (rect.bottom < 0 || rect.top > window.innerHeight) return
-
-        const centroElemento = rect.top + rect.height / 2
-        const distancia      = Math.abs(centroElemento - centroViewport)
-
-        if (distancia < mejorDistancia) {
-            mejorDistancia = distancia
-            mejor          = el.dataset.hook ?? null
-        }
-    })
-
-    return mejor
-}

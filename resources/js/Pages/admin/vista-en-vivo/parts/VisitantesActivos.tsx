@@ -22,9 +22,13 @@ interface Props {
     visitantes: VisitanteItem[]
 }
 
-// Etiqueta legible para cada hook del producto (mantener sincronizado con
-// los keys del backend).
+// Etiqueta legible para cada sección del producto (mantener sincronizado con
+// el mapa de backend FunelinksData::NOMBRE_SECCION).
 const NOMBRE_SECCION: Record<string, string> = {
+    // Fijas arriba del fold
+    galeria:                    'Galería',
+    detalle_compra:             'Detalle y compra',
+    // Hooks ordenables
     gancho_promesa:             'Gancho de promesa',
     slider_imagenes:            'Slider de imágenes',
     que_incluye:                'Qué incluye',

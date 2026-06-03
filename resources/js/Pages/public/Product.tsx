@@ -265,15 +265,15 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
             <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-16">
                 <div className="grid grid-cols-1 md:grid-cols-2">
 
-                    {/* Columna izquierda — galería sticky */}
-                    <div className="py-10 md:pr-10 lg:pr-10 md:sticky md:top-12 md:self-start">
+                    {/* Columna izquierda — galería sticky (data-hook para Vista en Vivo) */}
+                    <div data-hook="galeria" className="py-10 md:pr-10 lg:pr-10 md:sticky md:top-12 md:self-start">
                         <Gallery imagenes={imagenes} />
                     </div>
 
                     {/* Columna derecha */}
                     <div className="md:border-l md:border-slate-100">
 
-                        <div className="py-10 md:pl-10">
+                        <div data-hook="detalle_compra" className="py-10 md:pl-10">
                             {hook('resenas_en_vivo') && (
                                 <div className="mb-6">
                                     <ResenasVivas
