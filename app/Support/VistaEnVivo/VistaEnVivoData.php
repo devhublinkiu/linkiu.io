@@ -35,6 +35,8 @@ class VistaEnVivoData
         ];
     }
 
+    private const ESTADOS_CONFIRMADOS = ['confirmado', 'preparando', 'enviado', 'entregado'];
+
     /**
      * Lista de visitantes activos con su metadata (origen, dispositivo,
      * pagina, seccion, etc.). Devuelve [] si Redis no esta disponible.
@@ -82,14 +84,28 @@ class VistaEnVivoData
     }
 
     /**
-     * Ordenes creadas hoy (cualquier estado salvo cancelado).
+     * Ordenes creadas hoy desglosadas en timeline para la tarjeta:
+     *  - total:         ventas no canceladas (lo que se sumo hoy).
+     *  - confirmadas:   estado en (confirmado, preparando, enviado, entregado).
+     *  - sin_confirmar: estado = pendiente (esperando confirmacion COD o pago).
+     *
+     * Excluye canceladas y devueltas (no son "venta hoy" en sentido practico).
      */
-    public function ventasHoy(): int
+    public function ventasHoy(): array
     {
-        return (int) Order::query()
+        $base = Order::query()
             ->whereDate('created_at', Carbon::today())
-            ->where('estado', '!=', 'cancelado')
-            ->count();
+            ->where('estado', '!=', 'cancelado');
+
+        $total        = (clone $base)->count();
+        $confirmadas  = (clone $base)->whereIn('estado', self::ESTADOS_CONFIRMADOS)->count();
+        $sinConfirmar = (clone $base)->where('estado', 'pendiente')->count();
+
+        return [
+            'total'         => $total,
+            'confirmadas'   => $confirmadas,
+            'sin_confirmar' => $sinConfirmar,
+        ];
     }
 
     public function revenueHoy(): int
@@ -110,7 +126,7 @@ class VistaEnVivoData
             ->whereDate('fecha', Carbon::today())
             ->sum('visitas');
 
-        $ventas = $this->ventasHoy();
+        $ventas = $this->ventasHoy()['total'];
 
         if ($vistas === 0) return 0.0;
         return round(($ventas / $vistas) * 100, 1);

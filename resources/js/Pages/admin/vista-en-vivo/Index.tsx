@@ -9,9 +9,15 @@ import { StreamVentas, type VentaItem } from './parts/StreamVentas'
 import { TopProductos } from './parts/TopProductos'
 import { VisitantesActivos, type VisitanteItem } from './parts/VisitantesActivos'
 
+interface VentasHoy {
+    total:         number
+    confirmadas:   number
+    sin_confirmar: number
+}
+
 interface Props {
     online:         number
-    ventas_hoy:     number
+    ventas_hoy:     VentasHoy
     revenue_hoy:    number
     conversion:     number
     top_productos:  {
@@ -26,13 +32,16 @@ interface Props {
     visitantes:     VisitanteItem[]
 }
 
+/**
+ * Formato Colombia: $153.900. Solo compacta a M cuando supera 10M
+ * (raro en revenue de un dia). Asi se ven montos exactos en la card.
+ */
 function formatRevenue(n: number): string {
-    if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`
-    if (n >= 1_000)     return `$${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}k`
-    return `$${n}`
+    if (n >= 10_000_000) return `$${(n / 1_000_000).toFixed(n >= 100_000_000 ? 0 : 1)}M`
+    return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n)
 }
 
-function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion = 0, top_productos = [], ciudades = [], ultimas_ventas = [], visitantes = [] }: Props) {
+function VistaEnVivo({ online = 0, ventas_hoy = { total: 0, confirmadas: 0, sin_confirmar: 0 }, revenue_hoy = 0, conversion = 0, top_productos = [], ciudades = [], ultimas_ventas = [], visitantes = [] }: Props) {
 
     // online, ciudades y visitantes llegan por push de Ably (debounce 5s).
     // Mantenemos copia local para actualizarla sin tocar Inertia props.
@@ -108,7 +117,7 @@ function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion =
                         <div>
                             <h1 className="text-lg font-bold text-slate-900">Vista en tiempo real</h1>
                             <p className="text-xs text-slate-500">
-                                {onlineLive} {onlineLive === 1 ? 'persona' : 'personas'} viendo · {ventas_hoy} {ventas_hoy === 1 ? 'venta' : 'ventas'} hoy
+                                {onlineLive} {onlineLive === 1 ? 'persona' : 'personas'} viendo · {ventas_hoy.total} {ventas_hoy.total === 1 ? 'venta' : 'ventas'} hoy
                             </p>
                         </div>
                     </div>
@@ -134,9 +143,12 @@ function VistaEnVivo({ online = 0, ventas_hoy = 0, revenue_hoy = 0, conversion =
                     <EstadisticaCard
                         icono={<ShoppingBag className="size-5" />}
                         label="Ventas hoy"
-                        valor={String(ventas_hoy)}
-                        sublabel={ventas_hoy === 1 ? 'pedido confirmado' : 'pedidos confirmados'}
                         color="emerald"
+                        stats={[
+                            { valor: ventas_hoy.total,         etiqueta: 'Pedidos' },
+                            { valor: ventas_hoy.confirmadas,   etiqueta: 'Confirmados' },
+                            { valor: ventas_hoy.sin_confirmar, etiqueta: 'Sin confirmar' },
+                        ]}
                     />
                     <EstadisticaCard
                         icono={<DollarSign className="size-5" />}
