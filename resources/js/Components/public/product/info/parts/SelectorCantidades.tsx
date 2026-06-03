@@ -50,7 +50,7 @@ export default function SelectorCantidades({ opciones, cantidadActiva, imagenPri
 
     return (
         <div>
-            <p className="text-sm font-semibold text-slate-700 mb-3">Cantidad</p>
+            <p className="text-sm font-semibold text-slate-700 mb-3">Selecciona tu mejor oferta</p>
             <div className="flex flex-col gap-2.5">
                 {opciones.map(opcion => {
                     const activo    = cantidadActiva?.cantidad === opcion.cantidad
@@ -81,7 +81,7 @@ export default function SelectorCantidades({ opciones, cantidadActiva, imagenPri
                                 <button
                                     onClick={() => onSeleccionar(opcion)}
                                     className={cn(
-                                        'flex items-center gap-4 px-4 py-3.5 rounded-[6px] w-full text-left transition-colors duration-200 ease-in-out',
+                                        'flex items-center gap-3 md:gap-4 px-3 py-3 md:px-4 md:py-3.5 rounded-[6px] w-full text-left transition-colors duration-200 ease-in-out',
                                         activo && (esShimmer || opcion.destacado)
                                             ? 'bg-emerald-500'
                                             : activo
@@ -104,9 +104,9 @@ export default function SelectorCantidades({ opciones, cantidadActiva, imagenPri
                                         )}
                                     </div>
 
-                                    {/* Imagen — contenedor 40x40 fijo para reservar espacio y evitar CLS. */}
+                                    {/* Imagen — 32x32 móvil / 40x40 desktop, reserva espacio para evitar CLS. */}
                                     {(opcion.imagen ?? imagenPrincipal) && (
-                                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                                        <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center shrink-0">
                                             <img
                                                 src={opcion.imagen ?? imagenPrincipal!}
                                                 alt=""
@@ -139,7 +139,7 @@ export default function SelectorCantidades({ opciones, cantidadActiva, imagenPri
                                         </p>
                                         {opcion.ahorroMonto != null && (
                                             <p className={cn('text-xs font-semibold', activo && (esShimmer || opcion.destacado) ? 'text-emerald-100' : 'text-emerald-600')}>
-                                                Ahorras {formatPrecio(opcion.ahorroMonto)}{opcion.ahorrosPct ? ` · ${opcion.ahorrosPct}% off` : ''}
+                                                Ahorras {formatPrecio(opcion.ahorroMonto)}
                                             </p>
                                         )}
                                         {opcion.precioTachado && (

@@ -107,7 +107,8 @@ interface Props {
 
 function Product({ producto_id = null, nombre = null, slug = null, sku = null, descripcion = null, unidad = null, hooks = [], layout_orden = null, precio_base = null, imagen_principal = null, imagenes = [], grupos = [], cantidades = [] }: Props) {
     const [precioActivo, setPrecioActivo] = useState<number>(precio_base ?? 0)
-    const ctaRef = useRef<HTMLButtonElement>(null)
+    const ctaRef      = useRef<HTMLButtonElement>(null)
+    const selectorRef = useRef<HTMLDivElement>(null)
     const { build } = usePage<{ build?: { fomo_enabled?: boolean; nombre_tienda?: string } }>().props
     const nombreTienda = build?.nombre_tienda || 'Mi tienda'
 
@@ -195,7 +196,7 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
         ? [...layout_orden.filter(k => ORDEN_DEFAULT.includes(k)), ...ORDEN_DEFAULT.filter(k => !layout_orden.includes(k))]
         : ORDEN_DEFAULT
 
-    function BloqueProducto({ children, padY = 'py-10', padX = 'px-0' }: { children: React.ReactNode; padY?: string; padX?: string }) {
+    function BloqueProducto({ children, padY = 'py-6 md:py-10', padX = 'px-0' }: { children: React.ReactNode; padY?: string; padX?: string }) {
         return <div className={`${padX} md:px-10 ${padY} bg-slate-50`}>{children}</div>
     }
 
@@ -266,16 +267,16 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                 <div className="grid grid-cols-1 md:grid-cols-2">
 
                     {/* Columna izquierda — galería sticky (data-hook para Vista en Vivo) */}
-                    <div data-hook="galeria" className="py-10 md:pr-10 lg:pr-10 md:sticky md:top-12 md:self-start">
+                    <div data-hook="galeria" className="py-2 md:py-10 md:pr-10 lg:pr-10 md:sticky md:top-12 md:self-start">
                         <Gallery imagenes={imagenes} />
                     </div>
 
                     {/* Columna derecha */}
                     <div className="md:border-l md:border-slate-100">
 
-                        <div data-hook="detalle_compra" className="py-10 md:pl-10">
+                        <div data-hook="detalle_compra" className="py-2 md:py-10 md:pl-10">
                             {hook('resenas_en_vivo') && (
-                                <div className="mb-6">
+                                <div className="mb-2">
                                     <ResenasVivas
                                         config={hook('resenas_en_vivo')!.config}
                                         resenasConfig={resenasClientes?.config ?? null}
@@ -284,6 +285,7 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
                             )}
                             <Info
                                 ctaRef={ctaRef}
+                                selectorRef={selectorRef}
                                 onPrecio={setPrecioActivo}
                                 productoId={producto_id ?? undefined}
                                 nombre={nombre ?? ''}
@@ -310,6 +312,7 @@ function Product({ producto_id = null, nombre = null, slug = null, sku = null, d
 
             <StickyBar
                 ctaRef={ctaRef}
+                triggerRef={selectorRef}
                 precio={precioActivo}
                 botonCompraConfig={hook('boton_compra')?.config ?? null}
                 botonCompraActivo={!!hook('boton_compra')}

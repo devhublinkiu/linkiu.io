@@ -52,6 +52,7 @@ Tamaños fuera de la escala estándar, autorizados solo en casos puntuales por n
 | `text-[10px]` | 10px | Dígitos de countdown en `AnnouncementBar` (barra superior con timer compacto); timestamps, badges de plataforma y key/value de eventos en `PixelDebug` (overlay de debugging) |
 | `text-[9px]`  | 9px  | Dígitos y separadores de countdown del strip "Oferta relámpago" en `ProductCard` y micro-labels del mismo strip ("Oferta Relámpago") |
 | `text-[11px]` | 11px | Hints técnicos secundarios bajo inputs del admin de integraciones (Pixel ID, IDs externos, etc.) donde un `text-xs` competiría visualmente con el label principal |
+| `text-2xl` | 24px | Título del producto (h1 en `Components/public/product/info`) **en móvil únicamente**. En `≥md` escala a `text-4xl` (36px). Compromiso autorizado por el devs entre `text-xl` (20px, queda chico para un título de producto) y `text-3xl` (30px, queda demasiado grande en pantallas pequeñas) |
 
 **Regla:** estos tamaños son **excepción**, no patrón. Solo aplican en:
 - Countdowns/timers visualmente compactos donde subir a `text-xs` rompería el layout

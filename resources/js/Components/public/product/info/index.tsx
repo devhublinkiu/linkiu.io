@@ -13,6 +13,7 @@ import BotonCompra, { type BotonCompraConfig } from '@/Components/public/product
 
 type Props = {
     ctaRef:               React.RefObject<HTMLButtonElement | null>
+    selectorRef?:         React.RefObject<HTMLDivElement | null>  // marca el final de las ofertas (StickyBar lo observa)
     onPrecio:             (precio: number) => void
     productoId?:          number
     nombre:               string
@@ -35,7 +36,7 @@ function pluralizar(palabra: string): string {
     return /[aeiouáéíóú]$/i.test(palabra) ? `${palabra}s` : `${palabra}es`
 }
 
-export default function Info({ ctaRef, onPrecio, productoId, nombre, descripcion = null, precioBase, imagenPrincipal, grupos, cantidades, unidad, urgenciaStockConfig = null, botonCompraConfig = null, botonCompraActivo = false }: Props) {
+export default function Info({ ctaRef, selectorRef, onPrecio, productoId, nombre, descripcion = null, precioBase, imagenPrincipal, grupos, cantidades, unidad, urgenciaStockConfig = null, botonCompraConfig = null, botonCompraActivo = false }: Props) {
     const { items, addItem, replaceItem } = useCart()
 
     const tieneBundles = cantidades.length > 0
@@ -186,7 +187,7 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, descripcion
         <div className="flex flex-col gap-6">
 
             <div className="space-y-3">
-                <h1 className="text-4xl font-bold text-slate-900 tracking-tight leading-tight">
+                <h1 className="text-2xl md:text-4xl font-bold text-slate-900 tracking-tight leading-tight">
                     {nombre}
                 </h1>
                 {descripcion && (
@@ -208,12 +209,14 @@ export default function Info({ ctaRef, onPrecio, productoId, nombre, descripcion
                 </div>
             )}
 
-            <SelectorCantidades
-                opciones={opciones}
-                cantidadActiva={cantidadActiva}
-                imagenPrincipal={imagenPrincipal}
-                onSeleccionar={seleccionarCantidad}
-            />
+            <div ref={selectorRef}>
+                <SelectorCantidades
+                    opciones={opciones}
+                    cantidadActiva={cantidadActiva}
+                    imagenPrincipal={imagenPrincipal}
+                    onSeleccionar={seleccionarCantidad}
+                />
+            </div>
 
             {urgenciaStockConfig && (
                 <UrgenciaStock config={urgenciaStockConfig} />

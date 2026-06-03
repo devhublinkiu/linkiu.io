@@ -4,6 +4,7 @@ import BotonCompra, { type BotonCompraConfig } from '@/Components/public/product
 
 type Props = {
     ctaRef:             React.RefObject<HTMLButtonElement | null>
+    triggerRef?:        React.RefObject<HTMLElement | null>  // elemento que decide visibilidad — si no viene, usa ctaRef
     precio:             number
     botonCompraConfig?: BotonCompraConfig | null
     botonCompraActivo?: boolean
@@ -13,18 +14,27 @@ function formatPrecio(n: number) {
     return '$' + new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(n)
 }
 
-export default function StickyBar({ ctaRef, precio, botonCompraConfig = null, botonCompraActivo = false }: Props) {
+export default function StickyBar({ ctaRef, triggerRef, precio, botonCompraConfig = null, botonCompraActivo = false }: Props) {
     const [visible, setVisible] = useState(false)
 
     useEffect(() => {
-        if (!ctaRef.current) return
+        // Observamos triggerRef si viene (ej. el selector de cantidades), sino
+        // caemos al ctaRef. La barra aparece cuando el trigger sale del viewport
+        // hacia ARRIBA — es decir, el visitante ya paso ese punto scrolleando.
+        const target = triggerRef?.current ?? ctaRef.current
+        if (! target) return
+
         const observer = new IntersectionObserver(
-            ([entry]) => setVisible(!entry.isIntersecting),
+            ([entry]) => {
+                // Solo mostrar cuando el trigger queda arriba del viewport (visitante avanzo).
+                const fueraPorArriba = ! entry.isIntersecting && entry.boundingClientRect.top < 0
+                setVisible(fueraPorArriba)
+            },
             { threshold: 0 }
         )
-        observer.observe(ctaRef.current)
+        observer.observe(target)
         return () => observer.disconnect()
-    }, [ctaRef])
+    }, [ctaRef, triggerRef])
 
     return (
         <div className={cn(
