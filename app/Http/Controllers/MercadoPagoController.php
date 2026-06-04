@@ -174,11 +174,13 @@ class MercadoPagoController extends Controller
             try {
                 $ably = new \Ably\AblyRest(config('broadcasting.connections.ably.key'));
                 $ably->channels->get('admin-orders')->publish('orden.nueva', [
-                    'id'         => $orden->id,
-                    'codigo'     => $orden->codigo,
-                    'nombre'     => $orden->nombre . ' ' . $orden->apellido,
-                    'total'      => $orden->total,
-                    'created_at' => $orden->created_at->format('H:i'),
+                    'id'          => $orden->id,
+                    'codigo'      => $orden->codigo,
+                    'nombre'      => $orden->nombre . ' ' . $orden->apellido,
+                    'total'       => $orden->total,
+                    'metodo_pago' => $orden->metodo_pago,
+                    'cantidad'    => (int) $orden->items()->sum('cantidad'),
+                    'created_at'  => $orden->created_at->format('H:i'),
                 ]);
             } catch (\Exception $e) {
                 Log::error('Ably publish MP NuevoOrden (pending): ' . $e->getMessage());

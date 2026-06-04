@@ -36,11 +36,13 @@ class NotificarOrdenCreada implements ShouldQueue
         try {
             $ably = new \Ably\AblyRest(config('broadcasting.connections.ably.key'));
             $ably->channels->get('admin-orders')->publish('orden.nueva', [
-                'id'         => $this->orden->id,
-                'codigo'     => $this->orden->codigo,
-                'nombre'     => $this->orden->nombre . ' ' . $this->orden->apellido,
-                'total'      => $this->orden->total,
-                'created_at' => $this->orden->created_at->format('H:i'),
+                'id'          => $this->orden->id,
+                'codigo'      => $this->orden->codigo,
+                'nombre'      => $this->orden->nombre . ' ' . $this->orden->apellido,
+                'total'       => $this->orden->total,
+                'metodo_pago' => $this->orden->metodo_pago,
+                'cantidad'    => (int) $this->orden->items()->sum('cantidad'),
+                'created_at'  => $this->orden->created_at->format('H:i'),
             ]);
         } catch (\Throwable $e) {
             Log::error('Job NotificarOrdenCreada Ably: ' . $e->getMessage());

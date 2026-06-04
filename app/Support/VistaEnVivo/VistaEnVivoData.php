@@ -205,16 +205,19 @@ class VistaEnVivoData
         return Order::query()
             ->whereDate('created_at', Carbon::today())
             ->where('estado', '!=', 'cancelado')
+            ->withSum('items', 'cantidad')
             ->latest()
             ->limit(5)
-            ->get(['id', 'codigo', 'nombre', 'ciudad', 'total', 'created_at'])
+            ->get(['id', 'codigo', 'nombre', 'ciudad', 'total', 'metodo_pago', 'created_at'])
             ->map(fn ($o) => [
-                'id'         => $o->id,
-                'codigo'     => $o->codigo,
-                'nombre'     => $o->nombre,
-                'ciudad'     => $o->ciudad,
-                'total'      => (int) $o->total,
-                'created_at' => $o->created_at?->toIso8601String(),
+                'id'          => $o->id,
+                'codigo'      => $o->codigo,
+                'nombre'      => $o->nombre,
+                'ciudad'      => $o->ciudad,
+                'total'       => (int) $o->total,
+                'metodo_pago' => $o->metodo_pago,
+                'cantidad'    => (int) ($o->items_sum_cantidad ?? 0),
+                'created_at'  => $o->created_at?->toIso8601String(),
             ])
             ->toArray();
     }

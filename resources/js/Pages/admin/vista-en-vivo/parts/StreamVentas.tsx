@@ -1,12 +1,21 @@
-import { ShoppingBag, Zap } from 'lucide-react'
+import { ShoppingBag, Zap, Package } from 'lucide-react'
 
 export interface VentaItem {
-    id:         number
-    codigo:     string
-    nombre:     string
-    ciudad:     string | null
-    total:      number
-    created_at: string | null
+    id:          number
+    codigo:      string
+    nombre:      string
+    ciudad:      string | null
+    total:       number
+    metodo_pago: string | null
+    cantidad:    number
+    created_at:  string | null
+}
+
+const LABEL_METODO: Record<string, string> = {
+    mercadopago:   'Mercado Pago',
+    bold:          'Bold',
+    contraentrega: 'Contraentrega',
+    transferencia: 'Transferencia',
 }
 
 interface Props {
@@ -67,7 +76,20 @@ export function StreamVentas({ ventas, idsNuevas }: Props) {
                                 <p className="text-xs text-slate-500">
                                     {v.ciudad ?? 'Sin ciudad'} · {v.codigo}
                                 </p>
-                                <p className="text-sm font-semibold text-emerald-600 mt-0.5">{formatPrecio(v.total)}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                    <p className="text-sm font-semibold text-emerald-600">{formatPrecio(v.total)}</p>
+                                    {v.cantidad > 0 && (
+                                        <span className="inline-flex items-center gap-0.5 text-[11px] text-slate-500">
+                                            <Package className="size-3" />
+                                            {v.cantidad} {v.cantidad === 1 ? 'item' : 'items'}
+                                        </span>
+                                    )}
+                                </div>
+                                {v.metodo_pago && (
+                                    <p className="text-[11px] text-slate-400 mt-0.5">
+                                        {LABEL_METODO[v.metodo_pago] ?? v.metodo_pago}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     )})}
