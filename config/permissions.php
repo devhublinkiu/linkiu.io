@@ -142,4 +142,11 @@ return [
         ],
     ],
 
+    'superadmin' => [
+        'label'   => 'Super-admin',
+        'actions' => [
+            'reset' => 'Resetear datos de campaña y eliminar órdenes',
+        ],
+    ],
+
 ];

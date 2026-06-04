@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\ConfiguracionEnvioController;
 use App\Http\Controllers\Admin\ClientsController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\OrdersController;
+use App\Http\Controllers\Admin\ResetCampanaController;
 use App\Http\Controllers\Admin\LinkiuBuildController;
 use App\Http\Controllers\Admin\PerfilController;
 use App\Http\Controllers\Admin\RolesController;
@@ -193,6 +194,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/ordenes/{order}/revision/aprobar',  [OrdersController::class, 'aprobarRevision'] )->name('ordenes.revision.aprobar') ->middleware('can:ordenes.editar');
     Route::post('/ordenes/{order}/revision/rechazar', [OrdersController::class, 'rechazarRevision'])->name('ordenes.revision.rechazar')->middleware('can:ordenes.editar');
     Route::post('/ordenes/{order}/confirmacion/reenviar', [OrdersController::class, 'reenviarConfirmacion'])->name('ordenes.confirmacion.reenviar')->middleware('can:ordenes.editar');
+
+    // Reset de campaña (super-admin)
+    Route::delete('/ordenes/bulk',                  [OrdersController::class, 'bulkDestroy'])->name('ordenes.bulk-destroy')->middleware('can:superadmin.reset');
+    Route::get('/reset-campana',                    [ResetCampanaController::class, 'index']            )->name('reset-campana.index')   ->middleware('can:superadmin.reset');
+    Route::post('/reset-campana/funelinks/preview', [ResetCampanaController::class, 'previewFunelinks'])->name('reset-campana.funelinks.preview')->middleware('can:superadmin.reset');
+    Route::post('/reset-campana/funelinks',         [ResetCampanaController::class, 'resetFunelinks']  )->name('reset-campana.funelinks')->middleware('can:superadmin.reset');
 
     // Clientes
     Route::get('/clientes',                 [ClientsController::class, 'index']    )->name('clientes.index') ->middleware('can:clientes.ver');

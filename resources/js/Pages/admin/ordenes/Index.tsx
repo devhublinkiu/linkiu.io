@@ -1,7 +1,7 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Head, router, usePage } from '@inertiajs/react'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, Download, Search, Send, ShieldAlert, ShoppingCart } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Search, Send, ShieldAlert, ShoppingCart, Trash2 } from 'lucide-react'
 import AdminLayout from '@/Layouts/AdminLayout'
 import { Badge } from '@/Components/ui/Badge'
 import { Button } from '@/Components/ui/Button'
@@ -22,6 +22,7 @@ import ConfirmacionCodBadge, {
     calcularEstadoConfirmacion,
     puedeReenviarConfirmacion,
 } from './parts/ConfirmacionCodBadge'
+import ModalEliminarOrdenes from './parts/ModalEliminarOrdenes'
 
 type RevisionEstado = 'pendiente' | 'aprobada' | 'rechazada' | null
 type RespuestaCod   = 'si' | 'no' | null
@@ -84,6 +85,36 @@ function formatFecha(iso: string) {
 
 function OrdenesList() {
     const { ordenes, filtroEstado, filtroRevision, filtroQ, totalPendientes, totalRevision } = usePage<Props>().props
+    const auth = usePage<{ auth: { permissions: string[] } }>().props.auth
+    const puedeBulkDelete = auth.permissions.includes('*') || auth.permissions.includes('superadmin.reset')
+
+    const [seleccionadas, setSeleccionadas] = useState<Set<number>>(new Set())
+    const [modalEliminar, setModalEliminar] = useState(false)
+
+    function toggleSeleccion(id: number) {
+        setSeleccionadas(prev => {
+            const next = new Set(prev)
+            if (next.has(id)) next.delete(id)
+            else next.add(id)
+            return next
+        })
+    }
+
+    function toggleTodas() {
+        if (seleccionadas.size === ordenes.data.length) {
+            setSeleccionadas(new Set())
+        } else {
+            setSeleccionadas(new Set(ordenes.data.map(o => o.id)))
+        }
+    }
+
+    function limpiarSeleccion() {
+        setSeleccionadas(new Set())
+    }
+
+    const ordenesParaModal = ordenes.data
+        .filter(o => seleccionadas.has(o.id))
+        .map(o => ({ id: o.id, codigo: o.codigo }))
 
     // Estamos en el tab "Revisión" cuando hay filtroRevision activo. Excluyente
     // con los filtros por estado para no enredar la UI.
@@ -228,9 +259,41 @@ function OrdenesList() {
                 </Empty>
             ) : (
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    {puedeBulkDelete && seleccionadas.size > 0 && (
+                        <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between">
+                            <p className="text-xs font-medium">{seleccionadas.size} seleccionada{seleccionadas.size > 1 ? 's' : ''}</p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={limpiarSeleccion}
+                                    className="text-xs text-slate-300 hover:text-white transition-colors duration-200 underline underline-offset-2"
+                                >
+                                    Cancelar
+                                </button>
+                                <Button
+                                    size="sm"
+                                    onClick={() => setModalEliminar(true)}
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                    <Trash2 className="size-3.5" />
+                                    Eliminar
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                {puedeBulkDelete && (
+                                    <TableHead className="w-10">
+                                        <input
+                                            type="checkbox"
+                                            checked={seleccionadas.size === ordenes.data.length && ordenes.data.length > 0}
+                                            onChange={toggleTodas}
+                                            className="w-4 h-4 rounded border-slate-300"
+                                            aria-label="Seleccionar todas"
+                                        />
+                                    </TableHead>
+                                )}
                                 <TableHead>Código</TableHead>
                                 <TableHead>Cliente</TableHead>
                                 <TableHead className="hidden md:table-cell">Ciudad</TableHead>
@@ -248,6 +311,17 @@ function OrdenesList() {
                                     className="cursor-pointer"
                                     onClick={() => router.visit(route('admin.ordenes.show', orden.id))}
                                 >
+                                    {puedeBulkDelete && (
+                                        <TableCell onClick={e => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                checked={seleccionadas.has(orden.id)}
+                                                onChange={() => toggleSeleccion(orden.id)}
+                                                className="w-4 h-4 rounded border-slate-300"
+                                                aria-label={`Seleccionar ${orden.codigo}`}
+                                            />
+                                        </TableCell>
+                                    )}
                                     <TableCell className="font-mono text-xs font-bold text-slate-900">{orden.codigo}</TableCell>
                                     <TableCell>
                                         <p className="font-medium text-slate-900">{orden.nombre} {orden.apellido}</p>
@@ -332,6 +406,13 @@ function OrdenesList() {
                     </PaginationContent>
                 </Pagination>
             )}
+
+            <ModalEliminarOrdenes
+                abierto={modalEliminar}
+                seleccionadas={ordenesParaModal}
+                onCerrar={() => setModalEliminar(false)}
+                onCompletado={() => { setModalEliminar(false); limpiarSeleccion() }}
+            />
         </>
     )
 }

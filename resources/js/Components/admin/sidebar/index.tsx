@@ -6,6 +6,7 @@ import {
     Flame, MousePointer, Video, Activity, Link2,
     Wallet, CreditCard, Sparkles, Truck, Crosshair, Store,
     Palette, AlignJustify, LayoutGrid, Home, Info, Phone,
+    AlertOctagon,
 } from 'lucide-react'
 import { usePage } from '@inertiajs/react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/Components/ui/Tooltip'
@@ -87,6 +88,7 @@ const NAV: NavEntry[] = [
         ],
     },
     { type: 'item',  label: 'Traducciones',      icon: Languages,       routeName: null },
+    { type: 'item',  label: 'Reset campaña',     icon: AlertOctagon,    routeName: 'admin.reset-campana.index', permiso: 'superadmin.reset' },
 ]
 
 interface Props {

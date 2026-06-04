@@ -6,7 +6,9 @@ use App\Actions\Antifraude\AprobarOrden;
 use App\Actions\Antifraude\RechazarOrden;
 use App\Actions\Orders\EnviarConfirmacionCod;
 use App\Actions\Orders\UpdateOrderEstado;
+use App\Actions\Reset\EliminarOrdenes;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Reset\EliminarOrdenesRequest;
 use App\Models\Order;
 use App\Support\CsvStreamExport;
 use Illuminate\Http\Request;
@@ -119,6 +121,21 @@ class OrdersController extends Controller
                 'confirmacion_respuesta'     => $order->confirmacion_respuesta,
             ],
         ]);
+    }
+
+    /**
+     * Bulk delete de órdenes — solo super-admin. Genera audit log inmutable.
+     * Hard delete: borra orders + items + comprobantes S3. No reversible salvo
+     * por restore desde backup. La auth y validación viven en EliminarOrdenesRequest.
+     */
+    public function bulkDestroy(EliminarOrdenesRequest $request, EliminarOrdenes $action)
+    {
+        $eliminadas = $action->execute(
+            ids:    $request->validated('ids'),
+            motivo: $request->validated('motivo'),
+        );
+
+        return back()->with('status', "{$eliminadas} órdenes eliminadas.");
     }
 
     public function updateEstado(Request $request, Order $order, UpdateOrderEstado $action)
