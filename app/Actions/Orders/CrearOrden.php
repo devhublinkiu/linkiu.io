@@ -4,6 +4,7 @@ namespace App\Actions\Orders;
 
 use App\Jobs\NotificarOrdenCreada;
 use App\Models\Client;
+use App\Models\MetodoPago;
 use App\Models\Order;
 use App\Services\AntifraudeService;
 use App\Services\EnvioService;
@@ -52,9 +53,11 @@ class CrearOrden
         string $estadoInicial = 'pendiente',
         bool $notificar = true,
     ): Order {
-        // Recálculo autoritativo del costo de envío y del total. Ignoramos lo
-        // que viene del cliente — previene tampering (cliente no puede mandar
-        // `costo_envio=0` para evadir el cobro real). Ver EnvioService.
+        // Recálculo autoritativo del costo de envío, descuento por método de pago,
+        // y total. Ignoramos lo que viene del cliente — previene tampering (cliente
+        // no puede mandar `costo_envio=0` ni inventar descuentos). Ver EnvioService
+        // y calcularDescuentoMetodoPago.
+        $data = $this->calcularDescuentoMetodoPago($data);
         $data = $this->recalcularEnvioYTotal($data);
 
         $orden = DB::transaction(function () use ($data, $comprobante, $extra, $estadoInicial) {
@@ -66,13 +69,16 @@ class CrearOrden
 
             // El código LNK-XXXXXX y el acceso_token los pone el observer del modelo.
             $orden = Order::create([
-                'client_id'        => $cliente->id,
-                'estado'           => $estadoInicial,
-                'metodo_pago'      => $data['metodo_pago'],
-                'subtotal'         => $data['subtotal'],
-                'costo_envio'      => $data['costo_envio'],
-                'recargo'          => $data['recargo'],
-                'total'            => $data['total'],
+                'client_id'              => $cliente->id,
+                'estado'                 => $estadoInicial,
+                'metodo_pago'            => $data['metodo_pago'],
+                'subtotal'               => $data['subtotal'],
+                'costo_envio'            => $data['costo_envio'],
+                'recargo'                => $data['recargo'],
+                'descuento_metodo_pago'  => $data['descuento_metodo_pago']  ?? 0,
+                'descuento_metodo_tipo'  => $data['descuento_metodo_tipo']  ?? null,
+                'descuento_metodo_valor' => $data['descuento_metodo_valor'] ?? null,
+                'total'                  => $data['total'],
                 'nombre'           => $data['nombre'],
                 'apellido'         => $data['apellido'],
                 'email'            => $data['email'],
@@ -143,7 +149,58 @@ class CrearOrden
         }
 
         $data['costo_envio'] = $costoEnvio;
-        $data['total']       = (int) $data['subtotal'] + $costoEnvio + (int) ($data['recargo'] ?? 0);
+        $data['total']       = (int) $data['subtotal']
+            + $costoEnvio
+            + (int) ($data['recargo'] ?? 0)
+            - (int) ($data['descuento_metodo_pago'] ?? 0);
+
+        return $data;
+    }
+
+    /**
+     * Lee la config del método de pago elegido y calcula el descuento aplicable
+     * (fijo o porcentaje sobre el subtotal). Contraentrega NO admite descuento
+     * — su economía la rige el recargo, mezclarlos confunde al cliente.
+     *
+     * Snapshot: además del monto, persistimos `tipo` y `valor` configurados al
+     * momento de la orden para auditoría histórica (si el merchant baja luego
+     * el % en config, las órdenes anteriores no se reescriben).
+     */
+    private function calcularDescuentoMetodoPago(array $data): array
+    {
+        $data['descuento_metodo_pago']  = 0;
+        $data['descuento_metodo_tipo']  = null;
+        $data['descuento_metodo_valor'] = null;
+
+        if (($data['metodo_pago'] ?? null) === 'contraentrega') {
+            return $data;
+        }
+
+        $metodo = MetodoPago::where('clave', $data['metodo_pago'])->first();
+        if (! $metodo) {
+            return $data;
+        }
+
+        $config = $metodo->config ?? [];
+        $tipo   = $config['descuento_tipo']  ?? null;
+        $valor  = $config['descuento_valor'] ?? null;
+
+        if (! in_array($tipo, ['fijo', 'porcentaje'], true) || $valor === null || (float) $valor <= 0) {
+            return $data;
+        }
+
+        $subtotal = (int) $data['subtotal'];
+
+        if ($tipo === 'porcentaje') {
+            $monto = (int) round($subtotal * (float) $valor / 100);
+        } else {
+            // Descuento fijo capado al subtotal — evita totales negativos.
+            $monto = min((int) $valor, $subtotal);
+        }
+
+        $data['descuento_metodo_pago']  = $monto;
+        $data['descuento_metodo_tipo']  = $tipo;
+        $data['descuento_metodo_valor'] = (float) $valor;
 
         return $data;
     }

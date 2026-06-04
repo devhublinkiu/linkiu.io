@@ -129,6 +129,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/metodos-pago',                      [MetodosPagoController::class, 'index']       )->name('metodos-pago.index')  ->middleware('can:metodos-pago.ver');
     Route::post('/metodos-pago/{metodo}/toggle',     [MetodosPagoController::class, 'toggle']      )->name('metodos-pago.toggle') ->middleware('can:metodos-pago.editar');
     Route::post('/metodos-pago/{metodo}/config',     [MetodosPagoController::class, 'updateConfig'])->name('metodos-pago.config') ->middleware('can:metodos-pago.editar');
+    Route::post('/metodos-pago/{metodo}/descuento',  [MetodosPagoController::class, 'descuento']   )->name('metodos-pago.descuento')->middleware('can:metodos-pago.editar');
 
     // Configuración de envío
     Route::get('/envio',                  [ConfiguracionEnvioController::class, 'index']        )->name('envio.index')         ->middleware('can:envio.ver');

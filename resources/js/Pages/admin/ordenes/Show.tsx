@@ -39,6 +39,9 @@ interface Orden {
     subtotal: number
     costo_envio: number
     recargo: number
+    descuento_metodo_pago: number
+    descuento_metodo_tipo: 'fijo' | 'porcentaje' | null
+    descuento_metodo_valor: string | number | null
     total: number
     nombre: string
     apellido: string
@@ -330,6 +333,17 @@ function OrdenShow() {
                             {orden.recargo > 0 && (
                                 <div className="flex justify-between text-sm text-amber-600">
                                     <span>Recargo contraentrega</span><span>{formatPrecio(orden.recargo)}</span>
+                                </div>
+                            )}
+                            {orden.descuento_metodo_pago > 0 && (
+                                <div className="flex justify-between text-sm text-emerald-600">
+                                    <span>
+                                        Descuento por método
+                                        {orden.descuento_metodo_tipo === 'porcentaje' && orden.descuento_metodo_valor != null && (
+                                            <span className="text-emerald-500/70"> · {Number(orden.descuento_metodo_valor)}%</span>
+                                        )}
+                                    </span>
+                                    <span>-{formatPrecio(orden.descuento_metodo_pago)}</span>
                                 </div>
                             )}
                             <div className="flex justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-100 mt-1">
