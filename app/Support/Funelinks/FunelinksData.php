@@ -4,6 +4,7 @@ namespace App\Support\Funelinks;
 
 use App\Models\Order;
 use App\Models\Producto;
+use App\Models\ProductoHook;
 use App\Models\VisitanteSesion;
 use Illuminate\Support\Carbon;
 
@@ -219,10 +220,15 @@ class FunelinksData
 
     /**
      * Devuelve el orden completo del funnel: fijas arriba del fold +
-     * hooks ordenables. Si el producto tiene layout_orden custom, lo
-     * usamos para los hooks. Sino, HOOKS_DEFAULT.
+     * hooks ordenables ACTIVOS. Si el producto tiene layout_orden custom,
+     * lo usamos para los hooks. Si no, HOOKS_DEFAULT.
      *
-     * Las fijas (galeria, detalle_compra) siempre van primero.
+     * Filtramos hooks inactivos — al cliente nunca se le mostraron, así que
+     * tampoco deben aparecer en el funnel (genera la ilusión de drop-off
+     * sobre una sección que ni siquiera estaba en la página).
+     *
+     * Las fijas (galeria, detalle_compra) siempre van primero (no son hooks
+     * toggleables — son las dos secciones above-the-fold del producto).
      */
     private function ordenDeProducto(?int $productoId): array
     {
@@ -234,6 +240,16 @@ class FunelinksData
                 $valido = array_values(array_intersect($layout, self::HOOKS_DEFAULT));
                 if (! empty($valido)) $hooks = $valido;
             }
+
+            // Filtrar a solo los hooks activos del producto. Si un hook no
+            // tiene registro en producto_hooks, asumimos inactivo (default).
+            $activos = ProductoHook::query()
+                ->where('producto_id', $productoId)
+                ->where('activo', true)
+                ->pluck('hook_key')
+                ->toArray();
+
+            $hooks = array_values(array_intersect($hooks, $activos));
         }
 
         return array_merge(self::FIJAS_INICIO, $hooks);
