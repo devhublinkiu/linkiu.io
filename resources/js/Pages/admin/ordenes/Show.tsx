@@ -313,7 +313,14 @@ function OrdenShow() {
                                 // "2 Unidades" o "1 Unidad") y "variantes" (lo demás: sabores,
                                 // colores, tamaños). El fix de label completo persiste como:
                                 //   "2 Unidades · Sabor menta + Sabor naranja"
-                                const partesLabel = (item.label ?? '').split(' · ').map(s => s.trim()).filter(Boolean)
+                                //
+                                // Filtramos basura residual de ordenes viejas (label persistido
+                                // como "+" o " + " porque labelVariable arrastraba separadores
+                                // con strings vacios).
+                                const partesLabel = (item.label ?? '')
+                                    .split(' · ')
+                                    .map(s => s.trim())
+                                    .filter(s => s && s !== '+' && s !== '·')
                                 const oferta    = partesLabel[0] ?? null
                                 const variantes = partesLabel.slice(1).join(' · ') || null
                                 return (
@@ -388,9 +395,9 @@ function OrdenShow() {
                         </div>
                     </div>
 
-                    {/* Cliente + Dirección — dos cards en grid 2 col para que el admin
-                        tenga la info del cliente prominente al lado de los productos. */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Cliente + Dirección + Método de pago — 3 cards en grid para que
+                        el admin tenga toda la info de gestión visible sin scroll lateral. */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Cliente */}
                         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                             <div className="px-5 py-4 border-b border-slate-100">
@@ -398,7 +405,7 @@ function OrdenShow() {
                             </div>
                             <div className="px-5 py-4 flex flex-col gap-2 text-sm">
                                 <p className="font-semibold text-slate-900">{orden.nombre} {orden.apellido}</p>
-                                <p className="text-slate-500">{orden.email}</p>
+                                <p className="text-slate-500 break-all">{orden.email}</p>
                                 <p className="text-slate-500">{orden.telefono}</p>
                             </div>
                         </div>
@@ -413,6 +420,35 @@ function OrdenShow() {
                                 <p>{orden.ciudad}, {orden.departamento}</p>
                                 {orden.notas && (
                                     <p className="text-slate-500 text-xs mt-1 italic">"{orden.notas}"</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Método de pago */}
+                        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-100">
+                                <h2 className="text-sm font-bold text-slate-900">Método de pago</h2>
+                            </div>
+                            <div className="px-5 py-4 flex flex-col gap-3">
+                                <p className="text-sm font-medium text-slate-900 capitalize">{orden.metodo_pago.replace('_', ' ')}</p>
+                                {esComprobante && (
+                                    <div className="flex gap-2 flex-wrap">
+                                        <button
+                                            onClick={() => setVerComprobante(true)}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors duration-200"
+                                        >
+                                            <EyeIcon className="w-3.5 h-3.5" />
+                                            Ver
+                                        </button>
+                                        <a
+                                            href={orden.comprobante_url!}
+                                            download
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors duration-200"
+                                        >
+                                            <DownloadIcon className="w-3.5 h-3.5" />
+                                            Descargar
+                                        </a>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -560,35 +596,6 @@ function OrdenShow() {
                                     {guardando ? 'Guardando…' : 'Guardar notas'}
                                 </Button>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Método de pago */}
-                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-                        <div className="px-5 py-4 border-b border-slate-100">
-                            <h2 className="text-sm font-bold text-slate-900">Método de pago</h2>
-                        </div>
-                        <div className="px-5 py-4 flex flex-col gap-3">
-                            <p className="text-sm font-medium text-slate-900 capitalize">{orden.metodo_pago.replace('_', ' ')}</p>
-                            {esComprobante && (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setVerComprobante(true)}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors duration-200"
-                                    >
-                                        <EyeIcon className="w-3.5 h-3.5" />
-                                        Ver
-                                    </button>
-                                    <a
-                                        href={orden.comprobante_url!}
-                                        download
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors duration-200"
-                                    >
-                                        <DownloadIcon className="w-3.5 h-3.5" />
-                                        Descargar
-                                    </a>
-                                </div>
-                            )}
                         </div>
                     </div>
 

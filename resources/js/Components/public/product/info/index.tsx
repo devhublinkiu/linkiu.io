@@ -121,7 +121,10 @@ export default function Info({ ctaRef, selectorRef, onPrecio, productoId, nombre
             grupos.map(g => sel[g.id]?.nombre).filter(Boolean).join(' · ')
         const n = cantidadActiva?.cantidad ?? 1
         if (!tieneBundles || n <= 1) return porUnidad(seleccionados[0] ?? {})
-        return seleccionados.slice(0, n).map(porUnidad).join(' + ')
+        // filter(Boolean) ANTES del join — si los porUnidad son strings vacios
+        // (variables opcionales sin elegir) NO queremos generar " + " residual
+        // que se persistia en el label de la orden.
+        return seleccionados.slice(0, n).map(porUnidad).filter(Boolean).join(' + ')
     }, [grupos, seleccionados, cantidadActiva, tieneBundles])
 
     function seleccionarCantidad(opcion: OpcionCantidad) {
