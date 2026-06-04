@@ -297,36 +297,65 @@ function OrdenShow() {
                 {/* Columna principal */}
                 <div className="flex flex-col gap-6">
 
-                    {/* Items */}
+                    {/* Items — detalle estructurado: el label persiste la oferta de cantidad
+                        escogida ("2 Unidades") + variables ("Sabor menta"). Separamos visualmente
+                        ambas piezas cuando vienen unidas con " · " para que el admin distinga
+                        de un vistazo qué pack pidio el cliente vs qué variantes eligió. */}
                     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100">
-                            <h2 className="text-sm font-bold text-slate-900">Productos</h2>
+                            <h2 className="text-sm font-bold text-slate-900">
+                                {orden.items.length === 1 ? 'Producto' : `Productos (${orden.items.length})`}
+                            </h2>
                         </div>
-                        <div className="divide-y divide-slate-50">
-                            {orden.items.map(item => (
-                                <div key={item.id} className="px-5 py-4 flex items-center gap-4">
-                                    {item.imagen && (
-                                        <div className="w-12 h-12 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden shrink-0">
-                                            <img src={item.imagen} alt={item.nombre} className="w-full h-full object-contain" />
+                        <div className="divide-y divide-slate-100">
+                            {orden.items.map(item => {
+                                // Separamos el label entre "oferta" (primer segmento, suele ser
+                                // "2 Unidades" o "1 Unidad") y "variantes" (lo demás: sabores,
+                                // colores, tamaños). El fix de label completo persiste como:
+                                //   "2 Unidades · Sabor menta + Sabor naranja"
+                                const partesLabel = (item.label ?? '').split(' · ').map(s => s.trim()).filter(Boolean)
+                                const oferta    = partesLabel[0] ?? null
+                                const variantes = partesLabel.slice(1).join(' · ') || null
+                                return (
+                                    <div key={item.id} className="px-5 py-4 flex items-start gap-4">
+                                        {item.imagen && (
+                                            <div className="w-14 h-14 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden shrink-0">
+                                                <img src={item.imagen} alt={item.nombre} className="w-full h-full object-contain" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0 space-y-1.5">
+                                            <p className="text-sm font-semibold text-slate-900 leading-tight">{item.nombre}</p>
+
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {oferta && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-[11px] font-semibold text-emerald-700">
+                                                        Oferta: {oferta}
+                                                    </span>
+                                                )}
+                                                {variantes && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] text-slate-600">
+                                                        {variantes}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {item.cantidad > 1 && (
+                                                <p className="text-[11px] text-slate-500 pt-0.5">
+                                                    <span className="font-semibold text-slate-700">{item.cantidad} unidades</span> de esta oferta · {formatPrecio(item.precio)} c/u
+                                                </p>
+                                            )}
+                                            {item.cantidad === 1 && (
+                                                <p className="text-[11px] text-slate-400 pt-0.5">
+                                                    1 unidad de esta oferta
+                                                </p>
+                                            )}
                                         </div>
-                                    )}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-semibold text-slate-900">{item.nombre}</p>
-                                        {item.label && <p className="text-xs text-slate-500">{item.label}</p>}
-                                        {item.cantidad > 1 && (
-                                            <p className="text-[11px] text-slate-400 mt-0.5">
-                                                {item.cantidad} × {formatPrecio(item.precio)} c/u
-                                            </p>
-                                        )}
+                                        <div className="text-right shrink-0">
+                                            <p className="text-sm font-bold text-slate-900">{formatPrecio(item.precio * item.cantidad)}</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right shrink-0">
-                                        <p className="text-sm font-bold text-slate-900">{formatPrecio(item.precio * item.cantidad)}</p>
-                                        {item.cantidad === 1 && (
-                                            <p className="text-[11px] text-slate-400 mt-0.5">x1</p>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                         <div className="px-5 py-4 border-t border-slate-100 flex flex-col gap-1.5">
                             <div className="flex justify-between text-sm text-slate-600">
@@ -359,28 +388,32 @@ function OrdenShow() {
                         </div>
                     </div>
 
-                    {/* Notas internas */}
-                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-                        <div className="px-5 py-4 border-b border-slate-100">
-                            <h2 className="text-sm font-bold text-slate-900">Notas internas</h2>
-                            <p className="text-xs text-slate-500 mt-0.5">Solo visible para el equipo, no se envía al cliente.</p>
+                    {/* Cliente + Dirección — dos cards en grid 2 col para que el admin
+                        tenga la info del cliente prominente al lado de los productos. */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Cliente */}
+                        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-100">
+                                <h2 className="text-sm font-bold text-slate-900">Cliente</h2>
+                            </div>
+                            <div className="px-5 py-4 flex flex-col gap-2 text-sm">
+                                <p className="font-semibold text-slate-900">{orden.nombre} {orden.apellido}</p>
+                                <p className="text-slate-500">{orden.email}</p>
+                                <p className="text-slate-500">{orden.telefono}</p>
+                            </div>
                         </div>
-                        <div className="p-5 flex flex-col gap-3">
-                            <Textarea
-                                value={notasInternas}
-                                onChange={e => setNotasInternas(e.target.value)}
-                                rows={4}
-                                placeholder="Agrega notas sobre este pedido…"
-                                className="resize-none"
-                            />
-                            <div className="flex justify-end">
-                                <Button
-                                    size="sm"
-                                    onClick={guardarNotas}
-                                    disabled={guardando}
-                                >
-                                    {guardando ? 'Guardando…' : 'Guardar notas'}
-                                </Button>
+
+                        {/* Dirección */}
+                        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="px-5 py-4 border-b border-slate-100">
+                                <h2 className="text-sm font-bold text-slate-900">Dirección de entrega</h2>
+                            </div>
+                            <div className="px-5 py-4 flex flex-col gap-1 text-sm text-slate-600">
+                                <p>{orden.direccion}{orden.apartamento ? ` · ${orden.apartamento}` : ''}</p>
+                                <p>{orden.ciudad}, {orden.departamento}</p>
+                                {orden.notas && (
+                                    <p className="text-slate-500 text-xs mt-1 italic">"{orden.notas}"</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -503,29 +536,30 @@ function OrdenShow() {
                         )}
                     </div>
 
-                    {/* Datos del cliente */}
+                    {/* Notas internas — sidebar para que esté siempre visible al
+                        gestionar el estado, sin necesidad de scrollear. */}
                     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
                         <div className="px-5 py-4 border-b border-slate-100">
-                            <h2 className="text-sm font-bold text-slate-900">Cliente</h2>
+                            <h2 className="text-sm font-bold text-slate-900">Notas internas</h2>
+                            <p className="text-xs text-slate-500 mt-0.5">Solo visible para el equipo, no se envía al cliente.</p>
                         </div>
-                        <div className="px-5 py-4 flex flex-col gap-2 text-sm">
-                            <p className="font-semibold text-slate-900">{orden.nombre} {orden.apellido}</p>
-                            <p className="text-slate-500">{orden.email}</p>
-                            <p className="text-slate-500">{orden.telefono}</p>
-                        </div>
-                    </div>
-
-                    {/* Dirección */}
-                    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-                        <div className="px-5 py-4 border-b border-slate-100">
-                            <h2 className="text-sm font-bold text-slate-900">Dirección de entrega</h2>
-                        </div>
-                        <div className="px-5 py-4 flex flex-col gap-1 text-sm text-slate-600">
-                            <p>{orden.direccion}{orden.apartamento ? ` · ${orden.apartamento}` : ''}</p>
-                            <p>{orden.ciudad}, {orden.departamento}</p>
-                            {orden.notas && (
-                                <p className="text-slate-500 text-xs mt-1 italic">"{orden.notas}"</p>
-                            )}
+                        <div className="p-5 flex flex-col gap-3">
+                            <Textarea
+                                value={notasInternas}
+                                onChange={e => setNotasInternas(e.target.value)}
+                                rows={4}
+                                placeholder="Agrega notas sobre este pedido…"
+                                className="resize-none"
+                            />
+                            <div className="flex justify-end">
+                                <Button
+                                    size="sm"
+                                    onClick={guardarNotas}
+                                    disabled={guardando}
+                                >
+                                    {guardando ? 'Guardando…' : 'Guardar notas'}
+                                </Button>
+                            </div>
                         </div>
                     </div>
 
