@@ -313,10 +313,17 @@ function OrdenShow() {
                                     <div className="flex-1 min-w-0">
                                         <p className="text-sm font-semibold text-slate-900">{item.nombre}</p>
                                         {item.label && <p className="text-xs text-slate-500">{item.label}</p>}
+                                        {item.cantidad > 1 && (
+                                            <p className="text-[11px] text-slate-400 mt-0.5">
+                                                {item.cantidad} × {formatPrecio(item.precio)} c/u
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="text-sm font-bold text-slate-900">{formatPrecio(item.precio * item.cantidad)}</p>
-                                        <p className="text-xs text-slate-500">x{item.cantidad} · {formatPrecio(item.precio)}</p>
+                                        {item.cantidad === 1 && (
+                                            <p className="text-[11px] text-slate-400 mt-0.5">x1</p>
+                                        )}
                                     </div>
                                 </div>
                             ))}

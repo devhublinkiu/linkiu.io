@@ -166,7 +166,11 @@ export default function Info({ ctaRef, selectorRef, onPrecio, productoId, nombre
             productoId,
             nombre,
             imagen:   imagenVariable ?? cantidadActiva?.imagen ?? imagenPrincipal ?? '',
-            label:    labelVariable || (cantidadActiva?.label ?? ''),
+            // Label completo: SIEMPRE incluye el label del bundle ("2 Unidades")
+            // y, si hay, las variables. Antes era one-or-the-other y se perdía
+            // la info del bundle cuando había variables — el admin no podía saber
+            // que el cliente compró el pack de 2 unidades con sabor X.
+            label:    [cantidadActiva?.label, labelVariable].filter(Boolean).join(' · '),
             cantidad: 1,
             precio:   cantidadActiva?.precio_bundle ?? 0,
             opciones: opciones.map(o => ({
