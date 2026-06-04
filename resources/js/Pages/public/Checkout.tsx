@@ -82,7 +82,6 @@ function Checkout() {
         telefono:   auth?.client?.telefono  ?? '',
         direccion:  predeterminada?.direccion   ?? '',
         apartamento: predeterminada?.apartamento ?? '',
-        notas: '',
     })
     const [direccionSeleccionadaId, setDireccionSeleccionadaId] = useState<number | 'nueva'>(
         predeterminada ? predeterminada.id : 'nueva'
@@ -119,7 +118,6 @@ function Checkout() {
                 telefono:    typeof saved.telefono    === 'string' ? saved.telefono    : prev.telefono,
                 direccion:   typeof saved.direccion   === 'string' ? saved.direccion   : prev.direccion,
                 apartamento: typeof saved.apartamento === 'string' ? saved.apartamento : prev.apartamento,
-                notas:       typeof saved.notas       === 'string' ? saved.notas       : prev.notas,
             }))
             if (typeof saved.departamento === 'string') setDepartamento(saved.departamento)
             if (typeof saved.ciudad       === 'string') setCiudad(saved.ciudad)
@@ -144,7 +142,6 @@ function Checkout() {
             telefono:    form.telefono,
             direccion:   form.direccion,
             apartamento: form.apartamento,
-            notas:       form.notas,
             departamento,
             ciudad,
             metodoPago,
@@ -234,6 +231,19 @@ function Checkout() {
         ? Number(metodos.find(m => m.clave === 'contraentrega')?.config?.recargo ?? 0)
         : 0
 
+    // Descuento por método de pago (transferencia/MP/Bold). Calculado sobre subtotal
+    // de items — espejo de la lógica de CrearOrden.calcularDescuentoMetodoPago.
+    const descuentoMetodo = (() => {
+        const m = metodos.find(x => x.clave === metodoPago)
+        if (!m || metodoPago === 'contraentrega') return 0
+        const tipo  = m.config?.descuento_tipo
+        const valor = Number(m.config?.descuento_valor ?? 0)
+        if (!tipo || valor <= 0 || total <= 0) return 0
+        if (tipo === 'porcentaje') return Math.round(total * valor / 100)
+        if (tipo === 'fijo')       return Math.min(Math.round(valor), total)
+        return 0
+    })()
+
     const costoEnvio = calcularEnvio(zonas_envio, ciudad, total)
 
     const departamentosDisponibles = useMemo(() => {
@@ -277,7 +287,7 @@ function Checkout() {
 
         setEnviando(true)
 
-        const totalFinal = total + costoEnvio + recargo
+        const totalFinal = total + costoEnvio + recargo - descuentoMetodo
 
         const payload = new FormData()
         payload.append('nombre',       form.nombre)
@@ -286,7 +296,6 @@ function Checkout() {
         payload.append('telefono',     form.telefono)
         payload.append('direccion',    form.direccion)
         payload.append('apartamento',  form.apartamento)
-        payload.append('notas',        form.notas)
         payload.append('departamento', departamento)
         payload.append('ciudad',       ciudad)
         payload.append('metodo_pago',  metodoPago)
@@ -391,6 +400,7 @@ function Checkout() {
                                     onMetodoPago={v => { setMetodoPago(v); setMpPendiente(false) }}
                                     comprobante={comprobante}
                                     onComprobante={setComprobante}
+                                    subtotal={total}
                                 />
                             </div>
 
@@ -399,7 +409,7 @@ function Checkout() {
                                 <div className="bg-white border border-slate-200 rounded-2xl p-6">
                                     {mp_public_key ? (
                                         <PaymentBrick
-                                            total={Math.round(total + costoEnvio + recargo)}
+                                            total={Math.round(total + costoEnvio + recargo - descuentoMetodo)}
                                             publicKey={mp_public_key}
                                             orderData={{
                                                 form:        form,
@@ -408,7 +418,7 @@ function Checkout() {
                                                 subtotal:    Math.round(total),
                                                 costoEnvio:  Math.round(costoEnvio),
                                                 recargo:     Math.round(recargo),
-                                                total:       Math.round(total + costoEnvio + recargo),
+                                                total:       Math.round(total + costoEnvio + recargo - descuentoMetodo),
                                                 items:       items.map(i => ({
                                                     producto_id: i.productoId,
                                                     nombre:      i.nombre,
@@ -447,7 +457,7 @@ function Checkout() {
                                             subtotal:    Math.round(total),
                                             costoEnvio:  Math.round(costoEnvio),
                                             recargo:     Math.round(recargo),
-                                            total:       Math.round(total + costoEnvio + recargo),
+                                            total:       Math.round(total + costoEnvio + recargo - descuentoMetodo),
                                             items:       items.map(i => ({
                                                 producto_id: i.productoId,
                                                 nombre:      i.nombre,
@@ -467,6 +477,7 @@ function Checkout() {
                             onConfirmar={confirmar}
                             enviando={enviando}
                             recargo={recargo}
+                            descuentoMetodo={descuentoMetodo}
                             zonasEnvio={zonas_envio}
                             ciudad={ciudad}
                             metodoPago={metodoPago}

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { CreditCardIcon, BanknoteIcon, LandmarkIcon, UploadIcon, CopyIcon, CheckIcon, ZapIcon } from 'lucide-react'
+import { CreditCardIcon, BanknoteIcon, LandmarkIcon, UploadIcon, CopyIcon, CheckIcon, ZapIcon, SparklesIcon } from 'lucide-react'
 
 export interface MetodoPagoPublico {
     clave: string
@@ -15,6 +15,21 @@ interface Props {
     onMetodoPago: (clave: string) => void
     comprobante: File | null
     onComprobante: (file: File | null) => void
+    /** Subtotal post-cupón sobre el que se calcula el descuento por método. */
+    subtotal: number
+}
+
+/**
+ * Calcula el monto de descuento que aplicaría un método sobre el subtotal dado.
+ * Devuelve 0 si el método no tiene descuento configurado o el subtotal es 0.
+ */
+function calcularDescuento(m: MetodoPagoPublico, subtotal: number): number {
+    const tipo  = m.config?.descuento_tipo
+    const valor = Number(m.config?.descuento_valor ?? 0)
+    if (! tipo || valor <= 0 || subtotal <= 0) return 0
+    if (tipo === 'porcentaje') return Math.round(subtotal * valor / 100)
+    if (tipo === 'fijo')       return Math.min(Math.round(valor), subtotal)
+    return 0
 }
 
 const ICONOS: Record<string, React.ReactNode> = {
@@ -22,6 +37,26 @@ const ICONOS: Record<string, React.ReactNode> = {
     bold:          <ZapIcon className="size-5" />,
     contraentrega: <BanknoteIcon className="size-5" />,
     transferencia: <LandmarkIcon className="size-5" />,
+}
+
+// Color de la franja superior de cada card por método. Marca visual rápida —
+// el cliente distingue a primera vista. Bold = fucsia (su brand), MercadoPago
+// = azul (su brand), transferencia = emerald (banco/dinero), contraentrega =
+// amber (efectivo). Se aplica a la franja "Te ahorras X" o "Recargo de X".
+const COLORES_FRANJA: Record<string, string> = {
+    mercadopago:   'bg-sky-600 border-sky-600',
+    bold:          'bg-fuchsia-600 border-fuchsia-600',
+    transferencia: 'bg-emerald-600 border-emerald-600',
+    contraentrega: 'bg-amber-600 border-amber-600',
+}
+
+// Color del border de la card cuando NO está seleccionada pero sí destaca
+// (tiene ahorro o recargo). Espejo de COLORES_FRANJA en tono más suave.
+const COLORES_BORDER: Record<string, string> = {
+    mercadopago:   'border-sky-300 hover:border-sky-400',
+    bold:          'border-fuchsia-300 hover:border-fuchsia-400',
+    transferencia: 'border-emerald-300 hover:border-emerald-400',
+    contraentrega: 'border-amber-300 hover:border-amber-400',
 }
 
 function formatPrecio(n: number) {
@@ -52,7 +87,7 @@ function CampoCopiable({ valor }: { valor: string }) {
     )
 }
 
-export default function PaymentMethods({ metodos, metodoPago, onMetodoPago, comprobante, onComprobante }: Props) {
+export default function PaymentMethods({ metodos, metodoPago, onMetodoPago, comprobante, onComprobante, subtotal }: Props) {
     const seleccionado = metodos.find(m => m.clave === metodoPago)
 
     return (
@@ -60,66 +95,70 @@ export default function PaymentMethods({ metodos, metodoPago, onMetodoPago, comp
             <h2 className="text-base font-bold text-slate-900 mb-4">Método de pago</h2>
 
             <div className="flex flex-col gap-2">
-                {metodos.map(m => (
-                    <label
-                        key={m.clave}
-                        className={cn(
-                            'flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors duration-200',
-                            metodoPago === m.clave
-                                ? 'border-slate-900 bg-slate-50'
-                                : 'border-slate-200 hover:border-slate-300 bg-white'
-                        )}
-                    >
-                        <input
-                            type="radio"
-                            name="metodo-pago"
-                            value={m.clave}
-                            checked={metodoPago === m.clave}
-                            onChange={() => onMetodoPago(m.clave)}
-                            className="sr-only"
-                        />
-                        <span className={cn('shrink-0', metodoPago === m.clave ? 'text-slate-900' : 'text-slate-400')}>
-                            {ICONOS[m.clave] ?? <CreditCardIcon className="size-5" />}
-                        </span>
-                        <div className="flex-1">
-                            <p className="text-sm font-semibold text-slate-900">{m.nombre}</p>
-                            <p className="text-xs text-slate-400">{m.descripcion}</p>
+                {metodos.map(m => {
+                    const ahorro       = calcularDescuento(m, subtotal)
+                    const tieneAhorro  = ahorro > 0
+                    const recargo      = m.clave === 'contraentrega' ? Number(m.config?.recargo ?? 0) : 0
+                    const tieneRecargo = recargo > 0
+                    const tieneFranja  = tieneAhorro || tieneRecargo
+                    const seleccionada = metodoPago === m.clave
+
+                    return (
+                        <div
+                            key={m.clave}
+                            className={cn(
+                                'rounded-xl overflow-hidden border transition-colors duration-200',
+                                seleccionada
+                                    ? 'border-slate-900 bg-slate-50'
+                                    : tieneFranja
+                                        ? COLORES_BORDER[m.clave] + ' bg-white'
+                                        : 'border-slate-200 bg-white hover:border-slate-300'
+                            )}
+                        >
+                            {tieneAhorro && (
+                                <div className={cn('flex items-center gap-1.5 px-4 py-1.5 border-b', COLORES_FRANJA[m.clave])}>
+                                    <SparklesIcon className="size-3 text-white shrink-0" />
+                                    <p className="text-[11px] font-semibold text-white leading-tight">
+                                        Te ahorras {formatPrecio(ahorro)} pagando con {m.nombre}
+                                    </p>
+                                </div>
+                            )}
+                            {tieneRecargo && (
+                                <div className={cn('flex items-center gap-1.5 px-4 py-1.5 border-b', COLORES_FRANJA[m.clave])}>
+                                    <BanknoteIcon className="size-3 text-white shrink-0" />
+                                    <p className="text-[11px] font-semibold text-white leading-tight">
+                                        Recargo de {formatPrecio(recargo)} pagando en efectivo
+                                    </p>
+                                </div>
+                            )}
+                            <label className="flex items-center gap-4 p-4 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="metodo-pago"
+                                    value={m.clave}
+                                    checked={seleccionada}
+                                    onChange={() => onMetodoPago(m.clave)}
+                                    className="sr-only"
+                                />
+                                <span className={cn('shrink-0', seleccionada ? 'text-slate-900' : 'text-slate-400')}>
+                                    {ICONOS[m.clave] ?? <CreditCardIcon className="size-5" />}
+                                </span>
+                                <div className="flex-1">
+                                    <p className="text-sm font-semibold text-slate-900">{m.nombre}</p>
+                                    <p className="text-xs text-slate-400">{m.descripcion}</p>
+                                </div>
+                                <div className={cn(
+                                    'w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors duration-200',
+                                    seleccionada ? 'border-slate-900' : 'border-slate-300'
+                                )}>
+                                    {seleccionada && <div className="w-2 h-2 rounded-full bg-slate-900" />}
+                                </div>
+                            </label>
                         </div>
-                        <div className={cn(
-                            'w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors duration-200',
-                            metodoPago === m.clave ? 'border-slate-900' : 'border-slate-300'
-                        )}>
-                            {metodoPago === m.clave && <div className="w-2 h-2 rounded-full bg-slate-900" />}
-                        </div>
-                    </label>
-                ))}
+                    )
+                })}
             </div>
 
-            {/* Detalle Mercado Pago — el brick se renderiza debajo en el checkout */}
-            {seleccionado?.clave === 'mercadopago' && (
-                <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-center gap-2">
-                    <span className="text-xs text-slate-500">Acepta tarjetas, PSE y Efecty. Ingresa los datos a continuación.</span>
-                </div>
-            )}
-
-            {/* Detalle Bold — el botón se renderiza debajo en el checkout */}
-            {seleccionado?.clave === 'bold' && (
-                <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-center gap-2">
-                    <span className="text-xs text-slate-500">Tarjetas, PSE, Nequi, Bancolombia y QR. Pagas dentro de la página, sin redirección.</span>
-                </div>
-            )}
-
-            {/* Detalle Contraentrega */}
-            {seleccionado?.clave === 'contraentrega' && (
-                <div className="mt-4 rounded-xl bg-slate-50 border border-slate-200 p-4 flex flex-col gap-1">
-                    <p className="text-sm text-slate-600">Paga en efectivo al momento de recibir tu pedido.</p>
-                    {Number(seleccionado.config?.recargo) > 0 && (
-                        <p className="text-sm font-medium text-amber-600">
-                            Se aplica un recargo de {formatPrecio(Number(seleccionado.config.recargo))} al total del pedido.
-                        </p>
-                    )}
-                </div>
-            )}
 
             {/* Detalle Transferencia */}
             {seleccionado?.clave === 'transferencia' && (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { CheckIcon, LockIcon, UserIcon } from 'lucide-react'
+import { CheckIcon, LockIcon, UserIcon, MessageCircleIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface CampoConfig {
@@ -13,17 +13,19 @@ interface CampoConfig {
     span?: 'full' | 'half'
 }
 
+// Nombre completo unificado: el FormDatos sigue teniendo `nombre` y `apellido`
+// separados (el backend los persiste así), pero la UI muestra un solo input.
+// El split ocurre en `onCambiarNombreCompleto`. Email y nombre quedan en dos
+// columnas para que WhatsApp ocupe el ancho completo y resalte la leyenda.
 const CAMPOS_PERSONALES: CampoConfig[] = [
-    { id: 'nombre',   key: 'nombre',   label: 'Nombre',             placeholder: 'Valentina',              required: true, span: 'half' },
-    { id: 'apellido', key: 'apellido', label: 'Apellido',            placeholder: 'Rodríguez',              required: true, span: 'half' },
-    { id: 'email',    key: 'email',    label: 'Correo electrónico',  type: 'email', placeholder: 'tu@correo.com',  required: true, span: 'full' },
-    { id: 'telefono', key: 'telefono', label: 'Teléfono / WhatsApp', type: 'tel',   placeholder: '300 000 0000',   required: true, span: 'full' },
+    { id: 'nombre_completo', key: 'nombre', label: 'Nombre completo',     placeholder: 'Valentina Rodríguez', required: true, span: 'half' },
+    { id: 'email',           key: 'email',  label: 'Correo electrónico',  type: 'email', placeholder: 'tu@correo.com', required: true, span: 'half' },
+    { id: 'telefono',        key: 'telefono', label: 'WhatsApp',          type: 'tel',   placeholder: '300 000 0000',  required: true, span: 'full' },
 ]
 
 const CAMPOS_FIJOS: CampoConfig[] = [
-    { id: 'direccion',   key: 'direccion',   label: 'Dirección',               placeholder: 'Calle 80 # 45-12',                     required: true, span: 'full' },
-    { id: 'apartamento', key: 'apartamento', label: 'Apartamento / Apto',      placeholder: 'Apto 301 (opcional)',                  opcional: true, span: 'full' },
-    { id: 'notas',       key: 'notas',       label: 'Notas para el domicilio', placeholder: 'Indicaciones al mensajero (opcional)', opcional: true, span: 'full' },
+    { id: 'direccion',   key: 'direccion',   label: 'Dirección',                 placeholder: 'Calle 80 # 45-12',           required: true, span: 'full' },
+    { id: 'apartamento', key: 'apartamento', label: 'Detalles adicionales dirección', placeholder: 'Apto 301, torre B, etc.', opcional: true, span: 'full' },
 ]
 
 const SELECT_BASE = 'w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-slate-400 transition-colors duration-200 ease-in-out bg-white disabled:opacity-50 disabled:cursor-not-allowed'
@@ -42,7 +44,6 @@ export interface FormDatos {
     telefono: string
     direccion: string
     apartamento: string
-    notas: string
 }
 
 export interface DireccionGuardada {
@@ -101,6 +102,27 @@ export default function CustomerForm({
     const [emailTocado,      setEmailTocado]      = useState(false)
     const [emailExiste,      setEmailExiste]      = useState<boolean | null>(null)
     const [verificandoEmail, setVerificandoEmail] = useState(false)
+
+    // "Nombre completo" tiene su propio state local — no podemos derivarlo de
+    // `form.nombre + ' ' + form.apellido` en cada render porque al teclear un
+    // espacio el split inmediato lo descartaba (apellido='' y filter(Boolean)
+    // eliminaba el espacio final). Con state local respetamos lo que el usuario
+    // ve, y separamos a nombre/apellido en cada change.
+    const [nombreCompleto, setNombreCompleto] = useState<string>(
+        () => [form.nombre, form.apellido].filter(Boolean).join(' ')
+    )
+
+    // Si el form cambia por causa externa (selección de dirección guardada,
+    // login auto-rellenado, hidratación de localStorage), sincronizamos el
+    // state local. Solo cuando el valor reconstruido difiere del actual para
+    // no pisar lo que el usuario está tecleando.
+    useEffect(() => {
+        const reconstruido = [form.nombre, form.apellido].filter(Boolean).join(' ')
+        const actualNormalizado = nombreCompleto.trim().replace(/\s+/g, ' ')
+        if (reconstruido !== actualNormalizado) {
+            setNombreCompleto(reconstruido)
+        }
+    }, [form.nombre, form.apellido]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
 
@@ -172,10 +194,40 @@ export default function CustomerForm({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {CAMPOS_PERSONALES.map(c => {
-                        const esEmail = c.key === 'email'
-                        const bloqueado = esEmail && clienteLogueado
+                        const esEmail            = c.key === 'email'
+                        const esTelefono         = c.key === 'telefono'
+                        const esNombre           = c.key === 'nombre'
+                        const bloqueado          = esEmail && clienteLogueado
+                        const claseSpan          = c.span === 'full' ? 'md:col-span-2' : ''
+
+                        // Para "Nombre completo" usamos el state local `nombreCompleto`
+                        // que preserva espacios mientras el usuario teclea. El split a
+                        // nombre + apellido se propaga al form padre en cada change.
+                        const valor = esNombre
+                            ? nombreCompleto
+                            : form[c.key as keyof FormDatos]
+
+                        function onChangeCampo(nuevoValor: string) {
+                            if (bloqueado) return
+                            if (esNombre) {
+                                setNombreCompleto(nuevoValor)
+                                const limpio = nuevoValor.trimStart()
+                                const idxEspacio = limpio.indexOf(' ')
+                                if (idxEspacio === -1) {
+                                    onForm('nombre',   limpio)
+                                    onForm('apellido', '')
+                                } else {
+                                    onForm('nombre',   limpio.slice(0, idxEspacio))
+                                    onForm('apellido', limpio.slice(idxEspacio + 1).trimStart())
+                                }
+                            } else {
+                                onForm(c.key as keyof FormDatos, nuevoValor)
+                            }
+                            if (esEmail) setEmailExiste(null)
+                        }
+
                         return (
-                            <div key={c.id}>
+                            <div key={c.id} className={claseSpan}>
                                 <label htmlFor={c.id} className="block text-xs font-medium text-slate-600 mb-1.5">
                                     {c.label}
                                 </label>
@@ -184,20 +236,17 @@ export default function CustomerForm({
                                         id={c.id}
                                         type={c.type || 'text'}
                                         placeholder={c.placeholder}
-                                        value={form[c.key as keyof FormDatos]}
+                                        value={valor}
                                         readOnly={bloqueado}
-                                        onChange={e => {
-                                            if (bloqueado) return
-                                            onForm(c.key as keyof FormDatos, e.target.value)
-                                            if (esEmail) setEmailExiste(null)
-                                        }}
+                                        onChange={e => onChangeCampo(e.target.value)}
                                         onBlur={esEmail && !bloqueado ? handleEmailBlur : undefined}
                                         className={cn(
                                             INPUT_BASE,
                                             bloqueado && 'bg-slate-50 text-slate-500 cursor-not-allowed pr-9',
                                             !bloqueado && esEmail && emailTocado && form.email.length > 0 && !emailValido && 'border-red-300 focus:border-red-300',
                                             !bloqueado && esEmail && emailTocado && emailValido && 'pr-9',
-                                            c.required && intentoEnviar && !form[c.key as keyof FormDatos] && 'border-red-300 focus:border-red-300',
+                                            c.required && intentoEnviar && esNombre  && (!form.nombre || !form.apellido) && 'border-red-300 focus:border-red-300',
+                                            c.required && intentoEnviar && !esNombre && !form[c.key as keyof FormDatos] && 'border-red-300 focus:border-red-300',
                                         )}
                                     />
                                     {bloqueado && (
@@ -216,7 +265,7 @@ export default function CustomerForm({
                                 )}
                                 {!bloqueado && esEmail && crearCuenta && emailExiste === true && (
                                     <p className="text-[11px] text-amber-600 mt-1">
-                                        ⚠ Este correo ya tiene una cuenta.{' '}
+                                        Este correo ya tiene una cuenta.{' '}
                                         <a
                                             href={route('cuenta.login')}
                                             className="underline hover:text-amber-800 transition-colors duration-200"
@@ -224,6 +273,15 @@ export default function CustomerForm({
                                             Inicia sesión →
                                         </a>
                                     </p>
+                                )}
+
+                                {esTelefono && (
+                                    <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-100 border border-emerald-200 px-3 py-2.5">
+                                        <MessageCircleIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                        <p className="text-[11px] font-medium text-emerald-600 leading-snug">
+                                            Te enviaremos un WhatsApp para confirmar tu pedido. Asegúrate que el número sea correcto.
+                                        </p>
+                                    </div>
                                 )}
                             </div>
                         )

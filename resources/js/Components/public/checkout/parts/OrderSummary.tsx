@@ -146,6 +146,7 @@ interface Props {
     onConfirmar: () => void
     enviando?: boolean
     recargo?: number
+    descuentoMetodo?: number
     zonasEnvio: ZonaEnvio[]
     ciudad: string
     metodoPago?: string
@@ -153,21 +154,12 @@ interface Props {
     ocultarBoton?: boolean
 }
 
-export default function OrderSummary({ onConfirmar, enviando = false, recargo = 0, zonasEnvio, ciudad, metodoPago = '', metodos = [], ocultarBoton = false }: Props) {
+export default function OrderSummary({ onConfirmar, enviando = false, recargo = 0, descuentoMetodo = 0, zonasEnvio, ciudad, metodoPago = '', metodos = [], ocultarBoton = false }: Props) {
     const { items, removeItem, updateQuantity, total } = useCart()
 
     const envio = calcularEnvio(zonasEnvio, ciudad, total)
-    const totalFinal = total + (envio ?? 0) + recargo
-
-    // Banner-descuento: si contraentrega tiene recargo configurado y hay métodos
-    // alternativos (pago adelantado), invitamos al cliente a ahorrarse el recargo.
-    const contraentrega   = metodos.find(m => m.clave === 'contraentrega')
-    const recargoConfig   = Number(contraentrega?.config?.recargo ?? 0)
-    const adelantados     = metodos.filter(m => m.clave !== 'contraentrega' && m.clave !== '')
-    const mostrarPromoAdelanto =
-        recargoConfig > 0
-        && adelantados.length > 0
-        && metodoPago === 'contraentrega'
+    const totalFinal = total + (envio ?? 0) + recargo - descuentoMetodo
+    const metodoSeleccionado = metodos.find(m => m.clave === metodoPago)
 
     return (
         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden sticky top-24">
@@ -253,6 +245,13 @@ export default function OrderSummary({ onConfirmar, enviando = false, recargo = 
                     </div>
                 )}
 
+                {descuentoMetodo > 0 && (
+                    <div className="flex items-center justify-between text-sm text-emerald-600">
+                        <span>Descuento por {metodoSeleccionado?.nombre ?? 'método'}</span>
+                        <span>-{formatPrecio(descuentoMetodo)}</span>
+                    </div>
+                )}
+
                 <div className="flex items-center justify-between text-base font-bold text-slate-900 pt-2 border-t border-slate-100 mt-1">
                     <span>{envio === null ? 'Total parcial' : 'Total'}</span>
                     <span>{formatPrecio(totalFinal)}</span>
@@ -262,19 +261,8 @@ export default function OrderSummary({ onConfirmar, enviando = false, recargo = 
                 )}
             </div>
 
-            {mostrarPromoAdelanto && (
-                <div className="mx-5 mb-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/60 border border-emerald-200 p-3.5">
-                    <p className="text-xs font-bold text-emerald-700 leading-snug">
-                        🔥 ¡Recibe bono de {formatPrecio(recargoConfig)}!
-                    </p>
-                    <p className="text-[11px] text-emerald-700/80 mt-1 leading-relaxed">
-                       <strong>Paga con {adelantados.map(a => a.nombre).join(' o ')}</strong> y recibe un bono de descuento.
-                    </p>
-                </div>
-            )}
-
             {/* CTA */}
-            {!ocultarBoton && <div className="px-5 pb-5">
+            {!ocultarBoton && <div className="px-5 pb-5 flex flex-col gap-4">
                 <button
                     onClick={() => {
                         trackFb('AddPaymentInfo', {
@@ -291,8 +279,20 @@ export default function OrderSummary({ onConfirmar, enviando = false, recargo = 
                 >
                     {enviando ? 'Procesando…' : 'Confirmar pedido'}
                 </button>
-                <p className="text-center text-[10px] text-slate-400 mt-2.5">
-                    🔒 Compra 100% segura · Devolución garantizada
+
+                {/* Disclaimer de compromiso — sin fondo, peso visual menor que
+                    las leyendas resaltadas (que son chips de información clave). */}
+                <div className="px-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-700 mb-1">
+                        Tu confirmación es un compromiso
+                    </p>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
+                        Al confirmar tu pedido, asumimos los gastos logísticos y pagamos por ti el envío que recibes gratis. Confirma solo si estás 100% seguro de recibirlo.
+                    </p>
+                </div>
+
+                <p className="text-center text-[10px] text-slate-400">
+                    Compra 100% segura · Devolución garantizada
                 </p>
             </div>}
         </div>
