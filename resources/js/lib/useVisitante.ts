@@ -15,7 +15,64 @@ import { router } from '@inertiajs/react'
 
 const SESSION_KEY_INICIO  = 'vivo:iniciado_en'
 const STORAGE_KEY_ORIGEN  = 'vivo:origen-v2'   // v2 marca el nuevo formato {origen, ts}
+const STORAGE_KEY_UTMS    = 'vivo:utms-v1'     // capturados al primer hit, persisten 30 dias
 const TTL_ORIGEN_MS       = 30 * 24 * 60 * 60 * 1000  // 30 dias
+
+interface UTMsCaptura {
+    utm_source:   string | null
+    utm_medium:   string | null
+    utm_campaign: string | null
+    utm_content:  string | null
+    utm_term:     string | null
+    landing_path: string | null
+    ts:           number
+}
+
+const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const
+
+/**
+ * Captura los UTMs del URL al primer hit del visitante y los persiste 30 dias.
+ * Si el visitante vuelve antes de 30 dias sin nuevos UTMs, mantiene los originales
+ * (atribucion sticky igual que el origen).
+ *
+ * Trunca a 100 chars para defenderse de URLs largos maliciosos.
+ */
+function leerOCapturarUtms(): UTMsCaptura {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY_UTMS)
+        if (raw) {
+            const parsed = JSON.parse(raw) as UTMsCaptura
+            if (Date.now() - parsed.ts < TTL_ORIGEN_MS) return parsed
+        }
+    } catch { /* malformed o no disponible */ }
+
+    const params = new URLSearchParams(window.location.search)
+    const captura: UTMsCaptura = {
+        utm_source:   null,
+        utm_medium:   null,
+        utm_campaign: null,
+        utm_content:  null,
+        utm_term:     null,
+        landing_path: window.location.pathname.slice(0, 200),
+        ts:           Date.now(),
+    }
+
+    for (const key of UTM_KEYS) {
+        const v = params.get(key)
+        if (v) captura[key] = v.slice(0, 100)
+    }
+
+    // Solo persistir si capturamos al menos uno (no inflar storage con visitas
+    // directas sin UTMs — su atribucion sera 'origen' = direct/otros).
+    const tieneAlguna = UTM_KEYS.some(k => captura[k])
+    if (tieneAlguna) {
+        try {
+            localStorage.setItem(STORAGE_KEY_UTMS, JSON.stringify(captura))
+        } catch { /* localStorage lleno o deshabilitado */ }
+    }
+
+    return captura
+}
 
 type Origen = 'facebook' | 'instagram' | 'google' | 'direct' | 'otros'
 type Dispositivo = 'movil' | 'desktop' | 'tablet'
@@ -121,13 +178,20 @@ export function useVisitante() {
         }
 
         function payload() {
+            const utms = leerOCapturarUtms()
             return {
-                pagina:      window.location.pathname,
-                seccion:     seccionRef.current,
-                dispositivo: detectarDispositivo(),
-                origen:      leerOrigen(),
-                iniciado_en: leerInicio(),
-                _token:      obtenerCsrf(),
+                pagina:       window.location.pathname,
+                seccion:      seccionRef.current,
+                dispositivo:  detectarDispositivo(),
+                origen:       leerOrigen(),
+                iniciado_en:  leerInicio(),
+                utm_source:   utms.utm_source,
+                utm_medium:   utms.utm_medium,
+                utm_campaign: utms.utm_campaign,
+                utm_content:  utms.utm_content,
+                utm_term:     utms.utm_term,
+                landing_path: utms.landing_path,
+                _token:       obtenerCsrf(),
             }
         }
 

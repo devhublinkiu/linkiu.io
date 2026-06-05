@@ -66,25 +66,29 @@ class FunelinksData
         'garantia', 'preguntas_frecuentes', 'sellos_confianza',
     ];
 
-    public function todo(?int $productoId, string $periodo, ?string $origen): array
+    public function todo(?int $productoId, string $periodo, ?string $origen, ?string $utmCampaign = null): array
     {
         return [
-            'resumen'           => $this->resumen($productoId, $periodo, $origen),
-            'funnel'            => $this->funnel($productoId, $periodo, $origen),
-            'por_origen'        => $this->porOrigen($productoId, $periodo),
-            'por_dispositivo'   => $this->porDispositivo($productoId, $periodo, $origen),
-            'productos'         => $this->productosDisponibles(),
-            'filtros_activos'   => [
-                'producto_id' => $productoId,
-                'periodo'     => $periodo,
-                'origen'      => $origen,
+            'resumen'              => $this->resumen($productoId, $periodo, $origen, $utmCampaign),
+            'funnel'               => $this->funnel($productoId, $periodo, $origen, $utmCampaign),
+            'por_origen'           => $this->porOrigen($productoId, $periodo),
+            'por_dispositivo'      => $this->porDispositivo($productoId, $periodo, $origen),
+            'por_campana'          => $this->porCampana($productoId, $periodo, $origen),
+            'campanas_disponibles' => $this->campanasDisponibles($periodo),
+            'insights'             => $this->insightsDestacados($productoId, $periodo, $origen),
+            'productos'            => $this->productosDisponibles(),
+            'filtros_activos'      => [
+                'producto_id'  => $productoId,
+                'periodo'      => $periodo,
+                'origen'       => $origen,
+                'utm_campaign' => $utmCampaign,
             ],
         ];
     }
 
-    public function resumen(?int $productoId, string $periodo, ?string $origen): array
+    public function resumen(?int $productoId, string $periodo, ?string $origen, ?string $utmCampaign = null): array
     {
-        $q = $this->baseQuery($productoId, $periodo, $origen);
+        $q = $this->baseQuery($productoId, $periodo, $origen, $utmCampaign);
 
         $sesiones = (clone $q)->count();
         if ($sesiones === 0) {
@@ -115,9 +119,9 @@ class FunelinksData
      * seccion en su recorrido. La sección con mayor drop_off se marca como
      * cuello.
      */
-    public function funnel(?int $productoId, string $periodo, ?string $origen): array
+    public function funnel(?int $productoId, string $periodo, ?string $origen, ?string $utmCampaign = null): array
     {
-        $sesiones = $this->baseQuery($productoId, $periodo, $origen)
+        $sesiones = $this->baseQuery($productoId, $periodo, $origen, $utmCampaign)
             ->whereNotNull('producto_id')
             ->get(['recorrido']);
 
@@ -194,6 +198,168 @@ class FunelinksData
         return $this->comparativa($productoId, $periodo, $origen, 'dispositivo', ['movil', 'desktop', 'tablet']);
     }
 
+    /**
+     * Atribucion por campaña UTM especifica. Solo sesiones con utm_campaign no-null.
+     * Top 20 ordenadas por sesiones DESC.
+     *
+     * Para cada campaña: sesiones, duracion promedio, llego al final %, conversion %
+     * y estado bueno/medio/bajo segun conversion.
+     */
+    public function porCampana(?int $productoId, string $periodo, ?string $origen): array
+    {
+        $base = $this->baseQuery($productoId, $periodo, $origen)
+            ->whereNotNull('utm_campaign');
+
+        $campanas = (clone $base)
+            ->select('utm_campaign', 'utm_source', 'utm_medium')
+            ->selectRaw('COUNT(*) as sesiones')
+            ->selectRaw('AVG(duracion_segundos) as dur_avg')
+            ->selectRaw("SUM(CASE WHEN seccion_final = 'sellos_confianza' THEN 1 ELSE 0 END) as llego_count")
+            ->groupBy('utm_campaign', 'utm_source', 'utm_medium')
+            ->orderByDesc('sesiones')
+            ->limit(20)
+            ->get();
+
+        return $campanas->map(function ($row) use ($productoId, $periodo) {
+            $sesiones = (int) $row->sesiones;
+            $llegoPct = $sesiones > 0 ? round(($row->llego_count / $sesiones) * 100, 1) : 0;
+            $conversion = $this->calcularConversion($productoId, $periodo, $sesiones);
+
+            return [
+                'utm_campaign'      => $row->utm_campaign,
+                'utm_source'        => $row->utm_source,
+                'utm_medium'        => $row->utm_medium,
+                'sesiones'          => $sesiones,
+                'duracion_promedio' => (int) $row->dur_avg,
+                'llego_al_final'    => $llegoPct,
+                'conversion'        => $conversion,
+                'estado'            => $this->estadoSegunConversion($conversion),
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Lista de campañas distintas en el periodo, para el filtro de utm_campaign.
+     * Solo no-null y ordenadas por sesiones DESC.
+     */
+    public function campanasDisponibles(string $periodo): array
+    {
+        return VisitanteSesion::query()
+            ->where('inicio', '>=', $this->fechaDesde($periodo))
+            ->whereNotNull('utm_campaign')
+            ->select('utm_campaign')
+            ->selectRaw('COUNT(*) as sesiones')
+            ->groupBy('utm_campaign')
+            ->orderByDesc('sesiones')
+            ->limit(50)
+            ->get()
+            ->map(fn ($r) => ['nombre' => $r->utm_campaign, 'sesiones' => (int) $r->sesiones])
+            ->toArray();
+    }
+
+    /**
+     * Genera 1-3 insights destacados automaticos para el header del modulo:
+     *  - Mejor campaña por conversion (si hay datos de utm)
+     *  - Cuello del funnel (si hay producto seleccionado y drop_off >= 15%)
+     *  - Tendencia: conversion del periodo vs periodo anterior comparable
+     */
+    public function insightsDestacados(?int $productoId, string $periodo, ?string $origen): array
+    {
+        $insights = [];
+
+        // 1. Mejor campaña (solo si hay al menos una con sesiones >= 5)
+        $topCampanas = $this->porCampana($productoId, $periodo, $origen);
+        $mejor = collect($topCampanas)
+            ->filter(fn ($c) => $c['sesiones'] >= 5)
+            ->sortByDesc('conversion')
+            ->first();
+
+        if ($mejor) {
+            $insights[] = [
+                'tipo'   => 'campana_top',
+                'titulo' => "Tu mejor campaña: {$mejor['utm_campaign']}",
+                'detalle' => "{$mejor['conversion']}% de conversión · {$mejor['sesiones']} sesiones",
+                'estado' => 'bueno',
+            ];
+        }
+
+        // 2. Cuello del funnel (solo si hay producto seleccionado)
+        if ($productoId) {
+            $funnel = $this->funnel($productoId, $periodo, $origen);
+            $cuello = collect($funnel)->firstWhere('es_cuello', true);
+
+            if ($cuello && $cuello['drop_off'] >= 15) {
+                $insights[] = [
+                    'tipo'    => 'cuello',
+                    'titulo'  => "Cuello en: {$cuello['nombre']}",
+                    'detalle' => "Caída del {$cuello['drop_off']}% — mayor pérdida del recorrido",
+                    'estado'  => 'bajo',
+                ];
+            }
+        }
+
+        // 3. Tendencia vs periodo anterior (solo si periodo != 'hoy' para que comparable)
+        if ($periodo !== 'hoy') {
+            $tendencia = $this->calcularTendencia($productoId, $periodo, $origen);
+            if ($tendencia !== null) {
+                $delta   = $tendencia['delta'];
+                $signo   = $delta >= 0 ? '+' : '';
+                $estado  = $delta >= 0 ? 'bueno' : 'bajo';
+                $titulo  = $delta >= 0
+                    ? "Conversión sube {$signo}{$delta}%"
+                    : "Conversión baja {$delta}%";
+                $insights[] = [
+                    'tipo'    => 'tendencia',
+                    'titulo'  => $titulo,
+                    'detalle' => "vs período anterior comparable",
+                    'estado'  => $estado,
+                ];
+            }
+        }
+
+        return $insights;
+    }
+
+    /**
+     * Compara conversion del periodo actual contra el periodo anterior del mismo
+     * tamaño. Devuelve {actual, anterior, delta} o null si no hay datos comparables.
+     */
+    private function calcularTendencia(?int $productoId, string $periodo, ?string $origen): ?array
+    {
+        $diasPeriodo = match ($periodo) {
+            'hoy'   => 1,
+            '30d'   => 30,
+            default => 7,
+        };
+
+        $desdeActual    = $this->fechaDesde($periodo);
+        $desdeAnterior  = $desdeActual->copy()->subDays($diasPeriodo);
+        $hastaAnterior  = $desdeActual->copy()->subSecond();
+
+        $qActual = $this->baseQuery($productoId, $periodo, $origen);
+        $sesActual = (clone $qActual)->count();
+        if ($sesActual < 5) return null;
+        $convActual = $this->calcularConversion($productoId, $periodo, $sesActual);
+
+        $qAnterior = VisitanteSesion::query()
+            ->whereBetween('inicio', [$desdeAnterior, $hastaAnterior]);
+        if ($productoId) $qAnterior->where('producto_id', $productoId);
+        if ($origen)     $qAnterior->where('origen', $origen);
+        $sesAnterior = (clone $qAnterior)->count();
+        if ($sesAnterior < 5) return null;
+
+        // Conversion del periodo anterior usando ordenes en esa misma ventana
+        $ordenesAnterior = Order::query()
+            ->whereBetween('created_at', [$desdeAnterior, $hastaAnterior])
+            ->where('estado', '!=', 'cancelado')
+            ->when($productoId, fn ($q) => $q->whereHas('items', fn ($iq) => $iq->where('producto_id', $productoId)))
+            ->count();
+        $convAnterior = round(($ordenesAnterior / $sesAnterior) * 100, 1);
+
+        $delta = round($convActual - $convAnterior, 1);
+        return ['actual' => $convActual, 'anterior' => $convAnterior, 'delta' => $delta];
+    }
+
     public function productosDisponibles(): array
     {
         // Productos que tienen al menos 1 sesion registrada
@@ -255,11 +421,12 @@ class FunelinksData
         return array_merge(self::FIJAS_INICIO, $hooks);
     }
 
-    private function baseQuery(?int $productoId, string $periodo, ?string $origen)
+    private function baseQuery(?int $productoId, string $periodo, ?string $origen, ?string $utmCampaign = null)
     {
         $q = VisitanteSesion::query()->where('inicio', '>=', $this->fechaDesde($periodo));
-        if ($productoId) $q->where('producto_id', $productoId);
-        if ($origen)     $q->where('origen', $origen);
+        if ($productoId)  $q->where('producto_id', $productoId);
+        if ($origen)      $q->where('origen', $origen);
+        if ($utmCampaign) $q->where('utm_campaign', $utmCampaign);
         return $q;
     }
 

@@ -20,7 +20,16 @@ class Visitante
         public ?string $ciudad,
         public ?string $pais,
         /** @var array<array{s:string,t:int}> */
-        public array   $recorrido = [],
+        public array   $recorrido  = [],
+        // Atribución de campaña — capturada del URL al primer hit. Inmutable
+        // durante la sesión: si el visitante navega a otra URL sin UTMs, no
+        // se pierde la atribución original.
+        public ?string $utmSource  = null,
+        public ?string $utmMedium  = null,
+        public ?string $utmCampaign = null,
+        public ?string $utmContent = null,
+        public ?string $utmTerm    = null,
+        public ?string $landingPath = null,
     ) {}
 
     public static function identificadorDe(string $sessionId): string
@@ -40,6 +49,12 @@ class Visitante
         int     $iniciadoEn,
         ?string $ciudad,
         ?string $pais,
+        ?string $utmSource   = null,
+        ?string $utmMedium   = null,
+        ?string $utmCampaign = null,
+        ?string $utmContent  = null,
+        ?string $utmTerm     = null,
+        ?string $landingPath = null,
     ): self {
         $disp   = in_array($dispositivo, ['movil', 'desktop', 'tablet'], true) ? $dispositivo : 'desktop';
         $org    = in_array($origen, ['facebook', 'instagram', 'google', 'direct', 'otros'], true) ? $origen : 'otros';
@@ -61,6 +76,12 @@ class Visitante
             ciudad:        $ciudad,
             pais:          $pais,
             recorrido:     $recorrido,
+            utmSource:     $utmSource,
+            utmMedium:     $utmMedium,
+            utmCampaign:   $utmCampaign,
+            utmContent:    $utmContent,
+            utmTerm:       $utmTerm,
+            landingPath:   $landingPath ?: $pagina,
         );
     }
 
@@ -111,6 +132,12 @@ class Visitante
             'ciudad'          => $this->ciudad,
             'pais'            => $this->pais,
             'recorrido'       => $this->recorrido,
+            'utm_source'      => $this->utmSource,
+            'utm_medium'      => $this->utmMedium,
+            'utm_campaign'    => $this->utmCampaign,
+            'utm_content'     => $this->utmContent,
+            'utm_term'        => $this->utmTerm,
+            'landing_path'    => $this->landingPath,
         ]);
     }
 
@@ -130,6 +157,12 @@ class Visitante
             ciudad:        $d['ciudad'] ?? null,
             pais:          $d['pais']   ?? null,
             recorrido:     is_array($d['recorrido'] ?? null) ? $d['recorrido'] : [],
+            utmSource:     $d['utm_source']   ?? null,
+            utmMedium:     $d['utm_medium']   ?? null,
+            utmCampaign:   $d['utm_campaign'] ?? null,
+            utmContent:    $d['utm_content']  ?? null,
+            utmTerm:       $d['utm_term']     ?? null,
+            landingPath:   $d['landing_path'] ?? null,
         );
     }
 

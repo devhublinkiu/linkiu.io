@@ -48,12 +48,24 @@ class HeartbeatController extends Controller
         // bloquear el heartbeat. Este endpoint debe ser ultra-tolerante
         // — el frontend no espera respuesta y un 422 ensucia la consola
         // del visitante sin ningun beneficio.
+        $trunc = fn ($v, int $max) => $v !== null && $v !== '' ? substr((string) $v, 0, $max) : null;
+
         $request->merge([
-            'pagina'      => substr((string) $request->input('pagina', '/'), 0, 200),
-            'seccion'     => $request->input('seccion') ? substr((string) $request->input('seccion'), 0, 60) : null,
-            'dispositivo' => in_array($request->input('dispositivo'), ['movil', 'desktop', 'tablet'], true) ? $request->input('dispositivo') : 'desktop',
-            'origen'      => in_array($request->input('origen'), ['facebook', 'instagram', 'google', 'direct', 'otros'], true) ? $request->input('origen') : 'otros',
-            'iniciado_en' => (int) $request->input('iniciado_en', time()),
+            'pagina'       => substr((string) $request->input('pagina', '/'), 0, 200),
+            'seccion'      => $request->input('seccion') ? substr((string) $request->input('seccion'), 0, 60) : null,
+            'dispositivo'  => in_array($request->input('dispositivo'), ['movil', 'desktop', 'tablet'], true) ? $request->input('dispositivo') : 'desktop',
+            'origen'       => in_array($request->input('origen'), ['facebook', 'instagram', 'google', 'direct', 'otros'], true) ? $request->input('origen') : 'otros',
+            'iniciado_en'  => (int) $request->input('iniciado_en', time()),
+            // UTMs y landing — solo se usan al CREAR el visitante (primer hit).
+            // Si vienen en heartbeats posteriores se ignoran (la atribución no
+            // se reescribe a mitad de sesión). Trunc defensivo a 100/200 chars
+            // para que un URL malicioso no infle el JSON guardado en Redis.
+            'utm_source'   => $trunc($request->input('utm_source'),   100),
+            'utm_medium'   => $trunc($request->input('utm_medium'),   100),
+            'utm_campaign' => $trunc($request->input('utm_campaign'), 100),
+            'utm_content'  => $trunc($request->input('utm_content'),  100),
+            'utm_term'     => $trunc($request->input('utm_term'),     100),
+            'landing_path' => $trunc($request->input('landing_path'), 200),
         ]);
 
         $ua = strtolower($request->userAgent() ?? '');
@@ -145,6 +157,12 @@ class HeartbeatController extends Controller
                 iniciadoEn:  (int)    $request->input('iniciado_en', time()),
                 ciudad:      $ciudad,
                 pais:        null,
+                utmSource:   $request->input('utm_source'),
+                utmMedium:   $request->input('utm_medium'),
+                utmCampaign: $request->input('utm_campaign'),
+                utmContent:  $request->input('utm_content'),
+                utmTerm:     $request->input('utm_term'),
+                landingPath: $request->input('landing_path'),
             );
         }
 
